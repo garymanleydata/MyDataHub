@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en-GB" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskmaster Telemetry & Analytics Workbench</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { slate: { 950: '#020617' } } } }
+        }
+    </script>
+    <!-- Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- sql.js (Client-Side SQLite WASM) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="h-8 w-8 rounded bg-red-600 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-red-600/30">TM</div>
+            <h1 class="text-xl font-bold tracking-tight text-slate-100">Taskmaster Telemetry Workbench</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="status-indicator" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span> Booting Engine...
+            </span>
+        </div>
+    </header>
+
+    <main class="flex-1 p-6 max-w-[1600px] w-full mx-auto space-y-6">
+
+        <!-- Controls -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Automated Data Ingestion</h2>
+                <div class="flex gap-2">
+                    <select id="series-selector" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-medium">
+                        <option value="1">Series 1</option>
+                        <option value="2">Series 2</option>
+                        <option value="3">Series 3</option>
+                        <option value="4">Series 4</option>
+                        <option value="5">Series 5</option>
+                        <option value="6">Series 6</option>
+                        <option value="7">Series 7</option>
+                        <option value="8">Series 8</option>
+                        <option value="9">Series 9</option>
+                        <option value="10">Series 10</option>
+                    </select>
+                    <button onclick="fetchSeriesWikiData()" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-medium text-xs rounded-lg transition shadow-md shadow-red-900/20 whitespace-nowrap">
+                        Fetch & Parse Live
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Drill-Down Filters</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Episode</label>
+                        <select id="filter-episode" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                            <option value="ALL">All Episodes</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Task Type</label>
+                        <select id="filter-task-type" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                            <option value="ALL">All Types</option>
+                            <option value="Prize">Prize</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Team">Team</option>
+                            <option value="Live">Live</option>
+                            <option value="Tiebreak">Tiebreak</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Contestant</label>
+                        <select id="filter-contestant" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500">
+                            <option value="ALL">All Contestants</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Table -->
+        <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-base font-semibold text-slate-100">Contestant Overall Series Summary</h2>
+                <span id="data-summary" class="text-xs text-slate-400">Loading dataset...</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-950 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="px-6 py-3">Contestant</th>
+                            <th class="px-6 py-3 text-right">Total Points</th>
+                            <th class="px-6 py-3 text-right">Prize Pts</th>
+                            <th class="px-6 py-3 text-right">Normal Pts</th>
+                            <th class="px-6 py-3 text-right">Team Pts</th>
+                            <th class="px-6 py-3 text-right">Live Pts</th>
+                            <th class="px-6 py-3 text-right">Episode Wins</th>
+                            <th class="px-6 py-3 text-right">Tiebreak Wins</th>
+                            <th class="px-6 py-3 text-right">DQ Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="divide-y divide-slate-800/50">
+                        <tr>
+                            <td colspan="9" class="px-6 py-8 text-center text-slate-500">Fetching live Wiki data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+                <h3 class="text-sm font-semibold text-slate-200">Cumulative Progression</h3>
+                <div id="chart-cumulative" class="w-full h-80"></div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+                <h3 class="text-sm font-semibold text-slate-200">Points Breakdown by Task Type</h3>
+                <div id="chart-task-type" class="w-full h-80"></div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+                <h3 class="text-sm font-semibold text-slate-200">Scoring Distribution (Box Plot)</h3>
+                <div id="chart-consistency" class="w-full h-80"></div>
+            </div>
+        </section>
+
+        <!-- Granular Task Drill-Down Table -->
+        <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-base font-semibold text-slate-100">Granular Task Telemetry Drill-Down</h2>
+                <span class="text-xs text-slate-400">Filtered Individual Task Log</span>
+            </div>
+            <div class="overflow-x-auto max-h-96">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-950 uppercase tracking-wider text-slate-400 border-b border-slate-800 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3">Episode</th>
+                            <th class="px-4 py-3">Task #</th>
+                            <th class="px-4 py-3">Type</th>
+                            <th class="px-4 py-3">Task Description</th>
+                            <th class="px-4 py-3">Contestant</th>
+                            <th class="px-4 py-3 text-right">Points</th>
+                            <th class="px-4 py-3 text-center">Status</th>
+                            <th class="px-4 py-3 text-center">Ep Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-drilldown-body" class="divide-y divide-slate-800/40 font-mono">
+                        <tr><td colspan="8" class="px-4 py-6 text-center text-slate-500">No tasks loaded.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SQL Terminal -->
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h2 class="text-base font-semibold text-slate-100">Ad-Hoc SQL Query Console</h2>
+            </div>
+            <div class="space-y-2">
+                <textarea id="sql-input" rows="3" class="w-full bg-slate-950 font-mono text-xs text-emerald-400 p-4 rounded-lg border border-slate-800 focus:outline-none focus:border-red-500 leading-relaxed" spellcheck="false">
+SELECT contestant_name, SUM(points) as total_points, COUNT(DISTINCT CASE WHEN is_ep_winner = 1 THEN episode_num END) as ep_wins
+FROM master_tasks
+GROUP BY contestant_name
+ORDER BY total_points DESC;</textarea>
+                <div class="flex justify-end">
+                    <button onclick="runQuery()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold rounded-lg border border-slate-700 transition">
+                        Execute Query
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto rounded-lg border border-slate-800 max-h-64">
+                <table class="w-full text-left text-xs font-mono text-slate-300 bg-slate-950">
+                    <thead id="sql-head" class="bg-slate-900 border-b border-slate-800 text-slate-400 sticky top-0">
+                        <tr><th class="px-4 py-2">Query output will appear here...</th></tr>
+                    </thead>
+                    <tbody id="sql-body" class="divide-y divide-slate-800/40"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let db = null;
+        let chartCumulative = null;
+        let chartTaskType = null;
+        let chartConsistency = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            initCharts();
+            await initSQLite();
+            fetchSeriesWikiData();
+        });
+
+        async function initSQLite() {
+            const status = document.getElementById('status-indicator');
+            try {
+                const SQL = await initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                });
+                db = new SQL.Database();
+
+                db.run(`
+                    CREATE TABLE master_tasks (
+                        series_id INTEGER,
+                        episode_num INTEGER,
+                        task_num INTEGER,
+                        task_description TEXT,
+                        task_type TEXT,
+                        contestant_name TEXT,
+                        points INTEGER,
+                        is_dq INTEGER,
+                        is_tiebreaker INTEGER,
+                        is_ep_winner INTEGER
+                    );
+                `);
+
+                status.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                status.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> SQL Engine Ready`;
+            } catch (err) {
+                console.error("SQLite Init Error:", err);
+            }
+        }
+
+        // Bypassing CORS via JSONP Dynamic Script Injection
+        function fetchSeriesWikiData() {
+            const seriesId = document.getElementById('series-selector').value;
+            const status = document.getElementById('status-indicator');
+            const summary = document.getElementById('data-summary');
+
+            status.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+            status.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span> Fetching Wiki Data (Series ${seriesId})...`;
+
+            const wikiUrl = `https://taskmaster.fandom.com/wiki/Series_${seriesId}`;
+            const jsonpUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(wikiUrl)}&callback=handleWikiResponse`;
+
+            // Remove existing injection script if present
+            const oldScript = document.getElementById('jsonp-scraper');
+            if (oldScript) oldScript.remove();
+
+            const script = document.createElement('script');
+            script.id = 'jsonp-scraper';
+            script.src = jsonpUrl;
+            script.onerror = () => {
+                status.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20";
+                status.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-red-400"></span> Network Fetch Blocked`;
+                summary.innerText = "Error: Could not reach Wiki via CORS proxy.";
+            };
+            document.body.appendChild(script);
+        }
+
+        // JSONP Callback Handler
+        function handleWikiResponse(response) {
+            const seriesId = document.getElementById('series-selector').value;
+            const status = document.getElementById('status-indicator');
+            const summary = document.getElementById('data-summary');
+
+            if (!response || !response.contents) {
+                status.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20";
+                status.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-red-400"></span> Parsing Error`;
+                return;
+            }
+
+            const parsedTasks = parseWikiHTML(response.contents, parseInt(seriesId));
+            if (parsedTasks.length === 0) {
+                summary.innerText = `Could not extract scoring tables for Series ${seriesId}.`;
+                return;
+            }
+
+            ingestDataset(parsedTasks);
+
+            status.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+            status.innerHTML = `<span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Series ${seriesId} Loaded`;
+            summary.innerText = `Dynamically fetched and parsed ${parsedTasks.length} task records for Series ${seriesId}.`;
+        }
+
+        // Dynamic DOM Parser Engine
+        function parseWikiHTML(htmlStr, seriesId) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlStr, 'text/html');
+
+            const tasks = [];
+            const tables = doc.querySelectorAll('table.wikitable');
+            let episodeNum = 0;
+
+            tables.forEach((table) => {
+                const rows = Array.from(table.querySelectorAll('tr'));
+                if (rows.length < 2) return;
+
+                // Inspect header row to isolate contestants dynamically
+                const headerCells = Array.from(rows[0].querySelectorAll('th, td')).map(cell => cell.textContent.trim());
+                if (!headerCells.some(h => h.includes('Task') || h.includes('Prize') || h.includes('Description'))) return;
+
+                episodeNum++;
+                let taskNum = 0;
+
+                const contestantCols = [];
+                headerCells.forEach((cellText, idx) => {
+                    const clean = cellText.toLowerCase();
+                    if (idx > 0 && cellText && !clean.includes('total') && !clean.includes('pts') && !clean.includes('score')) {
+                        contestantCols.push({ name: cellText, colIdx: idx });
+                    }
+                });
+
+                if (contestantCols.length === 0) return;
+
+                let epScores = {};
+                contestantCols.forEach(c => epScores[c.name] = 0);
+                let tiebreakWinner = null;
+
+                for (let i = 1; i < rows.length; i++) {
+                    const cells = Array.from(rows[i].querySelectorAll('td, th')).map(c => c.textContent.trim());
+                    if (cells.length < 2) continue;
+
+                    const taskDesc = cells[0];
+                    if (!taskDesc || taskDesc.toLowerCase().includes('total')) continue;
+
+                    taskNum++;
+                    const lowerDesc = taskDesc.toLowerCase();
+                    const isTiebreak = (lowerDesc.includes('tiebreak') || taskDesc.toUpperCase().startsWith('T.') || taskDesc.toUpperCase().startsWith('T ')) ? 1 : 0;
+
+                    let taskType = 'Normal';
+                    if (isTiebreak) taskType = 'Tiebreak';
+                    else if (lowerDesc.includes('prize') || taskNum === 1) taskType = 'Prize';
+                    else if (lowerDesc.includes('live') || lowerDesc.includes('final')) taskType = 'Live';
+                    else if (lowerDesc.includes('team')) taskType = 'Team';
+
+                    contestantCols.forEach((c) => {
+                        const cellVal = cells[c.colIdx] || '0';
+                        const isDq = (cellVal.includes('DQ') || cellVal.includes('DSQ')) ? 1 : 0;
+
+                        if (isTiebreak && (cellVal.includes('✔') || cellVal.includes('✓') || cellVal.toLowerCase().includes('win'))) {
+                            tiebreakWinner = c.name;
+                        }
+
+                        const scoreMatch = cellVal.match(/\d+/);
+                        const points = isTiebreak ? 0 : (scoreMatch ? parseInt(scoreMatch[0]) : 0);
+
+                        if (!isTiebreak) {
+                            epScores[c.name] = (epScores[c.name] || 0) + points;
+                        }
+
+                        tasks.push({
+                            series_id: seriesId,
+                            episode_num: episodeNum,
+                            task_num: taskNum,
+                            task_description: taskDesc,
+                            task_type: taskType,
+                            contestant_name: c.name,
+                            points: points,
+                            is_dq: isDq,
+                            is_tiebreaker: isTiebreak,
+                            is_ep_winner: 0
+                        });
+                    });
+                }
+
+                // Resolve Episode Winner
+                let maxScore = -1;
+                let topContestants = [];
+                for (const [cName, score] of Object.entries(epScores)) {
+                    if (score > maxScore) {
+                        maxScore = score;
+                        topContestants = [cName];
+                    } else if (score === maxScore) {
+                        topContestants.push(cName);
+                    }
+                }
+
+                let finalWinner = topContestants[0];
+                if (topContestants.length > 1 && tiebreakWinner && topContestants.includes(tiebreakWinner)) {
+                    finalWinner = tiebreakWinner;
+                }
+
+                tasks.forEach(t => {
+                    if (t.series_id === seriesId && t.episode_num === episodeNum && t.contestant_name === finalWinner) {
+                        t.is_ep_winner = 1;
+                    }
+                });
+            });
+
+            return tasks;
+        }
+
+        function queryToObjects(sqlStr) {
+            const res = db.exec(sqlStr);
+            if (!res.length) return [];
+            const cols = res[0].columns;
+            return res[0].values.map(val => {
+                const obj = {};
+                cols.forEach((col, idx) => { obj[col] = val[idx]; });
+                return obj;
+            });
+        }
+
+        function ingestDataset(records) {
+            db.run(`DELETE FROM master_tasks;`);
+            const stmt = db.prepare(`INSERT INTO master_tasks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`);
+            records.forEach(r => {
+                stmt.run([r.series_id, r.episode_num, r.task_num, r.task_description, r.task_type, r.contestant_name, r.points, r.is_dq, r.is_tiebreaker, r.is_ep_winner]);
+            });
+            stmt.free();
+
+            populateDropdownFilters();
+            applyFilters();
+            runQuery();
+        }
+
+        function populateDropdownFilters() {
+            const episodes = queryToObjects(`SELECT DISTINCT episode_num FROM master_tasks ORDER BY episode_num;`);
+            const selectEp = document.getElementById('filter-episode');
+            selectEp.innerHTML = '<option value="ALL">All Episodes</option>';
+            episodes.forEach(r => { selectEp.innerHTML += `<option value="${r.episode_num}">Episode ${r.episode_num}</option>`; });
+
+            const contestants = queryToObjects(`SELECT DISTINCT contestant_name FROM master_tasks ORDER BY contestant_name;`);
+            const selectC = document.getElementById('filter-contestant');
+            selectC.innerHTML = '<option value="ALL">All Contestants</option>';
+            contestants.forEach(r => { selectC.innerHTML += `<option value="${r.contestant_name}">${r.contestant_name}</option>`; });
+        }
+
+        function applyFilters() {
+            const ep = document.getElementById('filter-episode').value;
+            const type = document.getElementById('filter-task-type').value;
+            const contestant = document.getElementById('filter-contestant').value;
+
+            const clauses = [];
+            if (ep !== 'ALL') clauses.push(`episode_num = ${ep}`);
+            if (type !== 'ALL') clauses.push(`task_type = '${type}'`);
+            if (contestant !== 'ALL') clauses.push(`contestant_name = '${contestant}'`);
+
+            const whereClause = clauses.length > 0 ? 'WHERE ' + clauses.join(' AND ') : '';
+            updateLeaderboard(whereClause);
+            updateCharts(whereClause);
+            updateDrilldown(whereClause);
+        }
+
+        function updateLeaderboard(whereClause) {
+            const query = `
+                SELECT 
+                    contestant_name,
+                    SUM(points) as total_points,
+                    SUM(CASE WHEN task_type = 'Prize' THEN points ELSE 0 END) as prize_points,
+                    SUM(CASE WHEN task_type = 'Normal' THEN points ELSE 0 END) as normal_points,
+                    SUM(CASE WHEN task_type = 'Team' THEN points ELSE 0 END) as team_points,
+                    SUM(CASE WHEN task_type = 'Live' THEN points ELSE 0 END) as live_points,
+                    COUNT(DISTINCT CASE WHEN is_ep_winner = 1 THEN episode_num END) as ep_wins,
+                    SUM(CASE WHEN is_tiebreaker = 1 AND is_ep_winner = 1 THEN 1 ELSE 0 END) as tiebreak_wins,
+                    SUM(is_dq) as dq_count
+                FROM master_tasks
+                ${whereClause}
+                GROUP BY contestant_name
+                ORDER BY total_points DESC;
+            `;
+
+            const rows = queryToObjects(query);
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+
+            rows.forEach(r => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="px-6 py-4 font-medium text-slate-100">${r.contestant_name}</td>
+                        <td class="px-6 py-4 text-right font-bold text-red-400">${r.total_points}</td>
+                        <td class="px-6 py-4 text-right">${r.prize_points}</td>
+                        <td class="px-6 py-4 text-right">${r.normal_points}</td>
+                        <td class="px-6 py-4 text-right">${r.team_points}</td>
+                        <td class="px-6 py-4 text-right">${r.live_points}</td>
+                        <td class="px-6 py-4 text-right font-semibold text-emerald-400">${r.ep_wins}</td>
+                        <td class="px-6 py-4 text-right text-amber-400">${r.tiebreak_wins}</td>
+                        <td class="px-6 py-4 text-right ${r.dq_count > 0 ? 'text-red-400 font-bold' : ''}">${r.dq_count}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateDrilldown(whereClause) {
+            const query = `
+                SELECT episode_num, task_num, task_type, task_description, contestant_name, points, is_dq, is_ep_winner
+                FROM master_tasks
+                ${whereClause}
+                ORDER BY episode_num, task_num, contestant_name;
+            `;
+
+            const rows = queryToObjects(query);
+            const tbody = document.getElementById('task-drilldown-body');
+            tbody.innerHTML = '';
+
+            rows.forEach(r => {
+                const statusBadge = r.is_dq === 1 
+                    ? `<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">DQ</span>`
+                    : `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Valid</span>`;
+
+                const winnerBadge = r.is_ep_winner === 1 
+                    ? `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold">Winner</span>`
+                    : `<span class="text-slate-600">-</span>`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-900">
+                        <td class="px-4 py-2 font-semibold text-slate-400">Ep ${r.episode_num}</td>
+                        <td class="px-4 py-2 text-slate-400">#${r.task_num}</td>
+                        <td class="px-4 py-2"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">${r.task_type}</span></td>
+                        <td class="px-4 py-2 text-slate-200">${r.task_description}</td>
+                        <td class="px-4 py-2 text-slate-300 font-sans font-medium">${r.contestant_name}</td>
+                        <td class="px-4 py-2 text-right font-bold text-slate-100">${r.points}</td>
+                        <td class="px-4 py-2 text-center">${statusBadge}</td>
+                        <td class="px-4 py-2 text-center">${winnerBadge}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateCharts(whereClause) {
+            const cumData = queryToObjects(`SELECT contestant_name, episode_num, task_num, points FROM master_tasks ${whereClause} ORDER BY episode_num, task_num;`);
+            const contestants = [...new Set(cumData.map(r => r.contestant_name))];
+            const taskLabels = [...new Set(cumData.map(r => `E${r.episode_num}T${r.task_num}`))];
+
+            const cumSeries = contestants.map(c => {
+                let currentTotal = 0;
+                const cPoints = cumData.filter(r => r.contestant_name === c).map(r => {
+                    currentTotal += r.points;
+                    return currentTotal;
+                });
+                return { name: c, type: 'line', smooth: true, data: cPoints };
+            });
+
+            chartCumulative.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { textStyle: { color: '#94a3b8' }, top: 0 },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: taskLabels, axisLine: { lineStyle: { color: '#475569' } } },
+                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#475569' } }, splitLine: { lineStyle: { color: '#334155' } } },
+                series: cumSeries
+            }, true);
+
+            const typeData = queryToObjects(`SELECT contestant_name, task_type, SUM(points) as points FROM master_tasks ${whereClause} GROUP BY contestant_name, task_type;`);
+            const types = ['Prize', 'Normal', 'Team', 'Live', 'Tiebreak'];
+
+            const typeSeries = types.map(t => ({
+                name: t,
+                type: 'bar',
+                stack: 'total',
+                data: contestants.map(c => {
+                    const match = typeData.find(r => r.contestant_name === c && r.task_type === t);
+                    return match ? match.points : 0;
+                })
+            }));
+
+            chartTaskType.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: { textStyle: { color: '#94a3b8' }, top: 0 },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: contestants, axisLine: { lineStyle: { color: '#475569' } } },
+                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#475569' } }, splitLine: { lineStyle: { color: '#334155' } } },
+                series: typeSeries
+            }, true);
+
+            const boxRaw = queryToObjects(`SELECT contestant_name, points FROM master_tasks ${whereClause};`);
+            const boxData = contestants.map(c => {
+                const pts = boxRaw.filter(r => r.contestant_name === c).map(r => r.points).sort((a,b) => a-b);
+                if (!pts.length) return [0,0,0,0,0];
+                return [
+                    Math.min(...pts),
+                    pts[Math.floor(pts.length * 0.25)] || pts[0],
+                    pts[Math.floor(pts.length * 0.5)] || pts[0],
+                    pts[Math.floor(pts.length * 0.75)] || pts[pts.length-1],
+                    Math.max(...pts)
+                ];
+            });
+
+            chartConsistency.setOption({
+                tooltip: { trigger: 'item', axisPointer: { type: 'shadow' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: contestants, axisLine: { lineStyle: { color: '#475569' } } },
+                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#475569' } }, splitLine: { lineStyle: { color: '#334155' } } },
+                series: [{ type: 'boxplot', data: boxData, itemStyle: { borderColor: '#f87171', color: '#7f1d1d' } }]
+            }, true);
+        }
+
+        function initCharts() {
+            chartCumulative = echarts.init(document.getElementById('chart-cumulative'));
+            chartTaskType = echarts.init(document.getElementById('chart-task-type'));
+            chartConsistency = echarts.init(document.getElementById('chart-consistency'));
+
+            window.addEventListener('resize', () => {
+                chartCumulative.resize();
+                chartTaskType.resize();
+                chartConsistency.resize();
+            });
+        }
+
+        function runQuery() {
+            if (!db) return;
+            const sql = document.getElementById('sql-input').value;
+            const head = document.getElementById('sql-head');
+            const body = document.getElementById('sql-body');
+
+            try {
+                const rows = queryToObjects(sql);
+                if (rows.length === 0) {
+                    head.innerHTML = '<tr><th class="px-4 py-2">Query executed successfully. 0 rows returned.</th></tr>';
+                    body.innerHTML = '';
+                    return;
+                }
+                const cols = Object.keys(rows[0]);
+                head.innerHTML = `<tr>${cols.map(c => `<th class="px-4 py-2">${c}</th>`).join('')}</tr>`;
+                body.innerHTML = rows.map(r => `
+                    <tr class="hover:bg-slate-900">${cols.map(c => `<td class="px-4 py-2">${r[c]}</td>`).join('')}</tr>
+                `).join('');
+            } catch (err) {
+                head.innerHTML = `<tr><th class="px-4 py-2 text-red-400">SQL Error: ${err.message}</th></tr>`;
+                body.innerHTML = '';
+            }
+        }
+    </script>
+</body>
+</html>

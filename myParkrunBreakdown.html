@@ -1,0 +1,3578 @@
+<!DOCTYPE html>
+<html lang="en_GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>parkrun Story Visualiser</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PapaParse CDN for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Chart.js + Date Adapter CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-6 font-sans">
+
+  <!-- STREAMING_CHUNK:Rendering header layout and top Control Center... -->
+  <main class="max-w-6xl mx-auto space-y-6">
+    
+    <header class="border-b border-slate-800 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold text-emerald-400 tracking-tight">parkrun Story Visualiser</h1>
+        <p class="text-slate-400 text-sm mt-1">Interactive Milestones, Leaderboards, Volunteering & Course Handicap Engine</p>
+      </div>
+    </header>
+
+    <!-- Top Data Ingestion & Control Center -->
+    <section class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 shadow-lg space-y-5">
+      
+      <!-- Bookmarklets & parkrun ID Guide Box -->
+      <div class="border-b border-slate-700/50 pb-3">
+        <button id="toggleGuideBtn" class="text-xs font-bold uppercase text-emerald-400 hover:text-emerald-300 tracking-wider flex items-center justify-between w-full transition">
+          <span class="flex items-center gap-1.5">
+            <span>📖</span>
+            <span>How to Extract Your parkrun & Volunteer Data (Bookmarklet Guide)</span>
+          </span>
+          <span id="guideToggleIcon">▼</span>
+        </button>
+
+        <div id="guidePanel" class="hidden mt-3 p-4 bg-slate-900/90 border border-slate-700/80 rounded-xl space-y-4 text-xs text-slate-300">
+          
+          <!-- Step 1: parkrun ID & Link Generator -->
+          <div class="space-y-2">
+            <h4 class="font-bold text-slate-100 flex items-center gap-1.5 text-sm">
+              <span class="bg-emerald-500 text-slate-950 rounded-full w-5 h-5 inline-flex items-center justify-center font-extrabold text-[11px]">1</span>
+              <span>Enter Your parkrun ID</span>
+            </h4>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pl-6">
+              <div class="flex items-center gap-2 flex-1 max-w-xs">
+                <span class="text-slate-400 font-mono font-bold">A</span>
+                <input 
+                  type="text" 
+                  id="parkrunIdInput" 
+                  placeholder="e.g. 500760" 
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
+                >
+              </div>
+              <div id="parkrunLinkContainer" class="flex flex-wrap items-center gap-2">
+                <a 
+                  id="parkrunResultsLink" 
+                  href="#" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="hidden text-emerald-400 hover:text-emerald-300 underline font-semibold flex items-center gap-1 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-lg transition"
+                >
+                  <span>1. Full Runs Table (/all/)</span>
+                  <span>↗</span>
+                </a>
+                <a 
+                  id="parkrunProfileLink" 
+                  href="#" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="hidden text-purple-400 hover:text-purple-300 underline font-semibold flex items-center gap-1 bg-purple-950/40 border border-purple-500/30 px-3 py-1.5 rounded-lg transition"
+                >
+                  <span>2. Volunteer Summary Profile</span>
+                  <span>↗</span>
+                </a>
+                <span id="parkrunLinkPlaceholder" class="text-slate-500 italic">Enter your ID above to generate direct links</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Install Bookmarklets -->
+          <div class="space-y-3 border-t border-slate-800 pt-3">
+            <h4 class="font-bold text-slate-100 flex items-center gap-1.5 text-sm">
+              <span class="bg-emerald-500 text-slate-950 rounded-full w-5 h-5 inline-flex items-center justify-center font-extrabold text-[11px]">2</span>
+              <span>Install the Bookmarklets</span>
+            </h4>
+            
+            <div class="pl-6 space-y-3">
+              <p>Show your browser bookmarks bar (<code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300 font-mono">Ctrl+Shift+B</code> on Win/Linux or <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300 font-mono">Cmd+Shift+B</code> on Mac). Right-click the bar and select <strong>Add page...</strong> or <strong>Add bookmark...</strong></p>
+
+              <!-- Bookmarklet A: Runs Scraper -->
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-emerald-400 font-bold">A. Scrape Runs Bookmarklet (Name: "Scrape Runs")</span>
+                  <button id="copyBookmarkletBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2.5 py-1 rounded text-[10px] transition border border-slate-700">Copy Code</button>
+                </div>
+                <textarea id="bookmarkletCode" readonly rows="2" class="w-full bg-slate-900 border border-slate-800 rounded p-2 text-[10px] font-mono text-emerald-400 resize-none select-all focus:outline-none">javascript:(function(){const rows=document.querySelectorAll('table tbody tr');if(!rows.length){alert('No parkrun table found on this page!');return;}const data=Array.from(rows).map(row=>{const cells=row.querySelectorAll('td');if(cells.length<6)return null;return{event:cells[0]?.innerText.trim(),date:cells[1]?.innerText.trim(),runNumber:cells[2]?.innerText.trim(),position:cells[3]?.innerText.trim(),time:cells[4]?.innerText.trim(),ageGrade:cells[5]?.innerText.trim()};}).filter(Boolean);const jsonString=JSON.stringify(data,null,2);console.log('Parsed parkrun Data:',data);navigator.clipboard.writeText(jsonString).then(()=>{alert(`Successfully scraped ${data.length} runs!\n\nThe parsed JSON has been copied to your clipboard.`);}).catch(err=>{alert(`Scraped ${data.length} runs, but clipboard access failed. Check your browser console!`);});})();</textarea>
+              </div>
+
+              <!-- Bookmarklet B: Volunteer Scraper -->
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-purple-400 font-bold">B. Scrape Volunteers Bookmarklet (Name: "Scrape Volunteers")</span>
+                  <button id="copyVolBookmarkletBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2.5 py-1 rounded text-[10px] transition border border-slate-700">Copy Code</button>
+                </div>
+                <textarea id="volBookmarkletCode" readonly rows="2" class="w-full bg-slate-900 border border-slate-800 rounded p-2 text-[10px] font-mono text-purple-300 resize-none select-all focus:outline-none">javascript:(function(){const tables=document.querySelectorAll('table');let volTable=null;tables.forEach(t=>{if(t.innerText.toLowerCase().includes('volunteer')){volTable=t;}});if(!volTable){alert('No volunteer table found on this page!');return;}const rows=volTable.querySelectorAll('tr');const volunteering=[];rows.forEach(row=>{const cells=Array.from(row.querySelectorAll('th, td')).map(c=>c.innerText.trim());if(cells.length>=2){volunteering.push({role:cells[0],count:cells[1]});}});if(!volunteering.length){alert('Volunteer table found, but no rows extracted.');return;}const jsonString=JSON.stringify(volunteering,null,2);console.log('parkrun Volunteer Data:',volunteering);navigator.clipboard.writeText(jsonString).then(()=>{alert(`Successfully extracted ${volunteering.length} volunteer entries!\n\nCopied to clipboard as JSON.`);}).catch(()=>{alert('Extraction complete, but clipboard copy failed. Check the browser console.');});})();</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Run & Paste -->
+          <div class="space-y-2 border-t border-slate-800 pt-3">
+            <h4 class="font-bold text-slate-100 flex items-center gap-1.5 text-sm">
+              <span class="bg-emerald-500 text-slate-950 rounded-full w-5 h-5 inline-flex items-center justify-center font-extrabold text-[11px]">3</span>
+              <span>Scrape & Paste Below</span>
+            </h4>
+            <ol class="list-decimal pl-10 space-y-1 text-slate-300">
+              <li>Click link #1 above, click <strong>Scrape Runs</strong>, and paste the JSON array into the <strong>Run Results Data</strong> box below.</li>
+              <li>Click link #2 above, click <strong>Scrape Volunteers</strong>, and paste into the <strong>Volunteer Summary Data</strong> box below!</li>
+            </ol>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Side-by-Side Data Ingestion Control Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        
+        <!-- CARD 1: RUN RESULTS INGESTION -->
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-xs font-extrabold uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+              <span>🏃</span> 1. Run Results Data
+            </span>
+            <div class="flex items-center gap-1.5 text-[11px]">
+              <button id="srcToggleUrl" class="px-2.5 py-0.5 font-bold rounded bg-emerald-500 text-slate-950 transition">Sheet URL</button>
+              <button id="srcToggleJson" class="px-2.5 py-0.5 font-bold rounded bg-slate-800 text-slate-400 hover:text-white transition">Paste JSON</button>
+            </div>
+          </div>
+
+          <!-- URL Input Mode -->
+          <div id="inputContainerUrl" class="space-y-2">
+            <input 
+              type="url" 
+              id="sheetUrl" 
+              placeholder="Paste published Google Sheet CSV link..." 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+            >
+            <button id="loadUrlBtn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shadow">
+              Load Runs CSV
+            </button>
+          </div>
+
+          <!-- JSON Input Mode -->
+          <div id="inputContainerJson" class="hidden space-y-2">
+            <textarea 
+              id="jsonInput" 
+              rows="3" 
+              placeholder='Paste run JSON array e.g. [{"event":"Eastbourne","date":"18/07/2026","time":"18:42", ...}]' 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-[11px] font-mono text-slate-100 focus:outline-none focus:border-emerald-500 transition resize-y"
+            ></textarea>
+            <button id="loadJsonBtn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shadow">
+              Parse & Load Run JSON
+            </button>
+          </div>
+          
+          <div class="h-4">
+            <p id="statusMsg" class="text-[11px] text-slate-400"></p>
+          </div>
+        </div>
+
+        <!-- CARD 2: VOLUNTEER SUMMARY INGESTION -->
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-xs font-extrabold uppercase text-purple-400 tracking-wider flex items-center gap-1.5">
+              <span>💜</span> 2. Volunteer Summary Data
+            </span>
+            <span class="text-[10px] text-slate-400">Scraped Profile Table</span>
+          </div>
+
+          <div class="space-y-2">
+            <textarea 
+              id="topVolJsonInput" 
+              rows="3" 
+              placeholder='Paste volunteer JSON array e.g. [{"role":"Run Director","count":"129"}, {"role":"Total Credits","count":"364"}]' 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-[11px] font-mono text-purple-300 focus:outline-none focus:border-purple-500 transition resize-y"
+            ></textarea>
+            <button id="topLoadVolJsonBtn" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition shadow">
+              Parse & Load Volunteer Data
+            </button>
+          </div>
+
+          <div class="h-4">
+            <p id="topVolStatusMsg" class="text-[11px] text-purple-300"></p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Global Filter Bar -->
+      <div id="globalFilterContainer" class="hidden border-t border-slate-700/50 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <span class="text-xs font-bold uppercase text-emerald-400 tracking-wider">Global View Filters:</span>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2">
+            <label for="filterYear" class="text-xs text-slate-400 font-medium">Year:</label>
+            <select id="filterYear" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+              <option value="ALL">All Years</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="filterVenue" class="text-xs text-slate-400 font-medium">Venue:</label>
+            <select id="filterVenue" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+              <option value="ALL">All Venues</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-700/50 pt-3">
+        <button id="toggleConfigBtn" class="text-xs font-bold uppercase text-slate-400 hover:text-emerald-400 tracking-wider flex items-center gap-1 transition">
+          <span>⚙️ User Preferences & Position Targets</span>
+          <span id="configToggleIcon">▼</span>
+        </button>
+
+        <div id="configPanel" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3 pt-2 border-t border-slate-800">
+          <div>
+            <label for="targetPrimary" class="block text-xs text-slate-400 mb-1">Stretch Target Position (e.g., 1 for P1 Finish)</label>
+            <input type="number" id="targetPrimary" min="1" value="1" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label for="targetSecondary" class="block text-xs text-slate-400 mb-1">Secondary Target Position (e.g., 3 for Top 3)</label>
+            <input type="number" id="targetSecondary" min="1" value="3" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label for="targetBase" class="block text-xs text-slate-400 mb-1">Base Target Position (e.g., 10 for Top 10)</label>
+            <input type="number" id="targetBase" min="1" value="10" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- App Content Container -->
+    <div id="appContainer" class="hidden space-y-6">
+      
+      <nav class="flex border-b border-slate-800 space-x-1 sm:space-x-2 overflow-x-auto pb-1">
+        <button id="tabBtnOverview" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap">
+          Runner Story & Milestones
+        </button>
+        <button id="tabBtnLatest" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          Latest Run & Course Handicap ⚡
+        </button>
+        <button id="tabBtnPositions" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          Finish Position Analysis
+        </button>
+        <button id="tabBtnLeaderboards" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          Hall of Fame (Top 10s)
+        </button>
+        <button id="tabBtnTrends" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          Trends, Clock & YoY
+        </button>
+        <button id="tabBtnVolunteering" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          Volunteering & Community 💜
+        </button>
+        <button id="tabBtnVenue" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          Single-Venue Deep Dive
+        </button>
+      </nav>
+
+      <div id="tabOverview" class="tab-content space-y-6">
+        
+        <!-- Primary Headline Tiles -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Total Events & Distance</p>
+            <p id="statTotalRuns" class="text-2xl font-black text-white mt-1">-</p>
+            <p id="statDistance" class="text-xs text-emerald-400 font-semibold mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Speed PB (Selected View)</p>
+            <p id="statBestTime" class="text-2xl font-black text-amber-400 mt-1">-</p>
+            <p id="statBestTimeSub" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Age Grade PB (Selected View)</p>
+            <p id="statBestGrade" class="text-2xl font-black text-sky-400 mt-1">-</p>
+            <p id="statBestGradeSub" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Total Venues Visited</p>
+            <p id="statTotalVenues" class="text-2xl font-black text-purple-400 mt-1">-</p>
+            <p id="statRecentVenueSub" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+        </div>
+
+        <!-- Attendance & Peak Year Tiles -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Most Attended Venue</p>
+            <p id="statTopVenueName" class="text-lg font-bold text-slate-100 truncate mt-1">-</p>
+            <p id="statTopVenueCount" class="text-xs text-emerald-400 font-semibold mt-0.5">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Second Most Attended</p>
+            <p id="statSecondVenueName" class="text-lg font-bold text-slate-100 truncate mt-1">-</p>
+            <p id="statSecondVenueCount" class="text-xs text-emerald-400 font-semibold mt-0.5">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Most Runs in a Year</p>
+            <p id="statMaxRunsYear" class="text-2xl font-black text-indigo-400 mt-1">-</p>
+            <p id="statMaxRunsYearSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-purple-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-purple-400 tracking-wider">Volunteer Credits & V:R Ratio</p>
+            <p id="overviewStatVolCredits" class="text-2xl font-black text-purple-300 mt-1">0 credits</p>
+            <p id="overviewStatVolRatio" class="text-xs text-purple-400 font-semibold mt-0.5">0.0% V:R Ratio</p>
+          </div>
+        </div>
+
+        <!-- Milestone Countdown & Streak Tracker Section -->
+        <section class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 shadow-lg space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-700/50 pb-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span>🎯</span> Milestones & Streak Analytics
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Official 5k parkrun milestone clubs (25, 50, 100, 200, 250, 300...) & participation streaks.</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="bg-slate-900/80 border border-slate-700/60 px-3.5 py-1.5 rounded-lg text-center">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Active Streak</span>
+                <span id="statActiveStreak" class="text-lg font-black text-emerald-400">0 wks</span>
+              </div>
+              <div class="bg-slate-900/80 border border-slate-700/60 px-3.5 py-1.5 rounded-lg text-center">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Best Streak</span>
+                <span id="statLongestStreak" class="text-lg font-black text-amber-400">0 wks</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Next Milestone Progress Banner -->
+          <div class="bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border border-emerald-500/30 rounded-xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span class="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full">Next Milestone Target</span>
+                <h3 id="nextMilestoneTitle" class="text-xl font-black text-white mt-1.5">Countdown to Club -</h3>
+              </div>
+              <div class="text-left sm:text-right">
+                <p id="nextMilestoneRemaining" class="text-2xl font-black text-amber-400">- runs needed</p>
+                <p id="nextMilestoneEstimate" class="text-xs text-slate-400 mt-0.5">-</p>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div>
+              <div class="w-full bg-slate-950 rounded-full h-3 border border-slate-700/60 overflow-hidden">
+                <div id="nextMilestoneProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] font-mono text-slate-400 mt-1.5">
+                <span id="nextMilestoneStart">0</span>
+                <span id="nextMilestoneProgressPct" class="text-emerald-400 font-bold">0% Progress</span>
+                <span id="nextMilestoneTarget">100</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Milestone Badges Roadmap Grid -->
+          <div id="milestoneRoadmapGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2.5 pt-1">
+            <!-- Injected via JS -->
+          </div>
+        </section>
+
+        <h3 class="text-md font-bold text-slate-300 uppercase tracking-wider pt-2">Challenges & Achievements</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 text-center">
+            <p class="text-xs uppercase font-bold text-slate-400">p-Index</p>
+            <p id="statPIndex" class="text-3xl font-black text-emerald-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 text-center">
+            <p class="text-xs uppercase font-bold text-slate-400">Groundhog Days</p>
+            <p id="statGroundhog" class="text-3xl font-black text-amber-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 text-center">
+            <p class="text-xs uppercase font-bold text-slate-400">Palindrome Times</p>
+            <p id="statPalindrome" class="text-3xl font-black text-sky-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 text-center">
+            <p class="text-xs uppercase font-bold text-slate-400">Exact Minute Marks</p>
+            <p id="statExactMinute" class="text-3xl font-black text-purple-400 mt-1">-</p>
+          </div>
+        </div>
+
+        <!-- Scatter Plot Timeline -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h2 class="text-lg font-bold text-slate-200">Performance Distribution Timeline</h2>
+          </div>
+          <div class="h-80 w-full">
+            <canvas id="scatterChart"></canvas>
+          </div>
+        </section>
+
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-200">Venue Summary Matrix</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Aggregated course statistics based on selected filters.</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <label for="filterMinVisits" class="text-xs text-slate-400 font-medium">Min Visits:</label>
+              <select id="filterMinVisits" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                <option value="1">All Venues (≥ 1)</option>
+                <option value="3">≥ 3 Visits</option>
+                <option value="5">≥ 5 Visits</option>
+                <option value="10">≥ 10 Visits</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-700/60 cursor-pointer select-none">
+                <tr id="matrixTableHeader">
+                  <th data-sort="venue" class="py-3 px-3 hover:text-emerald-400 transition">Event Name <span class="sort-icon">↕</span></th>
+                  <th data-sort="bestTime" class="py-3 px-3 text-right hover:text-emerald-400 transition">Best Time <span class="sort-icon">↕</span></th>
+                  <th data-sort="fifthFastest" class="py-3 px-3 text-right hover:text-emerald-400 transition">5th Fastest <span class="sort-icon">↕</span></th>
+                  <th data-sort="tenthFastest" class="py-3 px-3 text-right hover:text-emerald-400 transition">10th Fastest <span class="sort-icon">↕</span></th>
+                  <th data-sort="bestGrade" class="py-3 px-3 text-right hover:text-emerald-400 transition">Best Age Grade <span class="sort-icon">↕</span></th>
+                  <th data-sort="avgTime" class="py-3 px-3 text-right hover:text-emerald-400 transition">Average Time <span class="sort-icon">↕</span></th>
+                  <th data-sort="avgExcl20" class="py-3 px-3 text-right hover:text-emerald-400 transition">Avg (Excl 20%) <span class="sort-icon">↕</span></th>
+                  <th data-sort="avgGrade" class="py-3 px-3 text-right hover:text-emerald-400 transition">Avg Age Grade <span class="sort-icon">↕</span></th>
+                  <th data-sort="totalRuns" class="py-3 px-3 text-right hover:text-emerald-400 transition">Total parkruns <span class="sort-icon">↕</span></th>
+                  <th data-sort="yearsActive" class="py-3 px-3 text-right hover:text-emerald-400 transition">Years Active <span class="sort-icon">↕</span></th>
+                  <th data-sort="targetPrimaryCount" id="thPrimary" class="py-3 px-3 text-right hover:text-emerald-400 transition">P1 Finishes <span class="sort-icon">↕</span></th>
+                  <th data-sort="targetSecondaryCount" id="thSecondary" class="py-3 px-3 text-right hover:text-emerald-400 transition">Top 3 <span class="sort-icon">↕</span></th>
+                  <th data-sort="targetBaseCount" id="thBase" class="py-3 px-3 text-right hover:text-emerald-400 transition">Top 10 <span class="sort-icon">↕</span></th>
+                  <th data-sort="totalPbs" class="py-3 px-3 text-right hover:text-emerald-400 transition">Total PBs <span class="sort-icon">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="venueMatrixBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Tab: Latest Run Deep-Dive & Course Handicap Engine -->
+      <div id="tabLatest" class="tab-content hidden space-y-6">
+        
+        <!-- Hero Latest Run Card -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-emerald-500/40 rounded-2xl p-6 shadow-xl space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700/60 pb-4">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">Most Recent Performance</span>
+              <h2 id="latestVenueName" class="text-2xl sm:text-3xl font-black text-white mt-2">-</h2>
+              <p id="latestRunDate" class="text-xs text-slate-400 mt-1">-</p>
+            </div>
+            <div id="latestBadgesContainer" class="flex flex-wrap gap-2">
+              <!-- Achievement Badges injected via JS -->
+            </div>
+          </div>
+
+          <!-- Hero Metrics Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+            <div class="bg-slate-950/60 border border-slate-800 p-3.5 rounded-xl">
+              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Finish Time</span>
+              <p id="latestFinishTime" class="text-2xl font-black text-amber-400 mt-0.5">-</p>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800 p-3.5 rounded-xl">
+              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Age Grade</span>
+              <p id="latestAgeGrade" class="text-2xl font-black text-sky-400 mt-0.5">-</p>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800 p-3.5 rounded-xl">
+              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Finish Position</span>
+              <p id="latestFinishPosition" class="text-2xl font-black text-purple-300 mt-0.5">-</p>
+              <p id="latestPosFreqSub" class="text-[10px] text-slate-400 mt-1 font-sans truncate">-</p>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800 p-3.5 rounded-xl">
+              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Course Visit</span>
+              <p id="latestVisitNumber" class="text-2xl font-black text-teal-300 mt-0.5">-</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contextual Performance Ranking Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-slate-800/40 border border-amber-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Raw All-Time Speed Rank</p>
+            <p id="latestAllTimeRank" class="text-3xl font-black text-amber-400 mt-1">-</p>
+            <p id="latestAllTimeRankSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-indigo-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-indigo-400 tracking-wider">Normalised Career Rank</p>
+            <p id="latestNormRankCard" class="text-3xl font-black text-indigo-300 mt-1">-</p>
+            <p id="latestNormRankCardSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-emerald-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Venue Speed Rank</p>
+            <p id="latestVenueRank" class="text-3xl font-black text-emerald-400 mt-1">-</p>
+            <p id="latestVenueRankSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-sky-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-sky-400 tracking-wider">Annual Sequence Milestone</p>
+            <p id="latestYearSeq" class="text-3xl font-black text-sky-300 mt-1">-</p>
+            <p id="latestYearSeqSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-purple-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-purple-400 tracking-wider">Historical Month Sequence</p>
+            <p id="latestMonthSeq" class="text-3xl font-black text-purple-300 mt-1">-</p>
+            <p id="latestMonthSeqSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-teal-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-teal-400 tracking-wider">Position Frequency</p>
+            <p id="latestPosFreqCard" class="text-3xl font-black text-teal-300 mt-1">-</p>
+            <p id="latestPosFreqCardSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+        </div>
+
+        <!-- Course Difficulty & Handicap Engine Section -->
+        <section class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 shadow-lg space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-700/60 pb-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span>⛰️</span> Course Difficulty & Handicap Engine
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Specify a course handicap estimate in seconds (e.g. +30s for a hilly course) to normalise effort against a flat course!</p>
+            </div>
+            <button id="resetHandicapsBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-1.5 rounded-lg text-xs transition border border-slate-700 self-start md:self-auto">
+              Reset Handicaps
+            </button>
+          </div>
+
+          <!-- Hero Normalised Output Banner -->
+          <div class="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-indigo-950/60 border border-indigo-500/30 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase tracking-widest bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full">Normalised Effort Calculation</span>
+              <h3 id="handicapCalculatedTitle" class="text-lg font-bold text-white mt-2">Flat-Course Equivalent Time</h3>
+              <p id="handicapCalculatedSub" class="text-xs text-slate-400 mt-0.5">-</p>
+            </div>
+            <div class="text-left md:text-right">
+              <p id="handicapNormalizedTime" class="text-3xl sm:text-4xl font-black text-indigo-300 tracking-tight">-</p>
+              <p id="handicapNormalizedRank" class="text-xs font-bold text-emerald-400 mt-1">-</p>
+            </div>
+          </div>
+
+          <!-- Course Handicaps Management Grid -->
+          <div>
+            <div class="mb-3 flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase text-slate-300 tracking-wider">Course Handicap Adjuster in Seconds (Saves Automatically)</h3>
+              <span class="text-[11px] text-slate-400 font-mono">Normalised Time = Finish Time - Handicap Seconds</span>
+            </div>
+            <div id="handicapVenueGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Benchmark Comparison Table -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-200">Historical Benchmark Comparison</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Compares your latest performance against career averages and personal bests.</p>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+                <tr>
+                  <th class="py-3 px-3">Benchmark Reference</th>
+                  <th class="py-3 px-3 text-right">Reference Time</th>
+                  <th class="py-3 px-3 text-right">Latest Run Time</th>
+                  <th class="py-3 px-3 text-right">Time Variance (Delta)</th>
+                  <th class="py-3 px-3 text-right">Status / Context</th>
+                </tr>
+              </thead>
+              <tbody id="latestBenchmarkTableBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- STREAMING_CHUNK:Updating Position Analysis Tab with dynamic header IDs... -->
+      <div id="tabPositions" class="tab-content hidden space-y-6">
+        
+        <!-- Target Milestone Progress Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-800/40 border border-amber-500/30 rounded-xl p-4">
+            <p id="posLabelStretch" class="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Stretch Target (P1 Finishes)</p>
+            <p id="posCountStretch" class="text-3xl font-black text-amber-400 mt-1">-</p>
+            <p id="posPctStretch" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-emerald-500/30 rounded-xl p-4">
+            <p id="posLabelSecondary" class="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Secondary Target (Top 3)</p>
+            <p id="posCountSecondary" class="text-3xl font-black text-emerald-400 mt-1">-</p>
+            <p id="posPctSecondary" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-sky-500/30 rounded-xl p-4">
+            <p id="posLabelBase" class="text-xs uppercase font-extrabold text-sky-400 tracking-wider">Base Target (Top 10)</p>
+            <p id="posCountBase" class="text-3xl font-black text-sky-400 mt-1">-</p>
+            <p id="posPctBase" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-purple-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-purple-400 tracking-wider">Highest Finish Position</p>
+            <p id="posBestOverall" class="text-3xl font-black text-purple-300 mt-1">-</p>
+            <p id="posBestSub" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+        </div>
+
+        <!-- Position Quality Bar Chart -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-200">Year-over-Year Position Quality Distribution</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Tracks competitive consistency without being skewed by casual or recovery runs.</p>
+          </div>
+          <div class="h-72 w-full">
+            <canvas id="positionTrendChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Position Tables Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Exact Rank Frequency Table -->
+          <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-md font-bold text-slate-200">Position Frequency Matrix</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Frequency breakdown of every specific finishing rank achieved.</p>
+              </div>
+              <select id="posFreqSort" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded px-2.5 py-1">
+                <option value="times">Sort by Times Achieved</option>
+                <option value="pos">Sort by Finishing Position</option>
+              </select>
+            </div>
+
+            <div class="overflow-y-auto max-h-96 pr-1">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-700/60">
+                  <tr>
+                    <th class="py-2.5 px-3">Rank</th>
+                    <th class="py-2.5 px-3">Finishing Position</th>
+                    <th class="py-2.5 px-3 text-right">Times Achieved</th>
+                    <th class="py-2.5 px-3 text-right">% of Runs</th>
+                  </tr>
+                </thead>
+                <tbody id="posFreqTableBody" class="divide-y divide-slate-800 font-mono">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Annual Quality Progression Matrix -->
+          <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+            <div>
+              <h2 class="text-md font-bold text-slate-200">Annual Competitive Progression</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Includes Median Position to ignore walk/tail-walk outliers.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+                  <tr>
+                    <th class="py-2.5 px-3">Year</th>
+                    <th class="py-2.5 px-3 text-right">Total Runs</th>
+                    <th id="posAnnThPrimary" class="py-2.5 px-3 text-right text-amber-400">P1 Finishes (#1)</th>
+                    <th id="posAnnThSecondary" class="py-2.5 px-3 text-right text-emerald-400">Top 3</th>
+                    <th id="posAnnThBase" class="py-2.5 px-3 text-right text-sky-400">Top 10</th>
+                    <th class="py-2.5 px-3 text-right text-purple-300">Best Pos</th>
+                    <th class="py-2.5 px-3 text-right text-indigo-300">Median Pos</th>
+                  </tr>
+                </thead>
+                <tbody id="posAnnualTableBody" class="divide-y divide-slate-800 font-mono">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+
+      </div>
+
+      <div id="tabLeaderboards" class="tab-content hidden space-y-6">
+        
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-700/60 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <span>🏆</span> Hall of Fame Leaderboards
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Inspect your top 10 performances overall or filtered by specific calendar months.</p>
+            </div>
+
+            <!-- Leaderboard Dropdown Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-2">
+                <label for="leadCategory" class="text-xs text-slate-400 font-medium">Category:</label>
+                <select id="leadCategory" class="bg-slate-900 border border-slate-700 text-xs font-bold text-emerald-400 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                  <option value="fastest">Top 10 Fastest Times Overall</option>
+                  <option value="ageGrade">Top 10 Age Grades Overall</option>
+                  <option value="positions">Top 10 Highest Finish Positions</option>
+                  <option value="month">Top 10 Runs by Calendar Month</option>
+                </select>
+              </div>
+
+              <div id="leadMonthContainer" class="hidden flex items-center gap-2">
+                <label for="leadMonthSelect" class="text-xs text-slate-400 font-medium">Month:</label>
+                <select id="leadMonthSelect" class="bg-slate-900 border border-slate-700 text-xs font-bold text-amber-400 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                  <option value="0">January</option>
+                  <option value="1">February</option>
+                  <option value="2">March</option>
+                  <option value="3">April</option>
+                  <option value="4">May</option>
+                  <option value="5">June</option>
+                  <option value="6">July</option>
+                  <option value="7">August</option>
+                  <option value="8">September</option>
+                  <option value="9">October</option>
+                  <option value="10">November</option>
+                  <option value="11">December</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leaderboard Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-300">
+              <thead class="bg-slate-900/80 text-xs uppercase font-bold text-slate-400 border-b border-slate-700/60">
+                <tr>
+                  <th class="py-3 px-4 w-16 text-center">Rank</th>
+                  <th class="py-3 px-4">Event Date</th>
+                  <th class="py-3 px-4">Venue</th>
+                  <th class="py-3 px-4 text-right">Finish Time</th>
+                  <th class="py-3 px-4 text-right">Age Grade</th>
+                  <th class="py-3 px-4 text-right">Finish Position</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardTableBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <div id="tabTrends" class="tab-content hidden space-y-6">
+        
+        <!-- Seasonal Filter & Outlier Removal Bar -->
+        <div class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-md font-bold text-slate-100 flex items-center gap-2">
+              <span>🌤️</span> Seasonal Pace & Monthly Trend Settings
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Filter monthly & seasonal averages by performance slots to exclude recovery or tail-walk runs.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <label for="trendAggFilter" class="text-xs text-slate-300 font-bold uppercase tracking-wider">Aggregation Filter:</label>
+            <select id="trendAggFilter" class="bg-slate-900 border border-slate-700 text-xs font-bold text-emerald-400 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+              <option value="ALL">All Runs Included</option>
+              <option value="TOP1">Fastest Run Per Month Slot Overall</option>
+              <option value="TOP3" selected>Top 3 Fastest Runs Per Month Slot</option>
+              <option value="TOP5">Top 5 Fastest Runs Per Month Slot</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 4-Season Pace & Age Grade Banner -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-800/40 border border-sky-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-sky-400 tracking-wider">Winter Avg (Dec–Feb)</p>
+            <p id="seasonWinterPace" class="text-2xl font-black text-sky-300 mt-1">-</p>
+            <p id="seasonWinterGrade" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-emerald-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Spring Avg (Mar–May)</p>
+            <p id="seasonSpringPace" class="text-2xl font-black text-emerald-300 mt-1">-</p>
+            <p id="seasonSpringGrade" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-amber-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Summer Avg (Jun–Aug)</p>
+            <p id="seasonSummerPace" class="text-2xl font-black text-amber-300 mt-1">-</p>
+            <p id="seasonSummerGrade" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-purple-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-purple-400 tracking-wider">Autumn Avg (Sep–Nov)</p>
+            <p id="seasonAutumnPace" class="text-2xl font-black text-purple-300 mt-1">-</p>
+            <p id="seasonAutumnGrade" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+        </div>
+
+        <!-- Clock Analytics: Second Bingo Grid (00-59 Collector) -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-700/60 pb-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                <span>⏱️</span> Second Bingo Grid (00–59 Clock Collector)
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Click any second mark cell to view all matching parkrun performances!</p>
+            </div>
+            <div class="text-right">
+              <span id="bingoScore" class="text-2xl font-black text-emerald-400">0 / 60</span>
+              <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Seconds Collected</p>
+            </div>
+          </div>
+
+          <!-- 10 x 6 Grid -->
+          <div id="bingoGrid" class="grid grid-cols-6 sm:grid-cols-10 gap-2 pt-2">
+            <!-- 60 interactive cells injected via JS -->
+          </div>
+        </section>
+
+        <!-- Charts Grid: Finish Minute Histogram & Monthly Pace Profile -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Finish Minute Distribution Histogram & Table -->
+          <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+            <div>
+              <h2 class="text-md font-bold text-slate-200">Finish Minute Histogram & Buckets</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Frequency distribution of runs grouped by finish minute brackets.</p>
+            </div>
+            <div class="h-56 w-full">
+              <canvas id="minuteHistogramChart"></canvas>
+            </div>
+
+            <!-- Minute Buckets Frequency Table -->
+            <div class="overflow-y-auto max-h-48 border-t border-slate-700/50 pt-3">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-700/60">
+                  <tr>
+                    <th class="py-2 px-3">Minute Bracket</th>
+                    <th class="py-2 px-3 text-right">Runs Count</th>
+                    <th class="py-2 px-3 text-right">% of Total Runs</th>
+                  </tr>
+                </thead>
+                <tbody id="minuteFreqTableBody" class="divide-y divide-slate-800 font-mono">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Monthly Average Performance Chart -->
+          <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+            <div>
+              <h2 class="text-md font-bold text-slate-200">Monthly Average Time & Age Grade</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Y-axis displays actual finish times (MM:SS). Faster times are higher up.</p>
+            </div>
+            <div class="h-80 w-full">
+              <canvas id="monthlyChart"></canvas>
+            </div>
+          </section>
+
+        </div>
+
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-200">Year-over-Year (YoY) Progression Matrix</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Annual career summary tracking distance, PBs set, and speed evolution.</p>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+                <tr>
+                  <th class="py-3 px-3">Year</th>
+                  <th class="py-3 px-3 text-right">Total Events</th>
+                  <th class="py-3 px-3 text-right text-emerald-400">Total Distance</th>
+                  <th class="py-3 px-3 text-right text-amber-400">PBs Set</th>
+                  <th class="py-3 px-3 text-right text-amber-300">Fastest Time</th>
+                  <th class="py-3 px-3 text-right text-sky-400">Highest Age Grade</th>
+                  <th class="py-3 px-3 text-right text-purple-400">Venues Visited</th>
+                  <th class="py-3 px-3 text-right text-slate-200">Average Time</th>
+                </tr>
+              </thead>
+              <tbody id="yoyTableBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <div id="tabVolunteering" class="tab-content hidden space-y-6">
+        
+        <!-- Volunteer Hero Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-800/40 border border-purple-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-purple-400 tracking-wider">Total Volunteer Credits</p>
+            <p id="volTotalCredits" class="text-3xl font-black text-purple-300 mt-1">0</p>
+            <p id="volBadgeTitle" class="text-xs text-slate-400 mt-1 font-semibold">Club 0</p>
+          </div>
+          <div class="bg-slate-800/40 border border-emerald-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Volunteer-to-Run (V:R) Ratio</p>
+            <p id="volRatioPct" class="text-3xl font-black text-emerald-400 mt-1">0.0%</p>
+            <p id="volRatioDesc" class="text-xs text-slate-400 mt-1 font-semibold">1 credit per 0 runs</p>
+          </div>
+          <div class="bg-slate-800/40 border border-amber-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Unique Roles Fulfilled</p>
+            <p id="volUniqueRoles" class="text-3xl font-black text-amber-300 mt-1">0</p>
+            <p id="volTopRole" class="text-xs text-slate-400 mt-1 truncate">Most Common: None</p>
+          </div>
+          <div class="bg-slate-800/40 border border-sky-500/30 rounded-xl p-4">
+            <p class="text-xs uppercase font-extrabold text-sky-400 tracking-wider">Next V-Milestone</p>
+            <p id="volNextMilestoneTitle" class="text-2xl font-black text-sky-300 mt-1">V25 Club</p>
+            <p id="volNextMilestoneSub" class="text-xs text-slate-400 mt-1">25 credits needed</p>
+          </div>
+        </div>
+
+        <!-- Official Volunteer Milestone Badges -->
+        <section class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 shadow-lg space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+              <span>💜</span> Official Volunteer Milestone Clubs (V10, V25, V50, V100, V200, V250...)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Celebrate your community contribution t-shirt milestones.</p>
+          </div>
+
+          <div id="volMilestoneGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+            <!-- Injected via JS -->
+          </div>
+        </section>
+
+        <!-- Volunteer Visual Analytics Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Role Breakdown Doughnut Chart -->
+          <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+            <div>
+              <h2 class="text-md font-bold text-slate-200">Volunteer Roles Distribution</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Proportion of credits earned across different parkrun duties.</p>
+            </div>
+            <div class="h-64 w-full">
+              <canvas id="volRoleChart"></canvas>
+            </div>
+          </section>
+
+          <!-- Volunteer vs Running Annual Progression Chart -->
+          <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+            <div>
+              <h2 class="text-md font-bold text-slate-200">Annual Activity: Runs vs Volunteering</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Year-by-year comparison of parkrun events completed vs volunteer credits.</p>
+            </div>
+            <div class="h-64 w-full">
+              <canvas id="volYearlyChart"></canvas>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Cumulative Career Progression Line Chart -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div>
+            <h2 class="text-md font-bold text-slate-200">Cumulative Progression: Runs & Volunteering Over Time</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Year-on-year total accumulated parkruns completed vs total volunteer credits earned.</p>
+          </div>
+          <div class="h-72 w-full">
+            <canvas id="volCumulativeChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Interactive Volunteering Data Input & Storage Management Panel -->
+        <section class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 shadow-lg space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-700/60 pb-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span>⚙️</span> Manage Your Volunteer Credits & Roles
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Scraped data is automatically saved. You can fine-tune annual credits or role counts below, and export JSON backups.</p>
+            </div>
+
+            <!-- Backup Export & Import Buttons -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="volExportBtn" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5">
+                <span>💾</span> Export Backup (JSON)
+              </button>
+              <label for="volImportInput" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5">
+                <span>📂</span> Import JSON Backup
+              </label>
+              <input type="file" id="volImportInput" accept=".json" class="hidden">
+            </div>
+          </div>
+
+          <!-- Annual Volunteer Credits Inputs (Primary) -->
+          <div>
+            <div class="mb-3">
+              <h3 class="text-xs font-bold uppercase text-emerald-400 tracking-wider">Annual Volunteer Credits (Year-by-Year Breakdown)</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">Fill in your credit counts per year to power your annual runs vs volunteering graphs and cumulative progression curves.</p>
+            </div>
+            <div id="volYearlyInputsGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              <!-- Annual year inputs injected via JS -->
+            </div>
+          </div>
+
+          <!-- Role Counter Grid -->
+          <div class="border-t border-slate-800 pt-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <h3 class="text-xs font-bold uppercase text-purple-400 tracking-wider">Official Role Credit Counters (Duty Breakdown)</h3>
+              <span class="text-xs font-extrabold text-purple-300 bg-purple-950/60 border border-purple-500/30 px-3 py-1 rounded-lg self-start sm:self-auto">
+                Total Roles Performed: <span id="volTotalRoleCount" class="text-emerald-400 font-mono font-black">0</span>
+              </span>
+            </div>
+            <div id="volRoleCountersGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <!-- Counters injected dynamically via JS -->
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div id="tabVenue" class="tab-content hidden space-y-6">
+        
+        <!-- Venue Select Header -->
+        <div class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-100">Venue Deep Dive Analytics</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Select a venue to inspect historical progression and target age-grading times.</p>
+          </div>
+          <select id="venueDeepSelect" class="bg-slate-900 border border-slate-700 text-sm text-emerald-400 font-bold rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500 min-w-[220px]">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <!-- Venue Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Total Visits</p>
+            <p id="vdStatVisits" class="text-2xl font-black text-white mt-1">-</p>
+            <p id="vdStatSpan" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Venue Speed PB</p>
+            <p id="vdStatBestTime" class="text-2xl font-black text-amber-400 mt-1">-</p>
+            <p id="vdStatBestTimeDate" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Venue Age Grade PB</p>
+            <p id="vdStatBestGrade" class="text-2xl font-black text-sky-400 mt-1">-</p>
+            <p id="vdStatBestGradeDate" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4">
+            <p class="text-xs uppercase font-bold text-slate-400 tracking-wider">Performance Spread</p>
+            <p id="vdStatSpread" class="text-2xl font-black text-purple-400 mt-1">-</p>
+            <p id="vdStatAverage" class="text-xs text-slate-400 mt-1 truncate">-</p>
+          </div>
+        </div>
+
+        <!-- Target Prediction Hero Banner -->
+        <div class="bg-gradient-to-r from-slate-800/80 via-emerald-950/40 to-slate-800/80 border border-emerald-500/30 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">Target Calculation</span>
+            <h3 class="text-lg font-bold text-slate-100 mt-2">Required Time for a New Venue Age Grade PB</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Calculated using your latest overall age grade factor minus 1 second.</p>
+          </div>
+          <div class="text-left md:text-right">
+            <p id="vdTargetTime" class="text-3xl font-black text-emerald-400 tracking-tight">-</p>
+            <p id="vdTargetSub" class="text-xs text-slate-400 mt-1">-</p>
+          </div>
+        </div>
+
+        <!-- Venue Scatter Chart -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <h2 class="text-lg font-bold text-slate-200">Historical Venue Performance Scatter</h2>
+          <div class="h-72 w-full">
+            <canvas id="venueScatterChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Personal Best Breakthrough Table -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <h2 class="text-lg font-bold text-slate-200">Venue Breakthrough History</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-300">
+              <thead class="bg-slate-900/60 text-xs font-bold uppercase text-slate-400 border-b border-slate-700/60">
+                <tr>
+                  <th class="py-3 px-4">Date</th>
+                  <th class="py-3 px-4">Finish Time</th>
+                  <th class="py-3 px-4">Age Grade</th>
+                  <th class="py-3 px-4">Finish Position</th>
+                  <th class="py-3 px-4">Achievement Marker</th>
+                </tr>
+              </thead>
+              <tbody id="venuePbTableBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- Second Bingo Drilldown Modal -->
+    <div id="bingoModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
+          <div>
+            <h3 id="bingoModalTitle" class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+              <span>⏱️</span> Second Collector Breakdown
+            </h3>
+            <p id="bingoModalSub" class="text-xs text-slate-400 mt-0.5"></p>
+          </div>
+          <button id="bingoModalClose" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+            Close ✕
+          </button>
+        </div>
+        <div class="p-5 overflow-y-auto flex-1">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900 text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-700/60">
+              <tr>
+                <th class="py-2.5 px-3">Date</th>
+                <th class="py-2.5 px-3">Venue</th>
+                <th class="py-2.5 px-3 text-right">Time</th>
+                <th class="py-2.5 px-3 text-right">Age Grade</th>
+                <th class="py-2.5 px-3 text-right">Position</th>
+              </tr>
+            </thead>
+            <tbody id="bingoModalTableBody" class="divide-y divide-slate-800 font-mono">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- STREAMING_CHUNK:Writing application state, parsers, and event handlers... -->
+  <script>
+    let globalRuns = [];
+    
+    // Official parkrun 5k finisher milestone club sequence
+    const PARKRUN_MILESTONES = [25, 50, 100, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
+    
+    // Official parkrun volunteer milestone club sequence
+    const PARKRUN_VOLUNTEER_MILESTONES = [10, 25, 50, 100, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
+
+    // Alphabetical list of official parkrun volunteer roles
+    const OFFICIAL_VOLUNTEER_ROLES = [
+      'Ambassador', 'Barcode Scanner', 'Car Park Marshal', 'Course Check',
+      'Equipment Storage', 'Event Director', 'Finish Tokens', 'First Timers Welcome',
+      'Funnel Manager', 'Marshal', 'Number Checker', 'Other', 'Pacer', 'Parkwalker', 'Photographer',
+      'Post-event Close Down', 'Pre-event Setup', 'Report Writer', 'Results Processor',
+      'Run Director', 'Tail Walker', 'Timekeeper', 'Token Sorting',
+      'Volunteer Co-ordinator', 'Warm Up Leader'
+    ];
+
+    // Volunteering State Object
+    let volunteerData = {
+      roles: {},
+      yearlyCounts: {},
+      officialTotalCredits: 0
+    };
+
+    // Course Difficulty Handicap in Seconds State Object
+    let courseHandicaps = {};
+
+    OFFICIAL_VOLUNTEER_ROLES.forEach(role => {
+      volunteerData.roles[role] = 0;
+    });
+
+    // Role Name Mapping Matrix for Scraped Titles
+    const ROLE_NAME_MAP = {
+      'barcode scanning': 'Barcode Scanner',
+      'finish token support': 'Finish Tokens',
+      'event day course check': 'Course Check',
+      'pacer (5k only)': 'Pacer',
+      'backup timer': 'Timekeeper',
+      'volunteer coordinator': 'Volunteer Co-ordinator',
+      'volunteer co-ordinator': 'Volunteer Co-ordinator'
+    };
+
+    // Chart Instance Handlers
+    let overviewChartInstance = null;
+    let positionTrendChartInstance = null;
+    let minuteHistogramChartInstance = null;
+    let monthlyChartInstance = null;
+    let venueChartInstance = null;
+    let volRoleChartInstance = null;
+    let volYearlyChartInstance = null;
+    let volCumulativeChartInstance = null;
+
+    // Matrix & Table State
+    let matrixSortCol = 'totalRuns';
+    let matrixSortAsc = false;
+    let currentSourceMode = 'url';
+
+    // LocalStorage Keys
+    const STORAGE_KEY_SOURCE_MODE = 'parkrun_source_mode';
+    const STORAGE_KEY_URL = 'parkrun_sheet_url';
+    const STORAGE_KEY_JSON = 'parkrun_json_data';
+    const STORAGE_KEY_PARKRUN_ID = 'parkrun_runner_id';
+    const STORAGE_KEY_TARGET_PRIMARY = 'parkrun_target_primary';
+    const STORAGE_KEY_TARGET_SECONDARY = 'parkrun_target_secondary';
+    const STORAGE_KEY_TARGET_BASE = 'parkrun_target_base';
+    const STORAGE_KEY_VOLUNTEER_DATA = 'parkrun_volunteer_data';
+    const STORAGE_KEY_COURSE_HANDICAPS = 'parkrun_course_handicaps';
+
+    // Helper for Ordinal Suffixes (1st, 2nd, 3rd, 4th...)
+    function getOrdinal(n) {
+      if (!n || isNaN(n)) return '-';
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedMode = localStorage.getItem(STORAGE_KEY_SOURCE_MODE) || 'url';
+      const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
+      const savedJson = localStorage.getItem(STORAGE_KEY_JSON);
+      const savedParkrunId = localStorage.getItem(STORAGE_KEY_PARKRUN_ID);
+      const savedPrimary = localStorage.getItem(STORAGE_KEY_TARGET_PRIMARY) || '1';
+      const savedSecondary = localStorage.getItem(STORAGE_KEY_TARGET_SECONDARY) || '3';
+      const savedBase = localStorage.getItem(STORAGE_KEY_TARGET_BASE) || '10';
+
+      document.getElementById('targetPrimary').value = savedPrimary;
+      document.getElementById('targetSecondary').value = savedSecondary;
+      document.getElementById('targetBase').value = savedBase;
+
+      if (savedParkrunId) {
+        document.getElementById('parkrunIdInput').value = savedParkrunId;
+        updateParkrunLink(savedParkrunId);
+      }
+
+      loadVolunteerDataFromStorage();
+      loadCourseHandicapsFromStorage();
+      initVolunteerBackupHandlers();
+      initTopVolunteerIngestionHandler();
+
+      switchSourceMode(savedMode);
+
+      if (savedUrl) document.getElementById('sheetUrl').value = savedUrl;
+      if (savedJson) document.getElementById('jsonInput').value = savedJson;
+
+      if (savedMode === 'json' && savedJson) {
+        parseAndLoadJson(savedJson);
+      } else if (savedMode === 'url' && savedUrl) {
+        fetchAndParseData(savedUrl);
+      }
+    });
+
+    function loadCourseHandicapsFromStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY_COURSE_HANDICAPS);
+      if (saved) {
+        try {
+          courseHandicaps = JSON.parse(saved) || {};
+        } catch (e) {
+          console.error('Error loading course handicaps:', e);
+          courseHandicaps = {};
+        }
+      }
+    }
+
+    function saveCourseHandicapsToStorage() {
+      localStorage.setItem(STORAGE_KEY_COURSE_HANDICAPS, JSON.stringify(courseHandicaps));
+      if (globalRuns.length > 0) renderLatestRunDeepDive();
+    }
+
+    function initVolunteerBackupHandlers() {
+      const exportBtn = document.getElementById('volExportBtn');
+      const importInput = document.getElementById('volImportInput');
+
+      if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+          const jsonStr = JSON.stringify(volunteerData, null, 2);
+          const blob = new Blob([jsonStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'parkrun_volunteering_backup.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      if (importInput) {
+        importInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const imported = JSON.parse(evt.target.result);
+              if (imported && typeof imported === 'object') {
+                volunteerData = { ...volunteerData, ...imported };
+                saveVolunteerDataToStorage();
+                renderVolunteerInputs();
+                alert('Successfully imported volunteering backup!');
+              }
+            } catch (err) {
+              alert('Error parsing JSON backup file.');
+              console.error(err);
+            }
+          };
+          reader.readAsText(file);
+        });
+      }
+    }
+
+    function initTopVolunteerIngestionHandler() {
+      const topBtn = document.getElementById('topLoadVolJsonBtn');
+      if (topBtn) {
+        topBtn.addEventListener('click', () => {
+          const rawText = document.getElementById('topVolJsonInput').value.trim();
+          if (rawText) {
+            parseScrapedVolunteerJson(rawText, 'topVolStatusMsg');
+          }
+        });
+      }
+    }
+
+    function parseScrapedVolunteerJson(rawText, statusElId = 'topVolStatusMsg') {
+      const statusEl = document.getElementById(statusElId);
+      try {
+        const parsed = JSON.parse(rawText);
+        if (!Array.isArray(parsed)) {
+          if (statusEl) statusEl.innerText = 'Error: Expected an array of volunteer role objects.';
+          return;
+        }
+
+        let rolesMappedCount = 0;
+        let extractedTotalCredits = 0;
+
+        parsed.forEach(item => {
+          const roleRaw = item.role ? item.role.toString().trim() : '';
+          const countRaw = item.count ? parseInt(item.count.toString().replace(/[^0-9]/g, ''), 10) : 0;
+
+          if (!roleRaw || isNaN(countRaw)) return;
+
+          if (roleRaw.toLowerCase() === 'total credits') {
+            extractedTotalCredits = countRaw;
+            volunteerData.officialTotalCredits = countRaw;
+          } else {
+            let targetRole = OFFICIAL_VOLUNTEER_ROLES.find(r => r.toLowerCase() === roleRaw.toLowerCase());
+            if (!targetRole && ROLE_NAME_MAP[roleRaw.toLowerCase()]) {
+              targetRole = ROLE_NAME_MAP[roleRaw.toLowerCase()];
+            }
+
+            if (targetRole) {
+              volunteerData.roles[targetRole] = countRaw;
+              rolesMappedCount++;
+            } else {
+              volunteerData.roles['Other'] = (volunteerData.roles['Other'] || 0) + countRaw;
+              rolesMappedCount++;
+            }
+          }
+        });
+
+        saveVolunteerDataToStorage();
+        renderVolunteerInputs();
+
+        if (statusEl) {
+          statusEl.innerText = `✔ Loaded ${rolesMappedCount} roles & ${extractedTotalCredits || getTotalVolunteerCredits()} total credits!`;
+          statusEl.className = 'text-[11px] text-emerald-400 font-bold';
+        }
+      } catch (err) {
+        console.error('Error parsing volunteer JSON:', err);
+        if (statusEl) {
+          statusEl.innerText = 'JSON Syntax Error: Please check copied volunteer data.';
+          statusEl.className = 'text-[11px] text-rose-400';
+        }
+      }
+    }
+
+    function loadVolunteerDataFromStorage() {
+      const savedVolData = localStorage.getItem(STORAGE_KEY_VOLUNTEER_DATA);
+      if (savedVolData) {
+        try {
+          const parsed = JSON.parse(savedVolData);
+          if (parsed && typeof parsed === 'object') {
+            volunteerData = { ...volunteerData, ...parsed };
+            if (!volunteerData.roles) volunteerData.roles = {};
+            if (!volunteerData.yearlyCounts) volunteerData.yearlyCounts = {};
+          }
+        } catch (e) {
+          console.error('Error loading volunteer data from storage:', e);
+        }
+      }
+      renderVolunteerInputs();
+    }
+
+    function saveVolunteerDataToStorage() {
+      localStorage.setItem(STORAGE_KEY_VOLUNTEER_DATA, JSON.stringify(volunteerData));
+      renderVolunteeringAnalytics();
+      renderSummaryStats();
+    }
+
+    // Toggle Guide Panel
+    document.getElementById('toggleGuideBtn').addEventListener('click', () => {
+      const panel = document.getElementById('guidePanel');
+      const icon = document.getElementById('guideToggleIcon');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        icon.innerText = '▲';
+      } else {
+        panel.classList.add('hidden');
+        icon.innerText = '▼';
+      }
+    });
+
+    // parkrun ID input handler
+    document.getElementById('parkrunIdInput').addEventListener('input', (e) => {
+      const rawVal = e.target.value.trim();
+      const cleanId = rawVal.replace(/[^0-9]/g, '');
+      localStorage.setItem(STORAGE_KEY_PARKRUN_ID, cleanId);
+      updateParkrunLink(cleanId);
+    });
+
+    function updateParkrunLink(id) {
+      const linkBtn = document.getElementById('parkrunResultsLink');
+      const profileBtn = document.getElementById('parkrunProfileLink');
+      const placeholder = document.getElementById('parkrunLinkPlaceholder');
+      if (id) {
+        linkBtn.href = `https://www.parkrun.org.uk/parkrunner/${id}/all/`;
+        profileBtn.href = `https://www.parkrun.org.uk/parkrunner/${id}/`;
+        linkBtn.classList.remove('hidden');
+        profileBtn.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+      } else {
+        linkBtn.classList.add('hidden');
+        profileBtn.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+      }
+    }
+
+    // Copy bookmarklet buttons
+    document.getElementById('copyBookmarkletBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('bookmarkletCode');
+      textarea.select();
+      document.execCommand('copy');
+      
+      const btn = document.getElementById('copyBookmarkletBtn');
+      const origText = btn.innerText;
+      btn.innerText = 'Copied! ✓';
+      btn.className = 'bg-emerald-500 text-slate-950 font-bold px-2.5 py-1 rounded text-[10px] transition';
+      setTimeout(() => {
+        btn.innerText = origText;
+        btn.className = 'bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2.5 py-1 rounded text-[10px] transition border border-slate-700';
+      }, 2000);
+    });
+
+    document.getElementById('copyVolBookmarkletBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('volBookmarkletCode');
+      textarea.select();
+      document.execCommand('copy');
+      
+      const btn = document.getElementById('copyVolBookmarkletBtn');
+      const origText = btn.innerText;
+      btn.innerText = 'Copied! ✓';
+      btn.className = 'bg-purple-500 text-slate-950 font-bold px-2.5 py-1 rounded text-[10px] transition';
+      setTimeout(() => {
+        btn.innerText = origText;
+        btn.className = 'bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2.5 py-1 rounded text-[10px] transition border border-slate-700';
+      }, 2000);
+    });
+
+    document.getElementById('srcToggleUrl').addEventListener('click', () => switchSourceMode('url'));
+    document.getElementById('srcToggleJson').addEventListener('click', () => switchSourceMode('json'));
+
+    function switchSourceMode(mode) {
+      currentSourceMode = mode;
+      localStorage.setItem(STORAGE_KEY_SOURCE_MODE, mode);
+
+      const btnUrl = document.getElementById('srcToggleUrl');
+      const btnJson = document.getElementById('srcToggleJson');
+      const containerUrl = document.getElementById('inputContainerUrl');
+      const containerJson = document.getElementById('inputContainerJson');
+
+      if (mode === 'url') {
+        btnUrl.className = 'px-2.5 py-0.5 font-bold rounded bg-emerald-500 text-slate-950 transition';
+        btnJson.className = 'px-2.5 py-0.5 font-bold rounded bg-slate-800 text-slate-400 hover:text-white transition';
+        containerUrl.classList.remove('hidden');
+        containerJson.classList.add('hidden');
+      } else {
+        btnJson.className = 'px-2.5 py-0.5 font-bold rounded bg-emerald-500 text-slate-950 transition';
+        btnUrl.className = 'px-2.5 py-0.5 font-bold rounded bg-slate-800 text-slate-400 hover:text-white transition';
+        containerJson.classList.remove('hidden');
+        containerUrl.classList.add('hidden');
+      }
+    }
+
+    // Toggle Config Menu
+    document.getElementById('toggleConfigBtn').addEventListener('click', () => {
+      const panel = document.getElementById('configPanel');
+      const icon = document.getElementById('configToggleIcon');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        icon.innerText = '▲';
+      } else {
+        panel.classList.add('hidden');
+        icon.innerText = '▼';
+      }
+    });
+
+    // Persistent Target Change Handlers
+    ['targetPrimary', 'targetSecondary', 'targetBase'].forEach(id => {
+      document.getElementById(id).addEventListener('change', (e) => {
+        if (id === 'targetPrimary') localStorage.setItem(STORAGE_KEY_TARGET_PRIMARY, e.target.value);
+        if (id === 'targetSecondary') localStorage.setItem(STORAGE_KEY_TARGET_SECONDARY, e.target.value);
+        if (id === 'targetBase') localStorage.setItem(STORAGE_KEY_TARGET_BASE, e.target.value);
+        if (globalRuns.length > 0) updateAllViews();
+      });
+    });
+
+    // Ingestion Listeners
+    document.getElementById('loadUrlBtn').addEventListener('click', () => {
+      const url = document.getElementById('sheetUrl').value.trim();
+      if (url) {
+        localStorage.setItem(STORAGE_KEY_URL, url);
+        fetchAndParseData(url);
+      }
+    });
+
+    document.getElementById('loadJsonBtn').addEventListener('click', () => {
+      const rawText = document.getElementById('jsonInput').value.trim();
+      if (rawText) {
+        localStorage.setItem(STORAGE_KEY_JSON, rawText);
+        parseAndLoadJson(rawText);
+      }
+    });
+
+    function fetchAndParseData(url) {
+      const statusMsg = document.getElementById('statusMsg');
+      statusMsg.innerText = 'Fetching and parsing CSV data...';
+      statusMsg.className = 'text-[11px] text-emerald-400';
+
+      Papa.parse(url, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          if (results.data && results.data.length > 0) {
+            statusMsg.innerText = 'CSV Data loaded successfully!';
+            statusMsg.className = 'text-[11px] text-emerald-400 font-bold';
+            processData(results.data);
+          } else {
+            statusMsg.innerText = 'No valid rows found in CSV endpoint.';
+            statusMsg.className = 'text-[11px] text-rose-400';
+          }
+        },
+        error: function (err) {
+          statusMsg.innerText = 'Error fetching CSV link. Ensure spreadsheet is published to web as CSV.';
+          statusMsg.className = 'text-[11px] text-rose-400';
+          console.error(err);
+        }
+      });
+    }
+
+    function parseAndLoadJson(rawText) {
+      const statusMsg = document.getElementById('statusMsg');
+      try {
+        const parsed = JSON.parse(rawText);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          statusMsg.innerText = `Successfully parsed ${parsed.length} JSON runs!`;
+          statusMsg.className = 'text-[11px] text-emerald-400 font-bold';
+          processData(parsed);
+        } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.results)) {
+          statusMsg.innerText = `Successfully parsed ${parsed.results.length} JSON runs!`;
+          statusMsg.className = 'text-[11px] text-emerald-400 font-bold';
+          processData(parsed.results);
+        } else {
+          statusMsg.innerText = 'Invalid JSON: Expected an array of parkrun result objects.';
+          statusMsg.className = 'text-[11px] text-rose-400';
+        }
+      } catch (err) {
+        statusMsg.innerText = 'JSON Syntax Error: Please check formatting of pasted text.';
+        statusMsg.className = 'text-[11px] text-rose-400';
+        console.error(err);
+      }
+    }
+
+    // Navigation Switcher
+    document.getElementById('tabBtnOverview').addEventListener('click', () => switchTab('overview'));
+    document.getElementById('tabBtnLatest').addEventListener('click', () => switchTab('latest'));
+    document.getElementById('tabBtnPositions').addEventListener('click', () => switchTab('positions'));
+    document.getElementById('tabBtnLeaderboards').addEventListener('click', () => switchTab('leaderboards'));
+    document.getElementById('tabBtnTrends').addEventListener('click', () => switchTab('trends'));
+    document.getElementById('tabBtnVolunteering').addEventListener('click', () => switchTab('volunteering'));
+    document.getElementById('tabBtnVenue').addEventListener('click', () => switchTab('venue'));
+
+    function switchTab(tabName) {
+      const tabs = {
+        overview: document.getElementById('tabOverview'),
+        latest: document.getElementById('tabLatest'),
+        positions: document.getElementById('tabPositions'),
+        leaderboards: document.getElementById('tabLeaderboards'),
+        trends: document.getElementById('tabTrends'),
+        volunteering: document.getElementById('tabVolunteering'),
+        venue: document.getElementById('tabVenue')
+      };
+
+      const btns = {
+        overview: document.getElementById('tabBtnOverview'),
+        latest: document.getElementById('tabBtnLatest'),
+        positions: document.getElementById('tabBtnPositions'),
+        leaderboards: document.getElementById('tabBtnLeaderboards'),
+        trends: document.getElementById('tabBtnTrends'),
+        volunteering: document.getElementById('tabBtnVolunteering'),
+        venue: document.getElementById('tabBtnVenue')
+      };
+
+      Object.keys(tabs).forEach(t => {
+        if (t === tabName) {
+          tabs[t].classList.remove('hidden');
+          btns[t].className = 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap';
+        } else {
+          tabs[t].classList.add('hidden');
+          btns[t].className = 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap';
+        }
+      });
+
+      if (tabName === 'latest') renderLatestRunDeepDive();
+      if (tabName === 'positions') renderPositionAnalytics();
+      if (tabName === 'leaderboards') renderLeaderboardHub();
+      if (tabName === 'trends') renderTrendsAndSeasonality();
+      if (tabName === 'volunteering') renderVolunteeringAnalytics();
+      if (tabName === 'venue') renderVenueDeepDive();
+    }
+
+    function parseUkDate(dateStr) {
+      if (!dateStr) return null;
+      const str = dateStr.toString().trim();
+      if (str.includes('/') || str.includes('-')) {
+        const parts = str.split(/[/|-]/);
+        if (parts.length === 3) {
+          if (parts[0].length === 4) return new Date(parts[0], parts[1] - 1, parts[2]);
+          return new Date(parts[2], parts[1] - 1, parts[0]);
+        }
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function parseTimeToSeconds(timeStr) {
+      if (!timeStr) return null;
+      const parts = timeStr.trim().split(':').map(Number);
+      if (parts.some(isNaN)) return null;
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return null;
+    }
+
+    function formatSecondsToTime(seconds) {
+      if (!seconds || isNaN(seconds) || seconds === 999999) return '-';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function parseAgeGrade(gradeStr) {
+      if (!gradeStr) return null;
+      let clean = gradeStr.toString().replace('%', '').trim();
+      let val = parseFloat(clean);
+      if (isNaN(val)) return null;
+      return val > 1 ? val : val * 100;
+    }
+
+    function isPalindromeTime(timeStr) {
+      if (!timeStr) return false;
+      const digits = timeStr.replace(/[^0-9]/g, '');
+      if (digits.length < 3) return false;
+      return digits === digits.split('').reverse().join('');
+    }
+
+    function calculateMedian(numbers) {
+      if (numbers.length === 0) return '-';
+      const sorted = [...numbers].sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      if (sorted.length % 2 === 0) {
+        return Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+      }
+      return sorted[middle];
+    }
+
+    function processData(rawData) {
+      const getColValue = (row, possibleNames) => {
+        const keys = Object.keys(row);
+        for (let name of possibleNames) {
+          const matchKey = keys.find(k => k.trim().toLowerCase() === name.toLowerCase());
+          if (matchKey && row[matchKey] !== undefined) return row[matchKey];
+        }
+        return '';
+      };
+
+      globalRuns = rawData.map(row => {
+        const eventName = getColValue(row, ['Event Name', 'Event', 'Venue', 'parkrun', 'event']) || 'Unknown Venue';
+        const dateStr   = getColValue(row, ['Event Date', 'Date', 'date']);
+        const timeStr   = getColValue(row, ['Cleaned Finish Time', 'Finish Time', 'Time', 'time']);
+        const gradeStr  = getColValue(row, ['Age Grade', 'Grade', 'ageGrade', 'agegrade']);
+        const posStr    = getColValue(row, ['Finish Position', 'Position', 'Pos', 'position']);
+
+        const parsedDate = parseUkDate(dateStr);
+        const timeInSeconds = parseTimeToSeconds(timeStr);
+        const ageGrade = parseAgeGrade(gradeStr);
+        const position = parseInt(posStr, 10);
+
+        return {
+          date: parsedDate,
+          rawDateStr: dateStr,
+          year: parsedDate ? parsedDate.getFullYear() : null,
+          month: parsedDate ? parsedDate.getMonth() : null,
+          venue: eventName,
+          timeStr: timeStr,
+          timeSeconds: timeInSeconds,
+          ageGrade: ageGrade,
+          position: isNaN(position) ? null : position
+        };
+      }).filter(r => r.timeSeconds !== null && r.date !== null && !isNaN(r.date.getTime()));
+
+      globalRuns.sort((a, b) => a.date - b.date);
+
+      if (globalRuns.length === 0) {
+        const statusMsg = document.getElementById('statusMsg');
+        statusMsg.innerText = 'Could not parse valid date/time rows from dataset.';
+        statusMsg.className = 'text-[11px] text-rose-400';
+        return;
+      }
+
+      document.getElementById('globalFilterContainer').classList.remove('hidden');
+
+      populateFilters();
+      renderVolunteerInputs();
+      updateAllViews();
+
+      // Matrix Header Sorting
+      document.querySelectorAll('#matrixTableHeader th').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.getAttribute('data-sort');
+          if (matrixSortCol === col) {
+            matrixSortAsc = !matrixSortAsc;
+          } else {
+            matrixSortCol = col;
+            matrixSortAsc = (col === 'venue');
+          }
+          renderVenueMatrix();
+        });
+      });
+
+      // Controls Listeners
+      document.getElementById('venueDeepSelect').addEventListener('change', renderVenueDeepDive);
+      document.getElementById('filterMinVisits').addEventListener('change', renderVenueMatrix);
+      document.getElementById('posFreqSort').addEventListener('change', renderPositionFrequencyTable);
+      document.getElementById('leadCategory').addEventListener('change', renderLeaderboardHub);
+      document.getElementById('leadMonthSelect').addEventListener('change', renderLeaderboardHub);
+      document.getElementById('trendAggFilter').addEventListener('change', renderTrendsAndSeasonality);
+      document.getElementById('resetHandicapsBtn').addEventListener('click', resetCourseHandicaps);
+
+      // Modal close listeners
+      document.getElementById('bingoModalClose').addEventListener('click', closeBingoModal);
+      document.getElementById('bingoModal').addEventListener('click', (e) => {
+        if (e.target.id === 'bingoModal') closeBingoModal();
+      });
+
+      document.getElementById('appContainer').classList.remove('hidden');
+    }
+
+    function populateFilters() {
+      const yearSelect = document.getElementById('filterYear');
+      const venueSelect = document.getElementById('filterVenue');
+      const venueDeepSelect = document.getElementById('venueDeepSelect');
+
+      const years = [...new Set(globalRuns.map(r => r.year))].sort((a, b) => b - a);
+      const venues = [...new Set(globalRuns.map(r => r.venue))].sort();
+
+      yearSelect.innerHTML = '<option value="ALL">All Years</option>' + 
+        years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+      venueSelect.innerHTML = '<option value="ALL">All Venues</option>' + 
+        venues.map(v => `<option value="${v}">${v}</option>`).join('');
+
+      venueDeepSelect.innerHTML = venues.map(v => `<option value="${v}">${v}</option>`).join('');
+
+      yearSelect.addEventListener('change', updateAllViews);
+      venueSelect.addEventListener('change', updateAllViews);
+    }
+
+    function updateAllViews() {
+      renderSummaryStats();
+      renderMilestonesAndStreaks();
+      renderOverviewScatterChart();
+      renderVenueMatrix();
+      renderLatestRunDeepDive();
+      renderPositionAnalytics();
+      renderLeaderboardHub();
+      renderTrendsAndSeasonality();
+      renderVolunteeringAnalytics();
+    }
+
+    // PILLAR 3: LATEST RUN DEEP-DIVE & COURSE HANDICAP ENGINE
+    function renderLatestRunDeepDive() {
+      if (globalRuns.length === 0) return;
+
+      const latestRun = globalRuns[globalRuns.length - 1];
+      const totalRuns = globalRuns.length;
+
+      // 1. Hero Summary Details
+      document.getElementById('latestVenueName').innerText = latestRun.venue;
+      document.getElementById('latestRunDate').innerText = `Completed on ${latestRun.rawDateStr} (Run #${totalRuns} in your career)`;
+      document.getElementById('latestFinishTime').innerText = latestRun.timeStr;
+      document.getElementById('latestAgeGrade').innerText = latestRun.ageGrade ? `${latestRun.ageGrade.toFixed(2)}%` : '-';
+      document.getElementById('latestFinishPosition').innerText = latestRun.position ? `#${latestRun.position}` : '-';
+
+      // Course Visit Count
+      const venueRuns = globalRuns.filter(r => r.venue === latestRun.venue);
+      const visitIndex = venueRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+      document.getElementById('latestVisitNumber').innerText = `Visit ${visitIndex}`;
+
+      // Position Frequency Calculation
+      let posFreqIndex = 0;
+      let posFreqTotal = 0;
+      if (latestRun.position) {
+        const samePosRuns = globalRuns.filter(r => r.position === latestRun.position);
+        posFreqTotal = samePosRuns.length;
+        posFreqIndex = samePosRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+
+        document.getElementById('latestPosFreqSub').innerText = `${getOrdinal(posFreqIndex)} time finishing in #${latestRun.position} (${posFreqTotal}x total)`;
+        document.getElementById('latestPosFreqCard').innerText = `${getOrdinal(posFreqIndex)}`;
+        document.getElementById('latestPosFreqCardSub').innerText = `Finished in #${latestRun.position} (${posFreqTotal}x career total)`;
+      } else {
+        document.getElementById('latestPosFreqSub').innerText = 'No position logged';
+        document.getElementById('latestPosFreqCard').innerText = '-';
+        document.getElementById('latestPosFreqCardSub').innerText = 'No position logged';
+      }
+
+      // Annual Sequence Milestone
+      const yearRuns = globalRuns.filter(r => r.year === latestRun.year);
+      const yearSeqIndex = yearRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+      document.getElementById('latestYearSeq').innerText = getOrdinal(yearSeqIndex);
+      document.getElementById('latestYearSeqSub').innerText = `${yearSeqIndex} of ${yearRuns.length} runs in ${latestRun.year}`;
+
+      // Historical Monthly Sequence Milestone
+      const monthRunsAllYears = globalRuns.filter(r => r.month === latestRun.month);
+      const monthSeqIndex = monthRunsAllYears.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+      const monthNameStr = new Date(2000, latestRun.month, 1).toLocaleString('en-GB', { month: 'long' });
+      document.getElementById('latestMonthSeq').innerText = getOrdinal(monthSeqIndex);
+      document.getElementById('latestMonthSeqSub').innerText = `${monthSeqIndex} run ever in ${monthNameStr} (${monthRunsAllYears.length} total)`;
+
+      // Calculate Achievement Badges
+      const badgesContainer = document.getElementById('latestBadgesContainer');
+      badgesContainer.innerHTML = '';
+
+      const allTimeSpeedPb = Math.min(...globalRuns.map(r => r.timeSeconds));
+      const venueSpeedPb = Math.min(...venueRuns.map(r => r.timeSeconds));
+      const allTimeGradePb = Math.max(...globalRuns.map(r => r.ageGrade || 0));
+
+      if (latestRun.timeSeconds === allTimeSpeedPb) {
+        badgesContainer.innerHTML += `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold px-3 py-1 rounded-lg text-xs">★ All-Time Speed PB</span>`;
+      } else if (latestRun.timeSeconds === venueSpeedPb) {
+        badgesContainer.innerHTML += `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold px-3 py-1 rounded-lg text-xs">★ Venue Speed PB</span>`;
+      }
+
+      if (latestRun.ageGrade && latestRun.ageGrade === allTimeGradePb) {
+        badgesContainer.innerHTML += `<span class="bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold px-3 py-1 rounded-lg text-xs">★ All-Time Age Grade PB</span>`;
+      }
+
+      if (latestRun.position === 1) {
+        badgesContainer.innerHTML += `<span class="bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold px-3 py-1 rounded-lg text-xs">🥇 P1 Finish</span>`;
+      }
+
+      // 2. Contextual Performance Ranking
+      const sortedAllTimes = [...globalRuns].sort((a, b) => a.timeSeconds - b.timeSeconds);
+      const allTimeRank = sortedAllTimes.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+      document.getElementById('latestAllTimeRank').innerText = `#${allTimeRank}`;
+      document.getElementById('latestAllTimeRankSub').innerText = `${allTimeRank === 1 ? 'Fastest ever!' : allTimeRank + 'th fastest out of ' + totalRuns + ' runs'}`;
+
+      const sortedVenueTimes = [...venueRuns].sort((a, b) => a.timeSeconds - b.timeSeconds);
+      const venueRank = sortedVenueTimes.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+      document.getElementById('latestVenueRank').innerText = `#${venueRank}`;
+      document.getElementById('latestVenueRankSub').innerText = `${venueRank === 1 ? 'Course PB!' : venueRank + 'th fastest out of ' + venueRuns.length + ' visits'}`;
+
+      // 3. Course Difficulty & Handicap Engine
+      const handicapSecs = parseInt(courseHandicaps[latestRun.venue], 10) || 0;
+      const normalizedSeconds = Math.max(1, latestRun.timeSeconds - handicapSecs);
+      const normalizedTimeStr = formatSecondsToTime(normalizedSeconds);
+
+      const signStr = handicapSecs >= 0 ? '+' : '';
+      document.getElementById('handicapCalculatedTitle').innerText = `${latestRun.venue} Course Adjusted Effort (${signStr}${handicapSecs}s Handicap)`;
+      document.getElementById('handicapCalculatedSub').innerText = `Raw Finish Time: ${latestRun.timeStr} minus ${handicapSecs}s course difficulty estimate`;
+      document.getElementById('handicapNormalizedTime').innerText = normalizedTimeStr;
+
+      const allNormalizedRuns = globalRuns.map(r => {
+        const handSecs = parseInt(courseHandicaps[r.venue], 10) || 0;
+        return {
+          id: r.date.getTime(),
+          normSeconds: Math.max(1, r.timeSeconds - handSecs)
+        };
+      }).sort((a, b) => a.normSeconds - b.normSeconds);
+
+      const normRank = allNormalizedRuns.findIndex(r => r.id === latestRun.date.getTime()) + 1;
+      document.getElementById('handicapNormalizedRank').innerText = `#${normRank} Normalised Career Rank (out of ${totalRuns} runs)`;
+
+      document.getElementById('latestNormRankCard').innerText = `#${normRank}`;
+      document.getElementById('latestNormRankCardSub').innerText = `${normRank === 1 ? 'Flat-adjusted Career Best!' : normRank + 'th fastest adjusted out of ' + totalRuns + ' runs'}`;
+
+      renderHandicapVenueInputs();
+      renderLatestBenchmarkTable(latestRun, venueRuns, allTimeSpeedPb, venueSpeedPb);
+    }
+
+    function renderHandicapVenueInputs() {
+      const grid = document.getElementById('handicapVenueGrid');
+      grid.innerHTML = '';
+
+      const uniqueVenues = [...new Set(globalRuns.map(r => r.venue))].sort();
+
+      uniqueVenues.forEach(venue => {
+        const secs = parseInt(courseHandicaps[venue], 10) || 0;
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900 border border-slate-700/80 rounded-lg p-3 flex flex-col justify-between gap-2';
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-slate-200 truncate" title="${venue}">${venue}</span>
+            <span class="text-[10px] text-slate-400 font-mono">${globalRuns.filter(r => r.venue === venue).length} visits</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1">
+              <input type="number" step="1" value="${secs}" data-venue="${venue}" class="handicap-input w-20 bg-slate-950 border border-slate-700 text-center rounded px-2 py-1 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500">
+              <span class="text-[10px] font-mono text-slate-400">secs</span>
+            </div>
+            <div class="flex gap-1 flex-1">
+              <button data-venue="${venue}" data-val="0" class="preset-btn bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 px-1.5 py-1 rounded flex-1">Flat (+0s)</button>
+              <button data-venue="${venue}" data-val="20" class="preset-btn bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 px-1.5 py-1 rounded flex-1">Mild (+20s)</button>
+              <button data-venue="${venue}" data-val="45" class="preset-btn bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 px-1.5 py-1 rounded flex-1">Hilly (+45s)</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      grid.querySelectorAll('.handicap-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const v = e.target.getAttribute('data-venue');
+          const val = parseInt(e.target.value, 10) || 0;
+          courseHandicaps[v] = val;
+          saveCourseHandicapsToStorage();
+        });
+      });
+
+      grid.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const v = e.target.getAttribute('data-venue');
+          const val = parseInt(e.target.getAttribute('data-val'), 10);
+          courseHandicaps[v] = val;
+          saveCourseHandicapsToStorage();
+        });
+      });
+    }
+
+    function resetCourseHandicaps() {
+      courseHandicaps = {};
+      saveCourseHandicapsToStorage();
+    }
+
+    function renderLatestBenchmarkTable(latestRun, venueRuns, allTimeSpeedPb, venueSpeedPb) {
+      const tbody = document.getElementById('latestBenchmarkTableBody');
+      tbody.innerHTML = '';
+
+      const venueAvgSeconds = venueRuns.reduce((a, b) => a + b.timeSeconds, 0) / venueRuns.length;
+      const recent5Runs = globalRuns.slice(-5);
+      const recent5AvgSeconds = recent5Runs.reduce((a, b) => a + b.timeSeconds, 0) / recent5Runs.length;
+
+      const sameMonthRuns = globalRuns.filter(r => r.month === latestRun.month);
+      const sameMonthAvgSeconds = sameMonthRuns.reduce((a, b) => a + b.timeSeconds, 0) / sameMonthRuns.length;
+
+      const benchmarks = [
+        { label: 'All-Time Career Speed PB', refSecs: allTimeSpeedPb },
+        { label: `Venue Speed PB (${latestRun.venue})`, refSecs: venueSpeedPb },
+        { label: `Venue Average Time (${latestRun.venue})`, refSecs: venueAvgSeconds },
+        { label: 'Recent 5-Run Average Pace', refSecs: recent5AvgSeconds },
+        { label: `Same Month Historical Avg (${new Date(2000, latestRun.month, 1).toLocaleString('en-GB', { month: 'long' })})`, refSecs: sameMonthAvgSeconds }
+      ];
+
+      benchmarks.forEach(bm => {
+        const deltaSecs = latestRun.timeSeconds - bm.refSecs;
+        const diffStr = deltaSecs === 0 
+          ? '0s (Exact Match)' 
+          : deltaSecs > 0 
+            ? `+${formatSecondsToTime(deltaSecs)} slower` 
+            : `-${formatSecondsToTime(Math.abs(deltaSecs))} faster`;
+
+        const statusClass = deltaSecs <= 0 ? 'text-emerald-400 font-bold' : 'text-slate-300';
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100">${bm.label}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${formatSecondsToTime(bm.refSecs)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-200">${latestRun.timeStr}</td>
+          <td class="py-2.5 px-3 text-right ${statusClass}">${diffStr}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400 font-sans text-[11px]">${deltaSecs <= 0 ? '✔ Target Surpassed' : 'Behind Benchmark'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function getTotalVolunteerCredits() {
+      if (volunteerData.officialTotalCredits && volunteerData.officialTotalCredits > 0) {
+        return volunteerData.officialTotalCredits;
+      }
+      let annualSum = 0;
+      Object.values(volunteerData.yearlyCounts || {}).forEach(cnt => {
+        annualSum += (parseInt(cnt, 10) || 0);
+      });
+      if (annualSum > 0) return annualSum;
+
+      let roleSum = 0;
+      Object.values(volunteerData.roles || {}).forEach(cnt => {
+        roleSum += (parseInt(cnt, 10) || 0);
+      });
+      return roleSum;
+    }
+
+    function getTotalRoleDuties() {
+      let roleSum = 0;
+      Object.values(volunteerData.roles || {}).forEach(cnt => {
+        roleSum += (parseInt(cnt, 10) || 0);
+      });
+      return roleSum;
+    }
+
+    function renderVolunteerInputs() {
+      const roleGrid = document.getElementById('volRoleCountersGrid');
+      roleGrid.innerHTML = '';
+
+      OFFICIAL_VOLUNTEER_ROLES.forEach(role => {
+        const count = volunteerData.roles[role] || 0;
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900 border border-slate-700/80 rounded-lg p-2.5 flex flex-col justify-between gap-2';
+        card.innerHTML = `
+          <label class="text-[11px] font-bold text-slate-300 truncate" title="${role}">${role}</label>
+          <div class="flex items-center gap-1">
+            <button class="vol-btn-minus bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-xs font-bold transition">-</button>
+            <input type="number" min="0" value="${count}" data-role="${role}" class="vol-role-input w-full bg-slate-950 border border-slate-800 text-center rounded text-xs font-mono text-emerald-400 focus:outline-none focus:border-purple-500 py-1">
+            <button class="vol-btn-plus bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-xs font-bold transition">+</button>
+          </div>
+        `;
+        roleGrid.appendChild(card);
+      });
+
+      roleGrid.querySelectorAll('.vol-role-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const role = e.target.getAttribute('data-role');
+          const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+          volunteerData.roles[role] = val;
+          saveVolunteerDataToStorage();
+        });
+      });
+
+      roleGrid.querySelectorAll('.vol-btn-minus').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const input = e.target.parentElement.querySelector('.vol-role-input');
+          const role = input.getAttribute('data-role');
+          let val = Math.max(0, (parseInt(input.value, 10) || 0) - 1);
+          input.value = val;
+          volunteerData.roles[role] = val;
+          saveVolunteerDataToStorage();
+        });
+      });
+
+      roleGrid.querySelectorAll('.vol-btn-plus').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const input = e.target.parentElement.querySelector('.vol-role-input');
+          const role = input.getAttribute('data-role');
+          let val = (parseInt(input.value, 10) || 0) + 1;
+          input.value = val;
+          volunteerData.roles[role] = val;
+          saveVolunteerDataToStorage();
+        });
+      });
+
+      const yearlyGrid = document.getElementById('volYearlyInputsGrid');
+      yearlyGrid.innerHTML = '';
+
+      const currentYear = new Date().getFullYear();
+      const runYears = globalRuns.map(r => r.year);
+      const maxYear = Math.max(currentYear, ...runYears, 2004);
+
+      const years = [];
+      for (let y = maxYear; y >= 2004; y--) {
+        years.push(y);
+      }
+
+      years.forEach(year => {
+        const count = volunteerData.yearlyCounts[year] || 0;
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900 border border-slate-700/80 rounded-lg p-2 text-center space-y-1';
+        card.innerHTML = `
+          <label class="block text-[10px] font-bold text-slate-400 uppercase">${year}</label>
+          <input type="number" min="0" value="${count}" data-year="${year}" class="vol-year-input w-full bg-slate-950 border border-slate-800 text-center rounded text-xs font-mono text-purple-300 focus:outline-none focus:border-purple-500 py-1">
+        `;
+        yearlyGrid.appendChild(card);
+      });
+
+      yearlyGrid.querySelectorAll('.vol-year-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const yr = e.target.getAttribute('data-year');
+          const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+          volunteerData.yearlyCounts[yr] = val;
+          saveVolunteerDataToStorage();
+        });
+      });
+    }
+
+    function renderVolunteeringAnalytics() {
+      const totalVolCredits = getTotalVolunteerCredits();
+      const totalRoleDuties = getTotalRoleDuties();
+      const totalRuns = globalRuns.length;
+      
+      const roleCountEl = document.getElementById('volTotalRoleCount');
+      if (roleCountEl) roleCountEl.innerText = totalRoleDuties;
+
+      const ratio = totalRuns > 0 ? ((totalVolCredits / totalRuns) * 100).toFixed(1) : '0.0';
+      const runsPerVol = totalVolCredits > 0 ? (totalRuns / totalVolCredits).toFixed(1) : '0';
+
+      let activeRoles = 0;
+      let topRole = ['None', 0];
+      Object.entries(volunteerData.roles).forEach(([role, cnt]) => {
+        const c = parseInt(cnt, 10) || 0;
+        if (c > 0) activeRoles++;
+        if (c > topRole[1]) topRole = [role, c];
+      });
+
+      let nextV = PARKRUN_VOLUNTEER_MILESTONES.find(m => m > totalVolCredits);
+      if (!nextV) nextV = Math.ceil((totalVolCredits + 1) / 100) * 100;
+      const creditsNeeded = nextV - totalVolCredits;
+
+      document.getElementById('volTotalCredits').innerText = totalVolCredits;
+      document.getElementById('volBadgeTitle').innerText = totalRoleDuties > totalVolCredits 
+        ? `${totalRoleDuties} role duties across ${totalVolCredits} volunteer days` 
+        : `Official V${totalVolCredits} Level`;
+      document.getElementById('volRatioPct').innerText = `${ratio}%`;
+      document.getElementById('volRatioDesc').innerText = totalVolCredits > 0 ? `1 credit per ${runsPerVol} runs` : 'No volunteer credits yet';
+      document.getElementById('volUniqueRoles').innerText = activeRoles;
+      document.getElementById('volTopRole').innerText = topRole[1] > 0 ? `Most Common: ${topRole[0]} (${topRole[1]}x)` : 'Most Common: None';
+      
+      document.getElementById('volNextMilestoneTitle').innerText = `V${nextV} Club`;
+      document.getElementById('volNextMilestoneSub').innerText = `${creditsNeeded} ${creditsNeeded === 1 ? 'credit' : 'credits'} needed`;
+
+      document.getElementById('overviewStatVolCredits').innerText = `${totalVolCredits} credits`;
+      document.getElementById('overviewStatVolRatio').innerText = `${ratio}% V:R Ratio (${totalVolCredits}V / ${totalRuns}R)`;
+
+      const vGrid = document.getElementById('volMilestoneGrid');
+      vGrid.innerHTML = '';
+
+      PARKRUN_VOLUNTEER_MILESTONES.forEach(m => {
+        const isAchieved = totalVolCredits >= m;
+        const isNext = m === nextV;
+
+        const card = document.createElement('div');
+        if (isAchieved) {
+          card.className = 'bg-purple-500/10 border border-purple-500/40 rounded-xl p-3 text-center transition hover:bg-purple-500/20';
+          card.innerHTML = `
+            <div class="text-xs text-purple-400 font-extrabold uppercase tracking-wider">V${m} Club</div>
+            <div class="text-base font-black text-purple-300 mt-1">✔ Unlocked</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Achieved</div>
+          `;
+        } else if (isNext) {
+          card.className = 'bg-amber-500/10 border-2 border-amber-500/60 rounded-xl p-3 text-center shadow-lg animate-pulse';
+          card.innerHTML = `
+            <div class="text-xs text-amber-400 font-extrabold uppercase tracking-wider">V${m} Club</div>
+            <div class="text-base font-black text-amber-300 mt-1">${creditsNeeded} left</div>
+            <div class="text-[10px] text-amber-400/80 font-bold mt-0.5">Next Target</div>
+          `;
+        } else {
+          card.className = 'bg-slate-900/40 border border-slate-800 rounded-xl p-3 text-center opacity-50';
+          card.innerHTML = `
+            <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">V${m} Club</div>
+            <div class="text-sm font-bold text-slate-600 mt-1">${m - totalVolCredits} left</div>
+            <div class="text-[10px] text-slate-600 mt-0.5">Locked</div>
+          `;
+        }
+        vGrid.appendChild(card);
+      });
+
+      renderVolunteerCharts();
+    }
+
+    function renderVolunteerCharts() {
+      const roleCtx = document.getElementById('volRoleChart').getContext('2d');
+      if (volRoleChartInstance) volRoleChartInstance.destroy();
+
+      const activeRoleEntries = Object.entries(volunteerData.roles)
+        .map(([r, c]) => [r, parseInt(c, 10) || 0])
+        .filter(entry => entry[1] > 0);
+
+      const roleLabels = activeRoleEntries.length > 0 ? activeRoleEntries.map(e => e[0]) : ['No Data'];
+      const roleData = activeRoleEntries.length > 0 ? activeRoleEntries.map(e => e[1]) : [1];
+
+      const palette = ['#a855f7', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#06b6d4', '#6366f1', '#84cc16', '#f97316'];
+
+      volRoleChartInstance = new Chart(roleCtx, {
+        type: 'doughnut',
+        data: {
+          labels: roleLabels,
+          datasets: [{
+            data: roleData,
+            backgroundColor: activeRoleEntries.length > 0 ? palette : ['#334155'],
+            borderWidth: 2,
+            borderColor: '#0f172a'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { color: '#cbd5e1', font: { size: 10 } } }
+          }
+        }
+      });
+
+      const yearlyCtx = document.getElementById('volYearlyChart').getContext('2d');
+      if (volYearlyChartInstance) volYearlyChartInstance.destroy();
+
+      const yearMap = {};
+      globalRuns.forEach(r => {
+        yearMap[r.year] = (yearMap[r.year] || 0) + 1;
+      });
+
+      Object.keys(volunteerData.yearlyCounts).forEach(y => {
+        if (!yearMap[y]) yearMap[y] = 0;
+      });
+
+      const sortedYears = Object.keys(yearMap).sort((a, b) => a - b);
+      const runsData = sortedYears.map(y => yearMap[y]);
+      const volsData = sortedYears.map(y => parseInt(volunteerData.yearlyCounts[y], 10) || 0);
+
+      volYearlyChartInstance = new Chart(yearlyCtx, {
+        type: 'bar',
+        data: {
+          labels: sortedYears,
+          datasets: [
+            { label: 'parkruns Completed', data: runsData, backgroundColor: '#10b981' },
+            { label: 'Volunteer Credits', data: volsData, backgroundColor: '#a855f7' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
+            y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+          },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } }
+          }
+        }
+      });
+
+      const cumCtx = document.getElementById('volCumulativeChart').getContext('2d');
+      if (volCumulativeChartInstance) volCumulativeChartInstance.destroy();
+
+      let runCum = 0;
+      let volCum = 0;
+      const cumRunsData = [];
+      const cumVolsData = [];
+
+      sortedYears.forEach(y => {
+        runCum += (yearMap[y] || 0);
+        volCum += (parseInt(volunteerData.yearlyCounts[y], 10) || 0);
+        cumRunsData.push(runCum);
+        cumVolsData.push(volCum);
+      });
+
+      volCumulativeChartInstance = new Chart(cumCtx, {
+        type: 'line',
+        data: {
+          labels: sortedYears,
+          datasets: [
+            {
+              label: 'Cumulative parkruns Completed',
+              data: cumRunsData,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: 'Cumulative Volunteer Credits',
+              data: cumVolsData,
+              borderColor: '#a855f7',
+              backgroundColor: 'rgba(168, 85, 247, 0.1)',
+              tension: 0.3,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
+            y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+          },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderMilestonesAndStreaks() {
+      if (globalRuns.length === 0) return;
+
+      const totalRuns = globalRuns.length;
+      
+      let activeStreak = 0;
+      let longestStreak = 0;
+      let currentSeq = 0;
+
+      for (let i = 0; i < globalRuns.length; i++) {
+        if (i === 0) {
+          currentSeq = 1;
+        } else {
+          const prevDate = globalRuns[i - 1].date;
+          const currDate = globalRuns[i].date;
+          const diffDays = Math.round((currDate - prevDate) / (1000 * 3600 * 24));
+
+          if (diffDays >= 1 && diffDays <= 13) {
+            currentSeq++;
+          } else if (diffDays > 13) {
+            currentSeq = 1;
+          }
+        }
+        if (currentSeq > longestStreak) longestStreak = currentSeq;
+      }
+
+      const latestRunDate = globalRuns[globalRuns.length - 1].date;
+      const today = new Date();
+      const daysSinceLatest = Math.round((today - latestRunDate) / (1000 * 3600 * 24));
+      
+      activeStreak = (daysSinceLatest <= 14) ? currentSeq : 0;
+
+      document.getElementById('statActiveStreak').innerText = `${activeStreak} ${activeStreak === 1 ? 'wk' : 'wks'}`;
+      document.getElementById('statLongestStreak').innerText = `${longestStreak} ${longestStreak === 1 ? 'wk' : 'wks'}`;
+
+      let nextMilestone = PARKRUN_MILESTONES.find(m => m > totalRuns);
+      let prevMilestone = 0;
+      
+      for (let i = PARKRUN_MILESTONES.length - 1; i >= 0; i--) {
+        if (PARKRUN_MILESTONES[i] <= totalRuns) {
+          prevMilestone = PARKRUN_MILESTONES[i];
+          break;
+        }
+      }
+
+      if (!nextMilestone) {
+        nextMilestone = Math.ceil((totalRuns + 1) / 100) * 100;
+      }
+
+      const runsNeeded = nextMilestone - totalRuns;
+      const runsCompletedInStep = totalRuns - prevMilestone;
+      const totalStepSpan = nextMilestone - prevMilestone;
+      const progressPct = Math.min(100, Math.max(0, (runsCompletedInStep / totalStepSpan) * 100));
+
+      const oneYearAgo = new Date(latestRunDate.getTime() - (365 * 24 * 3600 * 1000));
+      const runsInLastYear = globalRuns.filter(r => r.date >= oneYearAgo).length;
+
+      const firstRunDate = globalRuns[0].date;
+      const totalDaysSpan = Math.max(7, Math.round((latestRunDate - firstRunDate) / (1000 * 3600 * 24)));
+      const weeksSpan = totalDaysSpan / 7;
+      
+      const runsPerWeekLastYear = weeksSpan >= 52 
+        ? runsInLastYear / 52 
+        : Math.min(1, totalRuns / weeksSpan);
+
+      const effectivePace = Math.max(0.1, runsPerWeekLastYear);
+      const weeksNeededRecentPace = Math.ceil(runsNeeded / effectivePace);
+      const projectedDate = new Date(latestRunDate.getTime() + (weeksNeededRecentPace * 7 * 24 * 3600 * 1000));
+      const projectedDateStr = projectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+      const earliestDate = new Date(latestRunDate.getTime() + (runsNeeded * 7 * 24 * 3600 * 1000));
+      const earliestDateStr = earliestDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+      const runsPerYearRate = weeksSpan >= 52 ? runsInLastYear : Math.round(runsPerWeekLastYear * 52);
+
+      document.getElementById('nextMilestoneTitle').innerText = `Countdown to Club ${nextMilestone}`;
+      document.getElementById('nextMilestoneRemaining').innerText = `${runsNeeded} ${runsNeeded === 1 ? 'run' : 'runs'} needed`;
+      document.getElementById('nextMilestoneEstimate').innerText = `Projected (Last 12m Pace): ~${projectedDateStr} (${runsPerYearRate} runs/yr) | Earliest Possible (1/wk): ${earliestDateStr}`;
+
+      document.getElementById('nextMilestoneProgressBar').style.width = `${progressPct.toFixed(1)}%`;
+      document.getElementById('nextMilestoneStart').innerText = `Club ${prevMilestone}`;
+      document.getElementById('nextMilestoneProgressPct').innerText = `${progressPct.toFixed(1)}% Progress (${totalRuns}/${nextMilestone})`;
+      document.getElementById('nextMilestoneTarget').innerText = `Club ${nextMilestone}`;
+
+      const grid = document.getElementById('milestoneRoadmapGrid');
+      grid.innerHTML = '';
+
+      PARKRUN_MILESTONES.forEach(milestone => {
+        const isAchieved = totalRuns >= milestone;
+        const isNext = milestone === nextMilestone;
+
+        let dateAchievedStr = null;
+        if (isAchieved && globalRuns[milestone - 1]) {
+          dateAchievedStr = globalRuns[milestone - 1].rawDateStr;
+        }
+
+        const card = document.createElement('div');
+        if (isAchieved) {
+          card.className = 'bg-emerald-500/10 border border-emerald-500/40 rounded-xl p-2.5 text-center transition hover:bg-emerald-500/20';
+          card.innerHTML = `
+            <div class="text-xs text-emerald-400 font-extrabold uppercase tracking-wider">Club ${milestone}</div>
+            <div class="text-base font-black text-emerald-300 mt-0.5">✔ Done</div>
+            <div class="text-[10px] text-slate-400 mt-0.5 truncate">${dateAchievedStr || 'Achieved'}</div>
+          `;
+        } else if (isNext) {
+          card.className = 'bg-amber-500/10 border-2 border-amber-500/60 rounded-xl p-2.5 text-center shadow-lg animate-pulse';
+          card.innerHTML = `
+            <div class="text-xs text-amber-400 font-extrabold uppercase tracking-wider">Club ${milestone}</div>
+            <div class="text-base font-black text-amber-300 mt-0.5">${runsNeeded} left</div>
+            <div class="text-[10px] text-amber-400/80 font-bold mt-0.5">Next Target</div>
+          `;
+        } else {
+          card.className = 'bg-slate-900/40 border border-slate-800 rounded-xl p-2.5 text-center opacity-50';
+          card.innerHTML = `
+            <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">Club ${milestone}</div>
+            <div class="text-sm font-bold text-slate-600 mt-0.5">${milestone - totalRuns} runs</div>
+            <div class="text-[10px] text-slate-600 mt-0.5">Locked</div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+    }
+
+    function renderSummaryStats() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+
+      const filteredRuns = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      if (filteredRuns.length === 0) {
+        document.getElementById('statTotalRuns').innerText = '0';
+        document.getElementById('statDistance').innerText = '0 km covered';
+        document.getElementById('statBestTime').innerText = '-';
+        document.getElementById('statBestGrade').innerText = '-';
+        return;
+      }
+
+      const totalRuns = filteredRuns.length;
+      const totalKm = totalRuns * 5;
+
+      let bestTimeRun = filteredRuns[0];
+      let bestGradeRun = filteredRuns[0];
+
+      filteredRuns.forEach(run => {
+        if (run.timeSeconds < bestTimeRun.timeSeconds) bestTimeRun = run;
+        if (run.ageGrade && run.ageGrade > (bestGradeRun.ageGrade || 0)) bestGradeRun = run;
+      });
+
+      const venueCounts = {};
+      const runsPerYear = {};
+      const venuesPerYear = {};
+
+      let groundhogCount = 0;
+      let palindromeCount = 0;
+      let exactMinuteCount = 0;
+
+      const venueHistory = {};
+
+      filteredRuns.forEach((run) => {
+        venueCounts[run.venue] = (venueCounts[run.venue] || 0) + 1;
+
+        runsPerYear[run.year] = (runsPerYear[run.year] || 0) + 1;
+        if (!venuesPerYear[run.year]) venuesPerYear[run.year] = new Set();
+        venuesPerYear[run.year].add(run.venue);
+
+        if (isPalindromeTime(run.timeStr)) palindromeCount++;
+        if (run.timeSeconds % 60 === 0) exactMinuteCount++;
+
+        if (!venueHistory[run.venue]) {
+          venueHistory[run.venue] = [];
+        } else {
+          const lastVisit = venueHistory[run.venue][venueHistory[run.venue].length - 1];
+          if (lastVisit.timeSeconds === run.timeSeconds) {
+            groundhogCount++;
+          }
+        }
+        venueHistory[run.venue].push(run);
+      });
+
+      const sortedVenues = Object.entries(venueCounts).sort((a, b) => b[1] - a[1]);
+      const topVenue = sortedVenues[0] || ['-', 0];
+      const secondVenue = sortedVenues[1] || ['N/A', 0];
+
+      let maxRunsYear = ['-', 0];
+      Object.entries(runsPerYear).forEach(([yr, cnt]) => {
+        if (cnt > maxRunsYear[1]) maxRunsYear = [yr, cnt];
+      });
+
+      let maxVenuesYear = ['-', 0];
+      Object.entries(venuesPerYear).forEach(([yr, vSet]) => {
+        if (vSet.size > maxVenuesYear[1]) maxVenuesYear = [yr, vSet.size];
+      });
+
+      const totalVenuesCount = Object.keys(venueCounts).length;
+
+      const seenVenues = new Set();
+      let mostRecentNewVenue = null;
+      filteredRuns.forEach(run => {
+        if (!seenVenues.has(run.venue)) {
+          seenVenues.add(run.venue);
+          mostRecentNewVenue = run;
+        }
+      });
+
+      const countsDescending = Object.values(venueCounts).sort((a, b) => b - a);
+      let pIndex = 0;
+      for (let i = 0; i < countsDescending.length; i++) {
+        if (countsDescending[i] >= i + 1) pIndex = i + 1;
+        else break;
+      }
+
+      document.getElementById('statTotalRuns').innerText = totalRuns;
+      document.getElementById('statDistance').innerText = `${totalKm} km covered`;
+      document.getElementById('statBestTime').innerText = formatSecondsToTime(bestTimeRun.timeSeconds);
+      document.getElementById('statBestTimeSub').innerText = `${bestTimeRun.venue} (${bestTimeRun.rawDateStr})`;
+      document.getElementById('statBestGrade').innerText = bestGradeRun.ageGrade ? `${bestGradeRun.ageGrade.toFixed(2)}%` : '-';
+      document.getElementById('statBestGradeSub').innerText = `${bestGradeRun.venue} (${bestGradeRun.rawDateStr})`;
+
+      document.getElementById('statTotalVenues').innerText = totalVenuesCount;
+      document.getElementById('statRecentVenueSub').innerText = mostRecentNewVenue ? `Latest: ${mostRecentNewVenue.venue}` : '-';
+
+      document.getElementById('statTopVenueName').innerText = topVenue[0];
+      document.getElementById('statTopVenueCount').innerText = `${topVenue[1]} visits`;
+
+      document.getElementById('statSecondVenueName').innerText = secondVenue[0];
+      document.getElementById('statSecondVenueCount').innerText = secondVenue[1] > 0 ? `${secondVenue[1]} visits` : 'No secondary venue';
+
+      document.getElementById('statMaxRunsYear').innerText = maxRunsYear[1];
+      document.getElementById('statMaxRunsYearSub').innerText = `Achieved in ${maxRunsYear[0]}`;
+
+      document.getElementById('statPIndex').innerText = pIndex;
+      document.getElementById('statGroundhog').innerText = groundhogCount;
+      document.getElementById('statPalindrome').innerText = palindromeCount;
+      document.getElementById('statExactMinute').innerText = exactMinuteCount;
+    }
+
+    function renderOverviewScatterChart() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+
+      const filtered = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      const ctx = document.getElementById('scatterChart').getContext('2d');
+
+      if (overviewChartInstance) {
+        overviewChartInstance.destroy();
+      }
+
+      const chartPoints = filtered.map(d => ({
+        x: d.date,
+        y: d.timeSeconds / 60,
+        venue: d.venue,
+        timeStr: d.timeStr,
+        dateStr: d.rawDateStr,
+        pos: d.position
+      }));
+
+      overviewChartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Finish Time',
+            data: chartPoints,
+            backgroundColor: '#10b981',
+            borderColor: '#059669',
+            pointRadius: 5,
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'month' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              reverse: true,
+              title: { display: true, text: 'Time (Minutes)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const pt = context.raw;
+                  const posText = pt.pos ? ` | Pos: #${pt.pos}` : '';
+                  return `${pt.venue}: ${pt.timeStr} (${pt.dateStr})${posText}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderVenueMatrix() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+      const minVisits = parseInt(document.getElementById('filterMinVisits').value, 10);
+
+      const tPrimary = parseInt(document.getElementById('targetPrimary').value, 10) || 1;
+      const tSecondary = parseInt(document.getElementById('targetSecondary').value, 10) || 3;
+      const tBase = parseInt(document.getElementById('targetBase').value, 10) || 10;
+
+      document.getElementById('thPrimary').childNodes[0].nodeValue = `${tPrimary === 1 ? 'P1 Finishes' : 'Top ' + tPrimary} `;
+      document.getElementById('thSecondary').childNodes[0].nodeValue = `Top ${tSecondary} `;
+      document.getElementById('thBase').childNodes[0].nodeValue = `Top ${tBase} `;
+
+      const filteredRuns = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      const venueGroups = {};
+      filteredRuns.forEach(run => {
+        if (!venueGroups[run.venue]) venueGroups[run.venue] = [];
+        venueGroups[run.venue].push(run);
+      });
+
+      const matrixData = [];
+
+      Object.entries(venueGroups).forEach(([venueName, runs]) => {
+        const totalRuns = runs.length;
+        if (totalRuns < minVisits) return;
+
+        const sortedTimes = runs.map(r => r.timeSeconds).sort((a, b) => a - b);
+        const sortedGrades = runs.map(r => r.ageGrade || 0).sort((a, b) => b - a);
+
+        const bestTime = sortedTimes[0];
+        const fifthFastest = sortedTimes.length >= 5 ? sortedTimes[4] : null;
+        const tenthFastest = sortedTimes.length >= 10 ? sortedTimes[9] : null;
+        const bestGrade = sortedGrades[0];
+
+        const sumTime = sortedTimes.reduce((a, b) => a + b, 0);
+        const avgTime = sumTime / totalRuns;
+
+        let avgExcl20 = avgTime;
+        if (totalRuns >= 5) {
+          const trimCount = Math.max(1, Math.floor(totalRuns * 0.1));
+          const trimmedTimes = sortedTimes.slice(trimCount, totalRuns - trimCount);
+          if (trimmedTimes.length > 0) {
+            avgExcl20 = trimmedTimes.reduce((a, b) => a + b, 0) / trimmedTimes.length;
+          }
+        }
+
+        const validGrades = runs.map(r => r.ageGrade).filter(g => g !== null && !isNaN(g));
+        const avgGrade = validGrades.length > 0 ? (validGrades.reduce((a, b) => a + b, 0) / validGrades.length) : 0;
+
+        const yearsActive = new Set(runs.map(r => r.year)).size;
+
+        let primaryCount = 0;
+        let secondaryCount = 0;
+        let baseCount = 0;
+
+        let pbCount = 0;
+        let currentBest = 999999;
+        runs.forEach(r => {
+          if (r.position) {
+            if (r.position <= tPrimary) primaryCount++;
+            if (r.position <= tSecondary) secondaryCount++;
+            if (r.position <= tBase) baseCount++;
+          }
+          if (r.timeSeconds < currentBest) {
+            if (currentBest < 999999) pbCount++;
+            currentBest = r.timeSeconds;
+          }
+        });
+
+        matrixData.push({
+          venue: venueName,
+          bestTime: bestTime,
+          fifthFastest: fifthFastest,
+          tenthFastest: tenthFastest,
+          bestGrade: bestGrade,
+          avgTime: avgTime,
+          avgExcl20: avgExcl20,
+          avgGrade: avgGrade,
+          totalRuns: totalRuns,
+          yearsActive: yearsActive,
+          targetPrimaryCount: primaryCount,
+          targetSecondaryCount: secondaryCount,
+          targetBaseCount: baseCount,
+          totalPbs: pbCount
+        });
+      });
+
+      matrixData.sort((a, b) => {
+        let valA = a[matrixSortCol];
+        let valB = b[matrixSortCol];
+
+        if (valA === null || valA === undefined) valA = matrixSortAsc ? 999999 : -999999;
+        if (valB === null || valB === undefined) valB = matrixSortAsc ? 999999 : -999999;
+
+        if (typeof valA === 'string') {
+          return matrixSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return matrixSortAsc ? valA - valB : valB - valA;
+      });
+
+      const tbody = document.getElementById('venueMatrixBody');
+      tbody.innerHTML = '';
+
+      matrixData.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100">${row.venue}</td>
+          <td class="py-2.5 px-3 text-right text-amber-400 font-bold">${formatSecondsToTime(row.bestTime)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${formatSecondsToTime(row.fifthFastest)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400">${formatSecondsToTime(row.tenthFastest)}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400">${row.bestGrade ? row.bestGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${formatSecondsToTime(row.avgTime)}</td>
+          <td class="py-2.5 px-3 text-right text-emerald-400">${formatSecondsToTime(row.avgExcl20)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${row.avgGrade ? row.avgGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-slate-100">${row.totalRuns}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400">${row.yearsActive}</td>
+          <td class="py-2.5 px-3 text-right text-purple-400 font-bold">${row.targetPrimaryCount}</td>
+          <td class="py-2.5 px-3 text-right text-purple-300">${row.targetSecondaryCount}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${row.targetBaseCount}</td>
+          <td class="py-2.5 px-3 text-right text-amber-300 font-bold">${row.totalPbs}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (matrixData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="14" class="py-6 text-center text-slate-500 font-sans">No venues match the selected filters.</td></tr>`;
+      }
+    }
+
+    function renderPositionAnalytics() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+
+      const tPrimary = parseInt(document.getElementById('targetPrimary').value, 10) || 1;
+      const tSecondary = parseInt(document.getElementById('targetSecondary').value, 10) || 3;
+      const tBase = parseInt(document.getElementById('targetBase').value, 10) || 10;
+
+      const filtered = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      const totalRuns = filtered.length;
+
+      document.getElementById('posLabelStretch').innerText = tPrimary === 1 ? 'Stretch Target (P1 Finishes)' : `Stretch Target (Top ${tPrimary})`;
+      document.getElementById('posLabelSecondary').innerText = `Secondary Target (Top ${tSecondary})`;
+      document.getElementById('posLabelBase').innerText = `Base Target (Top ${tBase})`;
+
+      // Dynamic Table Headers for Annual Competitive Progression Table
+      const annThPrimary = document.getElementById('posAnnThPrimary');
+      const annThSecondary = document.getElementById('posAnnThSecondary');
+      const annThBase = document.getElementById('posAnnThBase');
+
+      if (annThPrimary) annThPrimary.innerText = tPrimary === 1 ? 'P1 Finishes (#1)' : `Top ${tPrimary}`;
+      if (annThSecondary) annThSecondary.innerText = `Top ${tSecondary}`;
+      if (annThBase) annThBase.innerText = `Top ${tBase}`;
+
+      let countPrimary = 0;
+      let countSecondary = 0;
+      let countBase = 0;
+      let bestPosRun = null;
+
+      filtered.forEach(r => {
+        if (r.position !== null) {
+          if (r.position <= tPrimary) countPrimary++;
+          if (r.position <= tSecondary) countSecondary++;
+          if (r.position <= tBase) countBase++;
+
+          if (!bestPosRun || r.position < bestPosRun.position) {
+            bestPosRun = r;
+          }
+        }
+      });
+
+      const pctPrimary = totalRuns > 0 ? ((countPrimary / totalRuns) * 100).toFixed(1) : '0';
+      const pctSecondary = totalRuns > 0 ? ((countSecondary / totalRuns) * 100).toFixed(1) : '0';
+      const pctBase = totalRuns > 0 ? ((countBase / totalRuns) * 100).toFixed(1) : '0';
+
+      document.getElementById('posCountStretch').innerText = countPrimary;
+      document.getElementById('posPctStretch').innerText = `${pctPrimary}% of selected runs`;
+
+      document.getElementById('posCountSecondary').innerText = countSecondary;
+      document.getElementById('posPctSecondary').innerText = `${pctSecondary}% of selected runs`;
+
+      document.getElementById('posCountBase').innerText = countBase;
+      document.getElementById('posPctBase').innerText = `${pctBase}% of selected runs`;
+
+      if (bestPosRun) {
+        document.getElementById('posBestOverall').innerText = `#${bestPosRun.position}`;
+        document.getElementById('posBestSub').innerText = `${bestPosRun.venue} (${bestPosRun.rawDateStr})`;
+      } else {
+        document.getElementById('posBestOverall').innerText = '-';
+        document.getElementById('posBestSub').innerText = 'No position data available';
+      }
+
+      renderPositionTrendChart(filtered, tPrimary, tSecondary, tBase);
+      renderPositionFrequencyTable();
+      renderAnnualPositionTable(filtered, tPrimary, tSecondary, tBase);
+    }
+
+    function renderPositionTrendChart(filteredRuns, tPrimary, tSecondary, tBase) {
+      const ctx = document.getElementById('positionTrendChart').getContext('2d');
+
+      if (positionTrendChartInstance) {
+        positionTrendChartInstance.destroy();
+      }
+
+      const yearMap = {};
+      filteredRuns.forEach(r => {
+        if (!yearMap[r.year]) {
+          yearMap[r.year] = { primary: 0, secondary: 0, base: 0, rest: 0 };
+        }
+        if (r.position !== null) {
+          if (r.position <= tPrimary) yearMap[r.year].primary++;
+          else if (r.position <= tSecondary) yearMap[r.year].secondary++;
+          else if (r.position <= tBase) yearMap[r.year].base++;
+          else yearMap[r.year].rest++;
+        } else {
+          yearMap[r.year].rest++;
+        }
+      });
+
+      const years = Object.keys(yearMap).sort((a, b) => a - b);
+      const dataPrimary = years.map(y => yearMap[y].primary);
+      const dataSecondary = years.map(y => yearMap[y].secondary);
+      const dataBase = years.map(y => yearMap[y].base);
+      const dataRest = years.map(y => yearMap[y].rest);
+
+      positionTrendChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: years,
+          datasets: [
+            {
+              label: tPrimary === 1 ? 'P1 Finishes (#1)' : `Top ${tPrimary}`,
+              data: dataPrimary,
+              backgroundColor: '#f59e0b'
+            },
+            {
+              label: `Top ${tSecondary}`,
+              data: dataSecondary,
+              backgroundColor: '#10b981'
+            },
+            {
+              label: `Top ${tBase}`,
+              data: dataBase,
+              backgroundColor: '#38bdf8'
+            },
+            {
+              label: 'Other Finishes',
+              data: dataRest,
+              backgroundColor: '#475569'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: true,
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              stacked: true,
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#cbd5e1', font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderPositionFrequencyTable() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+      const sortMode = document.getElementById('posFreqSort').value;
+
+      const filtered = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      const totalRuns = filtered.length;
+      const posCounts = {};
+
+      filtered.forEach(r => {
+        if (r.position !== null) {
+          posCounts[r.position] = (posCounts[r.position] || 0) + 1;
+        }
+      });
+
+      let freqList = Object.entries(posCounts).map(([pos, count]) => ({
+        pos: parseInt(pos, 10),
+        count: count,
+        pct: totalRuns > 0 ? ((count / totalRuns) * 100).toFixed(1) : '0'
+      }));
+
+      if (sortMode === 'pos') {
+        freqList.sort((a, b) => a.pos - b.pos);
+      } else {
+        freqList.sort((a, b) => b.count - a.count || a.pos - b.pos);
+      }
+
+      const tbody = document.getElementById('posFreqTableBody');
+      tbody.innerHTML = '';
+
+      freqList.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-slate-400 font-sans font-semibold">${idx + 1}</td>
+          <td class="py-2.5 px-3 font-bold text-amber-400">Position #${item.pos}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-slate-100">${item.count}</td>
+          <td class="py-2.5 px-3 text-right text-emerald-400">${item.pct}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (freqList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500 font-sans">No position data available.</td></tr>`;
+      }
+    }
+
+    function renderAnnualPositionTable(filteredRuns, tPrimary, tSecondary, tBase) {
+      const yearMap = {};
+
+      filteredRuns.forEach(r => {
+        if (!yearMap[r.year]) {
+          yearMap[r.year] = { runs: [], positions: [], p1: 0, top3: 0, top10: 0 };
+        }
+        yearMap[r.year].runs.push(r);
+        if (r.position !== null) {
+          yearMap[r.year].positions.push(r.position);
+          if (r.position <= tPrimary) yearMap[r.year].p1++;
+          if (r.position <= tSecondary) yearMap[r.year].top3++;
+          if (r.position <= tBase) yearMap[r.year].top10++;
+        }
+      });
+
+      const yearsDescending = Object.keys(yearMap).sort((a, b) => b - a);
+      const tbody = document.getElementById('posAnnualTableBody');
+      tbody.innerHTML = '';
+
+      yearsDescending.forEach(year => {
+        const data = yearMap[year];
+        const totalYearRuns = data.runs.length;
+        const bestPos = data.positions.length > 0 ? Math.min(...data.positions) : '-';
+        const medianPos = calculateMedian(data.positions);
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-bold text-slate-200">${year}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-slate-100">${totalYearRuns}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${data.p1}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-emerald-400">${data.top3}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400">${data.top10}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-purple-300">${bestPos !== '-' ? '#' + bestPos : '-'}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-indigo-300">${medianPos !== '-' ? '#' + medianPos : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (yearsDescending.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500 font-sans">No records found.</td></tr>`;
+      }
+    }
+
+    function renderLeaderboardHub() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+      const category = document.getElementById('leadCategory').value;
+      const monthSelectContainer = document.getElementById('leadMonthContainer');
+
+      if (category === 'month') {
+        monthSelectContainer.classList.remove('hidden');
+      } else {
+        monthSelectContainer.classList.add('hidden');
+      }
+
+      const filtered = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      let sortedList = [...filtered];
+
+      if (category === 'fastest') {
+        sortedList.sort((a, b) => a.timeSeconds - b.timeSeconds);
+      } else if (category === 'ageGrade') {
+        sortedList.sort((a, b) => (b.ageGrade || 0) - (a.ageGrade || 0));
+      } else if (category === 'positions') {
+        sortedList = sortedList.filter(r => r.position !== null);
+        sortedList.sort((a, b) => a.position - b.position || a.timeSeconds - b.timeSeconds);
+      } else if (category === 'month') {
+        const targetMonth = parseInt(document.getElementById('leadMonthSelect').value, 10);
+        sortedList = sortedList.filter(r => r.month === targetMonth);
+        sortedList.sort((a, b) => a.timeSeconds - b.timeSeconds);
+      }
+
+      const top10 = sortedList.slice(0, 10);
+      const tbody = document.getElementById('leaderboardTableBody');
+      tbody.innerHTML = '';
+
+      top10.forEach((run, idx) => {
+        const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-sans font-bold text-center ${idx < 3 ? 'text-amber-400 text-base' : 'text-slate-400'}">${rankBadge}</td>
+          <td class="py-3 px-4 text-slate-200 font-semibold">${run.rawDateStr}</td>
+          <td class="py-3 px-4 text-slate-100 font-sans">${run.venue}</td>
+          <td class="py-3 px-4 text-right font-bold text-amber-400">${run.timeStr}</td>
+          <td class="py-3 px-4 text-right text-sky-400 font-bold">${run.ageGrade ? run.ageGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-3 px-4 text-right text-purple-300 font-bold">${run.position ? '#' + run.position : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (top10.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500 font-sans">No leaderboard entries match the selected filters.</td></tr>`;
+      }
+    }
+
+    function renderTrendsAndSeasonality() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedVenue = document.getElementById('filterVenue').value;
+
+      const filtered = globalRuns.filter(r => {
+        const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
+        const matchVenue = (selectedVenue === 'ALL' || r.venue === selectedVenue);
+        return matchYear && matchVenue;
+      });
+
+      renderSeasonal4Breakdown(filtered);
+      renderSecondBingoGrid(filtered);
+      renderMinuteHistogram(filtered);
+      renderMonthlyPaceChart(filtered);
+      renderYoyMatrix(filtered);
+    }
+
+    function renderSeasonal4Breakdown(runs) {
+      const aggMode = document.getElementById('trendAggFilter').value;
+
+      const getSeasonRuns = (months) => {
+        let seasonList = [];
+        months.forEach(m => {
+          let mRuns = runs.filter(r => r.month === m);
+          mRuns.sort((a, b) => a.timeSeconds - b.timeSeconds);
+          if (aggMode === 'TOP1') mRuns = mRuns.slice(0, 1);
+          else if (aggMode === 'TOP3') mRuns = mRuns.slice(0, 3);
+          else if (aggMode === 'TOP5') mRuns = mRuns.slice(0, 5);
+          seasonList.push(...mRuns);
+        });
+        return seasonList;
+      };
+
+      const winter = getSeasonRuns([11, 0, 1]);
+      const spring = getSeasonRuns([2, 3, 4]);
+      const summer = getSeasonRuns([5, 6, 7]);
+      const autumn = getSeasonRuns([8, 9, 10]);
+
+      const updateSeasonCard = (paceId, gradeId, seasonRuns) => {
+        if (seasonRuns.length === 0) {
+          document.getElementById(paceId).innerText = '-';
+          document.getElementById(gradeId).innerText = 'No runs';
+          return;
+        }
+        const avgSecs = seasonRuns.reduce((a, b) => a + b.timeSeconds, 0) / seasonRuns.length;
+        const validGrades = seasonRuns.map(r => r.ageGrade).filter(g => g);
+        const avgGrade = validGrades.length > 0 ? validGrades.reduce((a, b) => a + b, 0) / validGrades.length : 0;
+
+        document.getElementById(paceId).innerText = formatSecondsToTime(avgSecs);
+        document.getElementById(gradeId).innerText = `Avg Age Grade: ${avgGrade ? avgGrade.toFixed(2) + '%' : '-'}`;
+      };
+
+      updateSeasonCard('seasonWinterPace', 'seasonWinterGrade', winter);
+      updateSeasonCard('seasonSpringPace', 'seasonSpringGrade', spring);
+      updateSeasonCard('seasonSummerPace', 'seasonSummerGrade', summer);
+      updateSeasonCard('seasonAutumnPace', 'seasonAutumnGrade', autumn);
+    }
+
+    function renderSecondBingoGrid(runs) {
+      const secondsCollected = {};
+      for (let i = 0; i < 60; i++) secondsCollected[i] = [];
+
+      runs.forEach(r => {
+        if (r.timeSeconds !== null) {
+          const sec = r.timeSeconds % 60;
+          secondsCollected[sec].push(r);
+        }
+      });
+
+      let countAchieved = 0;
+      for (let i = 0; i < 60; i++) {
+        if (secondsCollected[i].length > 0) countAchieved++;
+      }
+
+      document.getElementById('bingoScore').innerText = `${countAchieved} / 60`;
+      const grid = document.getElementById('bingoGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < 60; i++) {
+        const secLabel = i < 10 ? `0${i}` : `${i}`;
+        const count = secondsCollected[i].length;
+        const hasAchieved = count > 0;
+
+        const cell = document.createElement('div');
+        if (hasAchieved) {
+          cell.className = 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 rounded-lg p-2 text-center transition hover:bg-emerald-500/40 hover:scale-105 cursor-pointer select-none';
+          cell.title = `Click to view ${count} run(s) ending in :${secLabel}`;
+          cell.addEventListener('click', () => openBingoModal(i, secondsCollected[i]));
+        } else {
+          cell.className = 'bg-slate-900/60 border border-slate-800 text-slate-600 rounded-lg p-2 text-center select-none opacity-60';
+          cell.title = `:${secLabel} not yet collected.`;
+        }
+
+        cell.innerHTML = `
+          <p class="text-xs font-mono font-bold">:${secLabel}</p>
+          <p class="text-[10px] ${hasAchieved ? 'text-emerald-400 font-extrabold' : 'text-slate-600'} mt-0.5">${count}x</p>
+        `;
+        grid.appendChild(cell);
+      }
+    }
+
+    function openBingoModal(secondMark, matchingRuns) {
+      const modal = document.getElementById('bingoModal');
+      const secLabel = secondMark < 10 ? `0${secondMark}` : `${secondMark}`;
+      
+      document.getElementById('bingoModalTitle').innerText = `⏱️ Second Mark :${secLabel} Collector`;
+      document.getElementById('bingoModalSub').innerText = `${matchingRuns.length} parkrun finish time(s) ended in :${secLabel}`;
+
+      const tbody = document.getElementById('bingoModalTableBody');
+      tbody.innerHTML = '';
+
+      const sorted = [...matchingRuns].sort((a, b) => b.date - a.date);
+
+      sorted.forEach(run => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-slate-200 font-semibold">${run.rawDateStr}</td>
+          <td class="py-2.5 px-3 font-sans text-slate-100">${run.venue}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${run.timeStr}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400">${run.ageGrade ? run.ageGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-purple-300 font-bold">${run.position ? '#' + run.position : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeBingoModal() {
+      document.getElementById('bingoModal').classList.add('hidden');
+    }
+
+    function renderMinuteHistogram(runs) {
+      const ctx = document.getElementById('minuteHistogramChart').getContext('2d');
+
+      if (minuteHistogramChartInstance) {
+        minuteHistogramChartInstance.destroy();
+      }
+
+      const minuteCounts = {};
+      runs.forEach(r => {
+        if (r.timeSeconds) {
+          const mins = Math.floor(r.timeSeconds / 60);
+          minuteCounts[mins] = (minuteCounts[mins] || 0) + 1;
+        }
+      });
+
+      const minutes = Object.keys(minuteCounts).map(Number).sort((a, b) => a - b);
+      const labels = minutes.map(m => `${m}m (${m}:00–${m}:59)`);
+      const counts = minutes.map(m => minuteCounts[m]);
+
+      minuteHistogramChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Runs Count',
+            data: counts,
+            backgroundColor: '#38bdf8',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+            y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+
+      const totalRuns = runs.length;
+      const tbody = document.getElementById('minuteFreqTableBody');
+      tbody.innerHTML = '';
+
+      minutes.forEach(m => {
+        const cnt = minuteCounts[m];
+        const pct = totalRuns > 0 ? ((cnt / totalRuns) * 100).toFixed(1) : '0';
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2 px-3 font-sans font-bold text-amber-400">${m} min (${m}:00–${m}:59)</td>
+          <td class="py-2 px-3 text-right font-bold text-slate-100">${cnt}</td>
+          <td class="py-2 px-3 text-right text-emerald-400">${pct}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (minutes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500 font-sans">No runs recorded.</td></tr>`;
+      }
+    }
+
+    function renderMonthlyPaceChart(runs) {
+      const aggMode = document.getElementById('trendAggFilter').value;
+      const ctx = document.getElementById('monthlyChart').getContext('2d');
+
+      if (monthlyChartInstance) {
+        monthlyChartInstance.destroy();
+      }
+
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const avgTimeSeconds = [];
+      const avgGrades = [];
+
+      for (let m = 0; m < 12; m++) {
+        let mRuns = runs.filter(r => r.month === m);
+        if (mRuns.length > 0) {
+          mRuns.sort((a, b) => a.timeSeconds - b.timeSeconds);
+          if (aggMode === 'TOP1') mRuns = mRuns.slice(0, 1);
+          else if (aggMode === 'TOP3') mRuns = mRuns.slice(0, 3);
+          else if (aggMode === 'TOP5') mRuns = mRuns.slice(0, 5);
+
+          const sumTime = mRuns.reduce((a, b) => a + b.timeSeconds, 0);
+          avgTimeSeconds.push(sumTime / mRuns.length);
+
+          const validGrades = mRuns.map(r => r.ageGrade).filter(g => g !== null && !isNaN(g));
+          if (validGrades.length > 0) {
+            avgGrades.push(validGrades.reduce((a, b) => a + b, 0) / validGrades.length);
+          } else {
+            avgGrades.push(null);
+          }
+        } else {
+          avgTimeSeconds.push(null);
+          avgGrades.push(null);
+        }
+      }
+
+      monthlyChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: monthNames,
+          datasets: [
+            {
+              label: 'Avg Finish Time',
+              data: avgTimeSeconds,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              yAxisID: 'y',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: 'Avg Age Grade (%)',
+              data: avgGrades,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              yAxisID: 'y1',
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
+            y: {
+              reverse: true,
+              title: { display: true, text: 'Finish Time (MM:SS)', color: '#f59e0b' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: {
+                color: '#94a3b8',
+                callback: function(value) {
+                  return formatSecondsToTime(value);
+                }
+              }
+            },
+            y1: {
+              position: 'right',
+              title: { display: true, text: 'Age Grade (%)', color: '#38bdf8' },
+              grid: { drawOnChartArea: false },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  if (context.datasetIndex === 0) {
+                    return `Avg Time: ${formatSecondsToTime(context.raw)}`;
+                  }
+                  return `Avg Age Grade: ${context.raw ? context.raw.toFixed(2) + '%' : '-'}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderYoyMatrix(runs) {
+      const yearMap = {};
+
+      runs.forEach(r => {
+        if (!yearMap[r.year]) {
+          yearMap[r.year] = { runs: [], times: [], grades: [], venues: new Set() };
+        }
+        yearMap[r.year].runs.push(r);
+        yearMap[r.year].times.push(r.timeSeconds);
+        if (r.ageGrade) yearMap[r.year].grades.push(r.ageGrade);
+        yearMap[r.year].venues.add(r.venue);
+      });
+
+      const sortedYears = Object.keys(yearMap).sort((a, b) => b - a);
+      const tbody = document.getElementById('yoyTableBody');
+      tbody.innerHTML = '';
+
+      sortedYears.forEach(year => {
+        const data = yearMap[year];
+        const eventCount = data.runs.length;
+        const distKm = eventCount * 5;
+
+        let pbCount = 0;
+        let runningBest = 999999;
+        const chronologicalAll = [...globalRuns].sort((a, b) => a.date - b.date);
+        chronologicalAll.forEach(r => {
+          if (r.timeSeconds < runningBest) {
+            if (runningBest < 999999 && r.year.toString() === year) pbCount++;
+            runningBest = r.timeSeconds;
+          }
+        });
+
+        const fastestTime = Math.min(...data.times);
+        const highestGrade = data.grades.length > 0 ? Math.max(...data.grades) : 0;
+        const avgTime = data.times.reduce((a, b) => a + b, 0) / eventCount;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-bold text-slate-100">${year}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-slate-200">${eventCount}</td>
+          <td class="py-2.5 px-3 text-right text-emerald-400 font-bold">${distKm} km</td>
+          <td class="py-2.5 px-3 text-right text-amber-400 font-bold">${pbCount}</td>
+          <td class="py-2.5 px-3 text-right text-amber-300 font-bold">${formatSecondsToTime(fastestTime)}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400">${highestGrade ? highestGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-purple-400">${data.venues.size}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${formatSecondsToTime(avgTime)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (sortedYears.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-slate-500 font-sans">No records found.</td></tr>`;
+      }
+    }
+
+    function renderVenueDeepDive() {
+      const selectedVenue = document.getElementById('venueDeepSelect').value;
+      if (!selectedVenue) return;
+
+      const venueRuns = globalRuns.filter(r => r.venue === selectedVenue);
+      if (venueRuns.length === 0) return;
+
+      const visits = venueRuns.length;
+      const firstDate = venueRuns[0].rawDateStr;
+      const lastDate = venueRuns[venueRuns.length - 1].rawDateStr;
+
+      let bestTimeRun = venueRuns[0];
+      let worstTimeRun = venueRuns[0];
+      let bestGradeRun = venueRuns[0];
+      let sumSeconds = 0;
+
+      venueRuns.forEach(run => {
+        if (run.timeSeconds < bestTimeRun.timeSeconds) bestTimeRun = run;
+        if (run.timeSeconds > worstTimeRun.timeSeconds) worstTimeRun = run;
+        if (run.ageGrade && run.ageGrade > (bestGradeRun.ageGrade || 0)) bestGradeRun = run;
+        sumSeconds += run.timeSeconds;
+      });
+
+      const avgSeconds = sumSeconds / visits;
+      const spreadSeconds = worstTimeRun.timeSeconds - bestTimeRun.timeSeconds;
+
+      document.getElementById('vdStatVisits').innerText = visits;
+      document.getElementById('vdStatSpan').innerText = `${firstDate} to ${lastDate}`;
+      document.getElementById('vdStatBestTime').innerText = formatSecondsToTime(bestTimeRun.timeSeconds);
+      document.getElementById('vdStatBestTimeDate').innerText = `Achieved on ${bestTimeRun.rawDateStr}`;
+      document.getElementById('vdStatBestGrade').innerText = bestGradeRun.ageGrade ? `${bestGradeRun.ageGrade.toFixed(2)}%` : '-';
+      document.getElementById('vdStatBestGradeDate').innerText = `Achieved on ${bestGradeRun.rawDateStr}`;
+      document.getElementById('vdStatSpread').innerText = formatSecondsToTime(spreadSeconds);
+      document.getElementById('vdStatAverage').innerText = `Average: ${formatSecondsToTime(avgSeconds)}`;
+
+      const latestOverallRun = globalRuns[globalRuns.length - 1];
+      if (latestOverallRun && latestOverallRun.ageGrade && bestGradeRun.ageGrade) {
+        const currentFactor = latestOverallRun.timeSeconds * (latestOverallRun.ageGrade / 100);
+        const targetSecondsExact = currentFactor / (bestGradeRun.ageGrade / 100);
+        const targetSecondsMinusOne = targetSecondsExact - 1;
+
+        document.getElementById('vdTargetTime').innerText = formatSecondsToTime(targetSecondsMinusOne);
+        document.getElementById('vdTargetSub').innerText = `Target to beat current venue age grade record of ${bestGradeRun.ageGrade.toFixed(2)}%`;
+      } else {
+        document.getElementById('vdTargetTime').innerText = '-';
+        document.getElementById('vdTargetSub').innerText = 'Insufficient age grade data';
+      }
+
+      renderVenueScatterChart(venueRuns);
+      renderVenueBreakthroughTable(venueRuns);
+    }
+
+    function renderVenueScatterChart(venueRuns) {
+      const ctx = document.getElementById('venueScatterChart').getContext('2d');
+
+      if (venueChartInstance) {
+        venueChartInstance.destroy();
+      }
+
+      const chartPoints = venueRuns.map(d => ({
+        x: d.date,
+        y: d.timeSeconds / 60,
+        timeStr: d.timeStr,
+        dateStr: d.rawDateStr,
+        pos: d.position
+      }));
+
+      venueChartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Finish Time',
+            data: chartPoints,
+            backgroundColor: '#38bdf8',
+            borderColor: '#0284c7',
+            pointRadius: 5,
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'month' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              reverse: true,
+              title: { display: true, text: 'Time (Minutes)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const pt = context.raw;
+                  const posText = pt.pos ? ` | Pos: #${pt.pos}` : '';
+                  return `${pt.timeStr} (${pt.dateStr})${posText}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderVenueBreakthroughTable(venueRuns) {
+      const tbody = document.getElementById('venuePbTableBody');
+      tbody.innerHTML = '';
+
+      let currentVenueSpeedPb = 999999;
+      let currentVenueGradePb = 0;
+
+      venueRuns.forEach(run => {
+        const isSpeedPb = run.timeSeconds < currentVenueSpeedPb;
+        const isGradePb = run.ageGrade && run.ageGrade > currentVenueGradePb;
+
+        if (isSpeedPb) currentVenueSpeedPb = run.timeSeconds;
+        if (isGradePb) currentVenueGradePb = run.ageGrade;
+
+        if (isSpeedPb || isGradePb) {
+          let markerText = '';
+          if (isSpeedPb && isGradePb) markerText = '★ VENUE SPEED & AGE GRADE PB ★';
+          else if (isSpeedPb) markerText = '★ VENUE SPEED PB ★';
+          else if (isGradePb) markerText = '★ VENUE AGE GRADE PB ★';
+
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/60 transition';
+          tr.innerHTML = `
+            <td class="py-3 px-4 font-semibold text-slate-200">${run.rawDateStr}</td>
+            <td class="py-3 px-4 font-mono font-bold text-amber-400">${run.timeStr}</td>
+            <td class="py-3 px-4 font-mono text-sky-400">${run.ageGrade ? run.ageGrade.toFixed(2) + '%' : '-'}</td>
+            <td class="py-3 px-4 font-mono text-slate-300">${run.position ? '#' + run.position : '-'}</td>
+            <td class="py-3 px-4 font-bold text-xs text-emerald-400 tracking-wide">${markerText}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      });
+
+      if (tbody.children.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500 font-sans">No breakthrough records logged at this venue.</td></tr>`;
+      }
+    }
+  </script>
+</body>
+</html>

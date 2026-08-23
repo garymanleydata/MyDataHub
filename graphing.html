@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>parkrun Progression Visualiser</title>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --panel-bg: #161b22;
+      --panel-border: #30363d;
+      --accent-color: #2ea043;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .app-layout {
+      display: flex;
+      gap: 24px;
+      max-width: 1350px;
+      width: 100%;
+    }
+
+    .input-panel {
+      flex: 1;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      padding: 24px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .display-panel {
+      flex: 1.4;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      padding: 24px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h2, h3, h4 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .instruction-step {
+      background-color: #090d11;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .instruction-step strong {
+      color: var(--text-main);
+    }
+
+    .code-box-wrapper {
+      position: relative;
+      margin-top: 8px;
+    }
+
+    .bookmarklet-code {
+      width: 100%;
+      height: 40px;
+      background-color: #161b22;
+      color: #7ee787;
+      font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+      font-size: 11px;
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 8px 60px 8px 8px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow-x: auto;
+      resize: none;
+    }
+
+    .btn-copy {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      background-color: #21262d;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-copy:hover {
+      background-color: #30363d;
+    }
+
+    textarea.json-box {
+      width: 100%;
+      height: 180px;
+      background-color: #090d11;
+      color: #7ee787;
+      font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+      font-size: 12px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px;
+      box-sizing: border-box;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea.json-box:focus {
+      border-color: #58a6ff;
+    }
+
+    canvas {
+      background-color: #090d11;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+      width: 100%;
+      max-width: 750px;
+      height: 450px;
+    }
+
+    .controls-bar {
+      margin-top: 20px;
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    select {
+      background-color: #21262d;
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    button {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.secondary {
+      background-color: #21262d;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+    }
+
+    button.secondary:hover {
+      background-color: #30363d;
+    }
+
+    .error-msg {
+      color: #f85149;
+      font-size: 13px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- Left Side: Instructions & Input -->
+  <div class="input-panel">
+    <h3>Instructions &amp; Data Scraper</h3>
+
+    <div class="instruction-step">
+      <strong>1. Open Your parkrun History Page</strong><br>
+      Navigate to your official parkrun results history page in your browser (e.g. <code>/parkrunner/XXXXXX/all/</code>).
+    </div>
+
+    <div class="instruction-step">
+      <strong>2. Install the Bookmarklet</strong><br>
+      Show your browser bookmarks bar (<code>Ctrl+Shift+B</code> on Win/Linux or <code>Cmd+Shift+B</code> on Mac). Right-click the bar and select <em>Add page...</em> or <em>Add bookmark...</em> Name it <strong>"Scrape Runs"</strong> and paste the JavaScript below as the URL/Location:
+
+      <div class="code-box-wrapper">
+        <textarea id="bookmarkletCode" class="bookmarklet-code" readonly>javascript:(function(){const rows=document.querySelectorAll('table tbody tr');if(!rows.length){alert('No parkrun table found on this page!');return;}const data=Array.from(rows).map(row=>{const cells=row.querySelectorAll('td');if(cells.length<6)return null;return{event:cells[0]?.innerText.trim(),date:cells[1]?.innerText.trim(),runNumber:cells[2]?.innerText.trim(),position:cells[3]?.innerText.trim(),time:cells[4]?.innerText.trim(),ageGrade:cells[5]?.innerText.trim()};}).filter(Boolean);const jsonString=JSON.stringify(data,null,2);console.log('Parsed parkrun Data:',data);navigator.clipboard.writeText(jsonString).then(()=>{alert(`Successfully scraped ${data.length} runs!\n\nThe parsed JSON has been copied to your clipboard.`);}).catch(err=>{alert(`Scraped ${data.length} runs, but clipboard access failed. Check your browser console!`);});})();</textarea>
+        <button id="btnCopyCode" class="btn-copy">Copy Code</button>
+      </div>
+    </div>
+
+    <div class="instruction-step">
+      <strong>3. Scrape &amp; Paste Below</strong><br>
+      While on your parkrun results page, click the <strong>Scrape Runs</strong> bookmarklet. Return here and paste the copied JSON into the text box below, then click <strong>Load Dataset</strong>.
+    </div>
+
+    <div>
+      <h4>Run Results Data (JSON)</h4>
+      <textarea id="jsonInput" class="json-box" placeholder="Paste your JSON array here..."></textarea>
+      <div id="errorMsg" class="error-msg">Invalid JSON format</div>
+      <div class="controls-bar" style="margin-top: 10px;">
+        <button id="btnLoad" class="secondary" style="width: 100%;">Load Dataset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Interactive Display -->
+  <div class="display-panel">
+    <h2>parkrun Progression Visualiser</h2>
+    <canvas id="stage" width="1500" height="900"></canvas>
+    
+    <div class="controls-bar">
+      <div class="control-group">
+        <label for="metricSelect">Metric:</label>
+        <select id="metricSelect">
+          <option value="time" selected>Finish Time</option>
+          <option value="position">Finish Position</option>
+          <option value="ageGrade">Age Grade (%)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="themeSelect">Theme:</label>
+        <select id="themeSelect">
+          <option value="parkrunGreen" selected>parkrun Green</option>
+          <option value="electricCyan">Electric Cyan</option>
+          <option value="sunsetAmber">Sunset Amber</option>
+          <option value="classicLight">Classic Light</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="speedSelect">Speed:</label>
+        <select id="speedSelect">
+          <option value="0.25">0.25x (Very Slow)</option>
+          <option value="0.5">0.5x (Slow)</option>
+          <option value="1" selected>1.0x (Normal)</option>
+          <option value="2">2.0x (Fast)</option>
+          <option value="4">4.0x (Very Fast)</option>
+        </select>
+      </div>
+
+      <button id="btnPlay">Play Animation</button>
+      <button id="btnRecord" class="secondary">Record HD Video</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const themes = {
+  parkrunGreen: {
+    bg: '#090d11',
+    grid: '#21262d',
+    axis: '#30363d',
+    line: '#2ea043',
+    fillStart: 'rgba(46, 160, 67, 0.45)',
+    fillEnd: 'rgba(46, 160, 67, 0.02)',
+    text: '#f0f6fc',
+    textMuted: '#8b949e',
+    pbLine: '#58a6ff',
+    milestone: '#d29922'
+  },
+  electricCyan: {
+    bg: '#0b0f19',
+    grid: '#1b2438',
+    axis: '#2d3b59',
+    line: '#00f2fe',
+    fillStart: 'rgba(0, 242, 254, 0.45)',
+    fillEnd: 'rgba(0, 242, 254, 0.02)',
+    text: '#ffffff',
+    textMuted: '#7d8da6',
+    pbLine: '#ff007f',
+    milestone: '#ffb703'
+  },
+  sunsetAmber: {
+    bg: '#140e17',
+    grid: '#2a1b2e',
+    axis: '#422a48',
+    line: '#ff7b00',
+    fillStart: 'rgba(255, 123, 0, 0.45)',
+    fillEnd: 'rgba(255, 123, 0, 0.02)',
+    text: '#f3e8f4',
+    textMuted: '#9e85a3',
+    pbLine: '#00e5ff',
+    milestone: '#e0aaff'
+  },
+  classicLight: {
+    bg: '#ffffff',
+    grid: '#e1e4e8',
+    axis: '#d1d5da',
+    line: '#0366d6',
+    fillStart: 'rgba(3, 102, 214, 0.35)',
+    fillEnd: 'rgba(3, 102, 214, 0.02)',
+    text: '#24292e',
+    textMuted: '#586069',
+    pbLine: '#28a745',
+    milestone: '#b08800'
+  }
+};
+
+const defaultJSON = [
+  { "event": "Abbot’s Wood", "date": "25/07/2026", "runNumber": "12", "position": "2", "time": "19:43", "ageGrade": "68.72%" },
+  { "event": "Abbot’s Wood", "date": "01/08/2026", "runNumber": "13", "position": "3", "time": "19:05", "ageGrade": "71.00%" },
+  { "event": "Abbot’s Wood", "date": "08/08/2026", "runNumber": "14", "position": "1", "time": "18:36", "ageGrade": "72.85%" }
+];
+
+document.getElementById('jsonInput').value = JSON.stringify(defaultJSON, null, 2);
+
+let dataset = [];
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+
+const scale = 2;
+const margin = { top: 130 * scale, right: 80 * scale, bottom: 150 * scale, left: 100 * scale };
+const plotWidth = canvas.width - margin.left - margin.right;
+const plotHeight = canvas.height - margin.top - margin.bottom;
+
+let minX = 0;
+let maxX = 100;
+
+function getActiveTheme() {
+  return themes[document.getElementById('themeSelect').value] || themes.parkrunGreen;
+}
+
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':').map(Number);
+  if (parts.length === 3) {
+    return (parts[0] * 60) + parts[1] + (parts[2] / 60);
+  } else if (parts.length === 2) {
+    return parts[0] + (parts[1] / 60);
+  }
+  return parts[0] || 0;
+}
+
+function formatMinutesToTime(decimalMin) {
+  const totalSeconds = Math.round(decimalMin * 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
+  if (h > 0) {
+    return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function getActiveMetricKey() {
+  return document.getElementById('metricSelect').value;
+}
+
+function getMetricValue(item, metricKey) {
+  if (metricKey === 'time') return item.minutes;
+  if (metricKey === 'position') return parseInt(item.position, 10);
+  if (metricKey === 'ageGrade') return parseFloat(item.ageGrade.replace('%', ''));
+  return 0;
+}
+
+function formatValueForAxis(val, metricKey) {
+  if (metricKey === 'time') return formatMinutesToTime(val);
+  if (metricKey === 'position') return `#${Math.round(val)}`;
+  if (metricKey === 'ageGrade') return `${val.toFixed(1)}%`;
+  return val;
+}
+
+function formatValueForHeader(item, metricKey) {
+  if (metricKey === 'time') return item.time;
+  if (metricKey === 'position') return `Pos: #${item.position}`;
+  if (metricKey === 'ageGrade') return `Age Grade: ${item.ageGrade}`;
+  return '';
+}
+
+function getMetricAxisTitle(metricKey) {
+  if (metricKey === 'time') return 'Finish Time (mins)';
+  if (metricKey === 'position') return 'Finish Position';
+  if (metricKey === 'ageGrade') return 'Age Grade (%)';
+  return '';
+}
+
+function updateAxisBounds() {
+  if (dataset.length === 0) return;
+
+  const metricKey = getActiveMetricKey();
+  const values = dataset.map(d => getMetricValue(d, metricKey)).filter(v => !isNaN(v));
+  if (values.length === 0) return;
+
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const range = maxVal - minVal;
+
+  if (metricKey === 'time') {
+    minX = Math.max(10, minVal - 1.0);
+    maxX = maxVal + 1.0;
+  } else if (metricKey === 'position') {
+    minX = Math.max(1, Math.floor(minVal - Math.max(1, range * 0.1)));
+    maxX = Math.ceil(maxVal + Math.max(1, range * 0.1));
+  } else if (metricKey === 'ageGrade') {
+    minX = Math.max(0, Math.floor(minVal - Math.max(1, range * 0.1)));
+    maxX = Math.min(100, Math.ceil(maxVal + Math.max(1, range * 0.1)));
+  }
+}
+
+function processJSON(jsonArray) {
+  dataset = jsonArray
+    .map(item => ({
+      ...item,
+      minutes: parseTimeToMinutes(item.time),
+      timestamp: new Date(item.date.split('/').reverse().join('-')).getTime()
+    }))
+    .filter(item => !isNaN(item.minutes))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  updateAxisBounds();
+  drawFrame([], null);
+}
+
+function xToPixel(x) {
+  return margin.left + ((x - minX) / (maxX - minX)) * plotWidth;
+}
+
+function kernelDensityEstimator(kernel, xPoints) {
+  return function(sample) {
+    return xPoints.map(x => [x, d3_mean(sample, v => kernel(x - v))]);
+  };
+}
+
+function epanechnikovKernel(scale) {
+  return function(u) {
+    u /= scale;
+    return Math.abs(u) <= 1 ? (0.75 * (1 - u * u)) / scale : 0;
+  };
+}
+
+function d3_mean(array, f) {
+  let sum = 0;
+  if (array.length === 0) return 0;
+  for (let i = 0; i < array.length; i++) {
+    sum += f(array[i]);
+  }
+  return sum / array.length;
+}
+
+function isMilestone(runNum) {
+  const num = parseInt(runNum, 10);
+  return [25, 50, 100, 250, 500].includes(num);
+}
+
+function drawFrame(currentDataSlice, latestPoint) {
+  const theme = getActiveTheme();
+  ctx.fillStyle = theme.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const metricKey = getActiveMetricKey();
+  const totalRange = maxX - minX;
+
+  let tickInterval = 1.0;
+  if (metricKey === 'time') {
+    if (totalRange > 30) tickInterval = 5.0;
+    else if (totalRange > 15) tickInterval = 2.0;
+    else if (totalRange > 8) tickInterval = 1.0;
+    else tickInterval = 0.5;
+  } else if (metricKey === 'position') {
+    if (totalRange > 100) tickInterval = 20;
+    else if (totalRange > 50) tickInterval = 10;
+    else if (totalRange > 20) tickInterval = 5;
+    else if (totalRange > 10) tickInterval = 2;
+    else tickInterval = 1;
+  } else if (metricKey === 'ageGrade') {
+    if (totalRange > 20) tickInterval = 5.0;
+    else if (totalRange > 10) tickInterval = 2.0;
+    else tickInterval = 1.0;
+  }
+
+  // Grid Lines
+  ctx.strokeStyle = theme.grid;
+  ctx.lineWidth = 1.5 * scale;
+  const startTick = Math.ceil(minX / tickInterval) * tickInterval;
+  
+  for (let t = startTick; t <= maxX; t += tickInterval) {
+    const px = xToPixel(t);
+
+    ctx.beginPath();
+    ctx.moveTo(px, margin.top);
+    ctx.lineTo(px, canvas.height - margin.bottom);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(px, canvas.height - margin.bottom + (20 * scale));
+    ctx.rotate((45 * Math.PI) / 180);
+    ctx.fillStyle = theme.textMuted;
+    ctx.font = `${13 * scale}px -apple-system, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(formatValueForAxis(t, metricKey), 0, 0);
+    ctx.restore();
+  }
+
+  // Baseline X Axis
+  ctx.strokeStyle = theme.axis;
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, canvas.height - margin.bottom);
+  ctx.lineTo(canvas.width - margin.right, canvas.height - margin.bottom);
+  ctx.stroke();
+
+  // Axis Title
+  ctx.fillStyle = theme.textMuted;
+  ctx.font = `${13 * scale}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(getMetricAxisTitle(metricKey), canvas.width / 2, canvas.height - (20 * scale));
+
+  // Header Details
+  if (latestPoint) {
+    ctx.fillStyle = theme.text;
+    ctx.font = `600 ${22 * scale}px -apple-system, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`${latestPoint.event}`, margin.left, 50 * scale);
+
+    ctx.fillStyle = theme.textMuted;
+    ctx.font = `${16 * scale}px sans-serif`;
+    ctx.fillText(`Run #${latestPoint.runNumber} | Date: ${latestPoint.date}`, margin.left, 80 * scale);
+
+    ctx.fillStyle = theme.line;
+    ctx.font = `600 ${22 * scale}px -apple-system, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText(formatValueForHeader(latestPoint, metricKey), canvas.width - margin.right, 50 * scale);
+
+    if (currentDataSlice.length > 0) {
+      const vals = currentDataSlice.map(d => getMetricValue(d, metricKey)).filter(v => !isNaN(v));
+      const bestVal = (metricKey === 'ageGrade') ? Math.max(...vals) : Math.min(...vals);
+      const avgVal = vals.reduce((a, b) => a + b, 0) / vals.length;
+
+      let bestFormatted = formatValueForAxis(bestVal, metricKey);
+      let avgFormatted = formatValueForAxis(avgVal, metricKey);
+
+      ctx.fillStyle = theme.textMuted;
+      ctx.font = `${13 * scale}px sans-serif`;
+      ctx.fillText(`Runs: ${currentDataSlice.length}  |  PB to Date: ${bestFormatted}  |  Avg: ${avgFormatted}`, canvas.width - margin.right, 80 * scale);
+    }
+  }
+
+  if (currentDataSlice.length === 0) return;
+
+  // Distribution Curve Math
+  const samples = currentDataSlice.map(d => getMetricValue(d, metricKey)).filter(v => !isNaN(v));
+  const bandwidth = Math.max(0.4, totalRange * 0.03); 
+  const ticks = 200;
+  const xPoints = Array.from({ length: ticks }, (_, i) => minX + (i / (ticks - 1)) * (maxX - minX));
+  const kde = kernelDensityEstimator(epanechnikovKernel(bandwidth), xPoints);
+  const density = kde(samples);
+
+  const maxDensity = Math.max(...density.map(d => d[1])) || 1;
+
+  ctx.beginPath();
+  ctx.moveTo(xToPixel(minX), canvas.height - margin.bottom);
+
+  density.forEach(([x, y]) => {
+    const px = xToPixel(x);
+    const py = (canvas.height - margin.bottom) - (y / maxDensity) * plotHeight * 0.82;
+    ctx.lineTo(px, py);
+  });
+
+  ctx.lineTo(xToPixel(maxX), canvas.height - margin.bottom);
+  ctx.closePath();
+
+  // Fill Gradient
+  const gradient = ctx.createLinearGradient(0, margin.top, 0, canvas.height - margin.bottom);
+  gradient.addColorStop(0, theme.fillStart);
+  gradient.addColorStop(1, theme.fillEnd);
+
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  ctx.strokeStyle = theme.line;
+  ctx.lineWidth = 4 * scale;
+  ctx.stroke();
+
+  // PB Marker Line
+  const bestVal = (metricKey === 'ageGrade') ? Math.max(...samples) : Math.min(...samples);
+  const pbPx = xToPixel(bestVal);
+
+  ctx.save();
+  ctx.setLineDash([6 * scale, 6 * scale]);
+  ctx.strokeStyle = theme.pbLine;
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.moveTo(pbPx, margin.top + (20 * scale));
+  ctx.lineTo(pbPx, canvas.height - margin.bottom);
+  ctx.stroke();
+  ctx.restore();
+
+  // PB Label
+  ctx.fillStyle = theme.pbLine;
+  ctx.font = `600 ${11 * scale}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('PB TO DATE', pbPx, margin.top + (10 * scale));
+
+  // Data Points
+  currentDataSlice.forEach(d => {
+    const val = getMetricValue(d, metricKey);
+    if (isNaN(val)) return;
+
+    const px = xToPixel(val);
+    const isLatest = latestPoint && d === latestPoint;
+    const milestone = isMilestone(d.runNumber);
+
+    if (isLatest) {
+      ctx.beginPath();
+      ctx.arc(px, canvas.height - margin.bottom - (16 * scale), 14 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = theme.fillStart;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(px, canvas.height - margin.bottom - (16 * scale), 7 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = theme.line;
+      ctx.lineWidth = 3 * scale;
+      ctx.stroke();
+    } else if (milestone) {
+      ctx.beginPath();
+      ctx.arc(px, canvas.height - margin.bottom - (16 * scale), 6 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = theme.milestone;
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(px, canvas.height - margin.bottom - (16 * scale), 4.5 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = theme.line;
+      ctx.globalAlpha = 0.6;
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+  });
+}
+
+function getFrameDelay() {
+  const speed = parseFloat(document.getElementById('speedSelect').value) || 1.0;
+  return 800 / speed;
+}
+
+async function runAnimation(onComplete) {
+  for (let i = 0; i < dataset.length; i++) {
+    const slice = dataset.slice(0, i + 1);
+    drawFrame(slice, dataset[i]);
+    await new Promise(res => setTimeout(res, getFrameDelay())); 
+  }
+  if (onComplete) onComplete();
+}
+
+// Event Listeners
+document.getElementById('btnCopyCode').addEventListener('click', () => {
+  const codeBox = document.getElementById('bookmarkletCode');
+  navigator.clipboard.writeText(codeBox.value).then(() => {
+    const btn = document.getElementById('btnCopyCode');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+  });
+});
+
+document.getElementById('metricSelect').addEventListener('change', () => {
+  updateAxisBounds();
+  drawFrame(dataset, dataset[dataset.length - 1] || null);
+});
+
+document.getElementById('themeSelect').addEventListener('change', () => {
+  drawFrame(dataset, dataset[dataset.length - 1] || null);
+});
+
+document.getElementById('btnLoad').addEventListener('click', () => {
+  const errorEl = document.getElementById('errorMsg');
+  try {
+    const parsed = JSON.parse(document.getElementById('jsonInput').value);
+    errorEl.style.display = 'none';
+    processJSON(parsed);
+  } catch (err) {
+    errorEl.style.display = 'block';
+  }
+});
+
+document.getElementById('btnPlay').addEventListener('click', () => {
+  if (dataset.length > 0) runAnimation();
+});
+
+document.getElementById('btnRecord').addEventListener('click', () => {
+  if (dataset.length === 0) return;
+
+  const stream = canvas.captureStream(60);
+
+  let options = { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 };
+  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+    options = { mimeType: 'video/webm', videoBitsPerSecond: 8000000 };
+  }
+
+  const mediaRecorder = new MediaRecorder(stream, options);
+  const chunks = [];
+
+  mediaRecorder.ondataavailable = e => chunks.push(e.data);
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(chunks, { type: options.mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `parkrun-${getActiveMetricKey()}-progression.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  mediaRecorder.start();
+  runAnimation(() => {
+    setTimeout(() => mediaRecorder.stop(), 500);
+  });
+});
+
+processJSON(defaultJSON);
+</script>
+
+</body>
+</html>

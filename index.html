@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Data & Analytics Hub</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-green: #10b981;
+      --accent-blue: #38bdf8;
+      --accent-purple: #c084fc;
+      --accent-amber: #f59e0b;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    header {
+      margin-bottom: 3rem;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background-color: rgba(16, 185, 129, 0.1);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.75rem;
+      color: var(--text-main);
+    }
+
+    header p {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .category-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.75rem;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent-blue);
+      box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .tag-personal { color: var(--accent-blue); }
+    .tag-media { color: var(--accent-purple); }
+    .tag-event { color: var(--accent-green); }
+    .tag-training { color: var(--accent-amber); }
+
+    .card h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+      flex-grow: 1;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin-bottom: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+
+    .feature-list li {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .feature-list li::before {
+      content: "•";
+      color: var(--accent-blue);
+      font-weight: bold;
+      display: inline-block; 
+      width: 1em;
+      margin-left: -1em;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background-color: var(--bg-card-hover);
+      color: var(--text-main);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover {
+      background-color: var(--accent-blue);
+      color: #0f172a;
+      border-color: var(--accent-blue);
+    }
+
+    .info-section {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .info-section h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .info-section p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: auto;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-color);
+      width: 100%;
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 1.85rem; }
+      body { padding: 1.5rem 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <span class="badge">Web Applications & Data Tools</span>
+      <h1>Personal Analytics Suite</h1>
+      <p>A central hub of custom web visualisations, training tools, media trackers, and parkrun performance utilities.</p>
+    </header>
+
+    <main>
+      
+      <!-- CATEGORY 1: Running & Endurance -->
+      <h2 class="category-title">🏃 Running & Endurance Utilities</h2>
+      <div class="grid">
+        
+        <!-- Norwegian Singles Streamlit App -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-training">Training & Methodology</span>
+            <h2>Norwegian Singles Assistant</h2>
+            <p>Interactive tool to help runners calculate paces, configure workout structures, and analyse training volume using the Norwegian Singles methodology.</p>
+            <ul class="feature-list">
+              <li>Pace & sub-lactate zone configuration</li>
+              <li>Single & double threshold workout planning</li>
+              <li>Streamlit-powered interactive calculations</li>
+            </ul>
+          </div>
+          <a href="https://gary-manley-running.streamlit.app/" target="_blank" rel="noopener" class="btn">Launch Assistant &rarr;</a>
+        </article>
+
+        <!-- Detailed Personal parkrun Analysis (myParkrunBreakdown.html) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-personal">Individual Analytics</span>
+            <h2>Detailed Personal parkrun Analysis</h2>
+            <p>Comprehensive personal dashboard parsing finishing trends, age-grade trajectories, volunteering milestones, and benchmark historical performances.</p>
+            <ul class="feature-list">
+              <li>Pacing & age-graded performance curves</li>
+              <li>Volunteer ratio and milestone tracking</li>
+              <li>Interactive date and course filters</li>
+            </ul>
+          </div>
+          <a href="myParkrunBreakdown.html" class="btn">Launch Analyser &rarr;</a>
+        </article>
+
+        <!-- Multi-Course Telemetry Workbench (parkrunBreakdown.html) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-personal">Telemetry & Multi-Course</span>
+            <h2>Multi-Course Telemetry Workbench</h2>
+            <p>Advanced TCX/GPX comparative workbench featuring Minetti GAP modeling, "Perfect Time" ideal conditions estimation, and split Leaflet maps.</p>
+            <ul class="feature-list">
+              <li>Minetti GAP & uncapped elevation penalty</li>
+              <li>Open-Meteo auto-weather & surface drag</li>
+              <li>DuckDB WASM in-browser SQL engine</li>
+            </ul>
+          </div>
+          <a href="parkrunBreakdown.html" class="btn">Launch Workbench &rarr;</a>
+        </article>
+
+        <!-- Event History Analyser (EventAnalysis.html) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-event">Course & Event Level</span>
+            <h2>parkrun Event Analyser</h2>
+            <p>Deep-dive analytics for specific parkrun courses. Designed for analysing field sizes, course records, and finish distributions.</p>
+            <ul class="feature-list">
+              <li>Attendance & seasonal trend profiling</li>
+              <li>Finish time distribution curves</li>
+              <li>Latest event quick-metrics breakdown</li>
+            </ul>
+          </div>
+          <a href="EventAnalysis.html" class="btn">Launch Event Analyser &rarr;</a>
+        </article>
+
+        <!-- Video Graphing Engine (graphing.html) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-media">Visual Output</span>
+            <h2>parkrun Video & Graphing Engine</h2>
+            <p>Transform raw run history into dynamic, customisable animated visualisations and custom video overlays suitable for sharing or personal archives.</p>
+            <ul class="feature-list">
+              <li>Animated progression timelines</li>
+              <li>Customisable colour schemes & metrics</li>
+              <li>Export-ready browser rendering</li>
+            </ul>
+          </div>
+          <a href="graphing.html" class="btn">Launch Graphing Engine &rarr;</a>
+        </article>
+
+      </div>
+
+      <!-- CATEGORY 2: Media & Other Utilities -->
+      <h2 class="category-title">🎬 Media & Other Utilities</h2>
+      <div class="grid">
+        
+        <!-- Movies Catalogue (Movies.HTML) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-media">Media & Tracking</span>
+            <h2>Movies & Cinema Tracker</h2>
+            <p>Local video library cataloguing dashboard, episode tracking, watch history, film tier list, and metadata viewer.</p>
+            <ul class="feature-list">
+              <li>Local media catalogue & watch history</li>
+              <li>Viewing frequency & runtime analytics</li>
+              <li>Metadata inspection & tier lists</li>
+            </ul>
+          </div>
+          <a href="Movies.HTML" class="btn">Launch Movies Catalogue &rarr;</a>
+        </article>
+
+        <!-- Taskmaster Scoring Analytics (TaskmasterSite) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-media">Media & Analytics</span>
+            <h2>Taskmaster Scoring Analytics</h2>
+            <p>Comprehensive analytical utility and database for Taskmaster series scoring data, episode distributions, and contestant performance.</p>
+            <ul class="feature-list">
+              <li>Series & episode score distributions</li>
+              <li>Contestant benchmark comparisons</li>
+              <li>Interactive task performance filters</li>
+            </ul>
+          </div>
+          <a href="https://garymanleydata.github.io/TaskmasterSite/" target="_blank" rel="noopener" class="btn">Launch Taskmaster Analytics &rarr;</a>
+        </article>
+
+      </div>
+
+    </main>
+
+    <section class="info-section">
+      <h3>Data Handling & Architecture</h3>
+      <p>All client-side applications process data strictly within your browser environment. No personal data, uploaded backups, or local training parameters are transmitted to external tracking databases.</p>
+    </section>
+
+    <footer>
+      <p>Personal Analytics Suite • Custom Open-Source Utilities</p>
+    </footer>
+  </div>
+
+</body>
+</html>

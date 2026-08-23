@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="en_GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>parkrun Event Team Analytics &amp; Infographic Suite</title>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --panel-bg: #161b22;
+      --panel-border: #30363d;
+      --accent-color: #2ea043;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --male-color: #0284c7;
+      --female-color: #0d9488;
+      --junior-color: #f59e0b;
+      --vol-color: #e06666;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .header-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background-color: #21262d;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 10px 18px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background-color: var(--accent-color);
+      border-color: var(--accent-color);
+    }
+
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1f2937;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #4b5563; transition: .3s; border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+      background-color: white; transition: .3s; border-radius: 50%;
+    }
+
+    input:checked + .slider { background-color: var(--junior-color); }
+    input:checked + .slider:before { transform: translateX(22px); }
+
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    h2, h3, h4 {
+      margin-top: 0;
+      color: var(--text-main);
+    }
+
+    .instruction-step {
+      background-color: #090d11;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .instruction-step strong { color: var(--text-main); }
+
+    textarea.json-box {
+      width: 100%;
+      height: 100px;
+      background-color: #090d11;
+      color: #7ee787;
+      font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+      font-size: 12px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px;
+      box-sizing: border-box;
+      resize: vertical;
+      outline: none;
+    }
+
+    button.primary-btn {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button.primary-btn:hover { opacity: 0.9; }
+
+    button.secondary-btn {
+      background-color: #21262d;
+      border: 1px solid var(--panel-border);
+      color: #f85149;
+      padding: 10px 18px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button.secondary-btn:hover { background-color: #30363d; }
+
+    .cache-status { font-size: 12px; color: #22c55e; margin-left: 12px; display: none; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #090d11;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card .val {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--accent-color);
+      margin-top: 4px;
+    }
+
+    .stat-card .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .infographic-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+      background: #111827;
+      padding: 24px;
+      border-radius: 12px;
+    }
+
+    .tile { padding: 16px; border-radius: 8px; color: #ffffff; font-size: 13px; }
+    .tile-male { background-color: #d97706; }
+    .tile-female { background-color: #059669; }
+    .tile-purple { background-color: #4338ca; }
+
+    .tile h4 { text-align: center; margin-bottom: 12px; font-size: 15px; text-transform: uppercase; }
+
+    .tile-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+
+    canvas.chart-canvas {
+      background-color: #090d11;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+      width: 100%;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2col { grid-template-columns: 1fr; }
+      .infographic-grid { grid-template-columns: 1fr; }
+    }
+
+    .flex-row { display: flex; gap: 16px; align-items: center; }
+
+    .table-container { overflow-x: auto; margin-top: 16px; }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    table.data-table th, table.data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    table.data-table th {
+      background-color: #090d11;
+      color: var(--text-muted);
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    table.data-table th:hover { color: var(--text-main); }
+
+    table.data-table tr:hover { background-color: #21262d; }
+
+    input.search-bar, select.filter-select {
+      background-color: #090d11;
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      outline: none;
+      font-size: 13px;
+    }
+
+    .code-box {
+      width: 100%;
+      background-color: #090d11;
+      color: #38bdf8;
+      font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+      font-size: 11px;
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 8px;
+      box-sizing: border-box;
+      resize: none;
+      outline: none;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="header-nav">
+  <h2>parkrun Event Team Dashboard</h2>
+  
+  <div class="mode-toggle">
+    <span style="font-size: 13px; font-weight: 600;">Junior / Anonymous Mode</span>
+    <label class="switch">
+      <input type="checkbox" id="toggleAnonymous">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="tab-buttons">
+    <button id="btnTabHistory" class="tab-btn active">Event History Dashboard</button>
+    <button id="btnTabSingleGraphic" class="tab-btn">Single Event Infographic</button>
+    <button id="btnTabSingleInteractive" class="tab-btn">Single Event Dashboard</button>
+  </div>
+</div>
+
+<div class="main-container">
+
+  <!-- ==================== TAB 1: EVENT HISTORY DASHBOARD ==================== -->
+  <div id="tabHistory" class="tab-content">
+    <div class="panel">
+      <h3>1. Event History Data (JSON)</h3>
+      <div class="instruction-step">
+        <strong>Scrape Instructions:</strong> Navigate to your event's <code>/results/eventhistory/</code> page, click your <strong>"Scrape Event History"</strong> bookmarklet, and paste the JSON below.
+      </div>
+
+      <details style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted);">
+        <summary style="cursor: pointer; font-weight: bold; color: var(--accent-color);">📖 View / Copy Event History Bookmarklet Code</summary>
+        <div style="margin-top: 8px; background: #090d11; padding: 12px; border-radius: 6px; border: 1px solid var(--panel-border);">
+          <p style="margin: 0 0 6px 0;">Create a browser bookmark named <strong>"Scrape Event History"</strong> and paste this code into the URL field:</p>
+          <textarea readonly class="code-box" rows="2" id="bmHistoryCode">javascript:(function(){const rows=document.querySelectorAll('table tbody tr');if(!rows.length){alert('No event history table found!');return;}const data=Array.from(rows).map(row=>{const cells=row.querySelectorAll('td');if(cells.length<7)return null;return{eventNumber:cells[0]?.innerText.trim(),date:cells[1]?.innerText.trim(),finishers:cells[2]?.innerText.trim(),volunteers:cells[3]?.innerText.trim(),maleFirst:cells[4]?.innerText.trim(),maleTime:cells[5]?.innerText.trim(),femaleFirst:cells[6]?.innerText.trim(),femaleTime:cells[7]?.innerText.trim()};}).filter(Boolean);const jsonString=JSON.stringify(data,null,2);navigator.clipboard.writeText(jsonString).then(()=>{alert(`Successfully scraped history for ${data.length} events!\n\nJSON copied to clipboard.`);}).catch(()=>{alert(`Scraped ${data.length} events. Check console if clipboard copy failed.`);});})();</textarea>
+        </div>
+      </details>
+
+      <textarea id="jsonHistoryInput" class="json-box" placeholder="Paste event history JSON here..."></textarea>
+      <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
+        <button id="btnLoadHistory" class="primary-btn">Load History Dashboard</button>
+        <button id="btnClearHistoryCache" class="secondary-btn">Clear Cache</button>
+        <span id="historyCacheStatus" class="cache-status">✓ Loaded from cache</span>
+      </div>
+    </div>
+
+    <!-- History KPIs -->
+    <div id="historyStatsContainer" class="panel hidden" style="margin-top: 24px;">
+      <h3>History Key Performance Indicators</h3>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="lbl">Total Events</div><div id="statTotalEvents" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Total Finishers</div><div id="statTotalFinishers" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Avg Attendance</div><div id="statAvgAttendance" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Record Attendance</div><div id="statMaxAttendance" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Sub-20m Finishes</div><div id="statSub20Pct" class="val">0%</div></div>
+        <div class="stat-card"><div class="lbl">Sub-25m Finishes</div><div id="statSub25Pct" class="val">0%</div></div>
+      </div>
+    </div>
+
+    <!-- Year-on-Year Attendance Chart -->
+    <div id="historyAttendanceChartContainer" class="panel hidden" style="margin-top: 24px;">
+      <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap;">
+        <h3>Year-on-Year Attendance Comparison</h3>
+        <div class="flex-row" style="gap: 12px;">
+          <label style="font-size: 13px; color: var(--text-muted);">Highlight Year:</label>
+          <select id="selectFocusYear" class="filter-select">
+            <option value="LATEST" selected>Highlight Latest Year</option>
+            <option value="ALL">Show All Equally</option>
+          </select>
+
+          <label style="font-size: 13px; color: var(--text-muted);">Smoothing:</label>
+          <select id="selectSmoothing" class="filter-select">
+            <option value="4" selected>4-Week Trend (Clean)</option>
+            <option value="1">Raw Data (Spiky)</option>
+          </select>
+
+          <button id="btnExportAttendanceChart" class="primary-btn" style="background-color: #2563eb; font-size: 12px;">Export PNG</button>
+        </div>
+      </div>
+      <canvas id="canvasAttendance" class="chart-canvas" width="1200" height="420"></canvas>
+    </div>
+
+    <!-- Secondary History Graphs Grid -->
+    <div id="historySubChartsContainer" class="grid-2col hidden" style="margin-top: 24px;">
+      <div class="panel">
+        <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+          <h4>Volunteers per 100 Finishers Ratio</h4>
+          <button id="btnExportVolChart" class="primary-btn" style="background-color: #2563eb; font-size: 11px; padding: 6px 12px;">PNG</button>
+        </div>
+        <canvas id="canvasVolRatio" class="chart-canvas" width="600" height="300"></canvas>
+      </div>
+
+      <div class="panel">
+        <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+          <h4>Turnout Distribution Histogram</h4>
+          <button id="btnExportHistAttChart" class="primary-btn" style="background-color: #2563eb; font-size: 11px; padding: 6px 12px;">PNG</button>
+        </div>
+        <canvas id="canvasAttHistogram" class="chart-canvas" width="600" height="300"></canvas>
+      </div>
+    </div>
+
+    <!-- First Finishers Time Progression Chart -->
+    <div id="historyChartContainer" class="panel hidden" style="margin-top: 24px;">
+      <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+        <h3>First Finishers Time Progression (Male vs Female)</h3>
+        <button id="btnExportFirstFinisherChart" class="primary-btn" style="background-color: #2563eb; font-size: 12px;">Export PNG</button>
+      </div>
+      <canvas id="canvasHistory" class="chart-canvas" width="1200" height="450"></canvas>
+    </div>
+
+    <!-- Summary Infographic Grid -->
+    <div id="historyInfographicContainer" class="panel hidden" style="margin-top: 24px;">
+      <div class="flex-row" style="justify-content: space-between;">
+        <h3>Generated Summary Infographic</h3>
+        <button id="btnDownloadHistoryGraphic" class="primary-btn" style="background-color: #2563eb;">Download Summary PNG</button>
+      </div>
+
+      <div id="infographicContainer" class="infographic-grid">
+        <div class="tile tile-male">
+          <h4>Most First Finishes (Men)</h4>
+          <div id="tileMostMen"></div>
+        </div>
+        <div class="tile tile-female">
+          <h4>Most First Finishes (Women)</h4>
+          <div id="tileMostWomen"></div>
+        </div>
+        <div class="tile tile-purple">
+          <h4>Biggest Attendances</h4>
+          <div id="tileBiggestAttendance"></div>
+        </div>
+        <div class="tile tile-male">
+          <h4>Fastest First Finishes (Men)</h4>
+          <div id="tileFastestMen"></div>
+        </div>
+        <div class="tile tile-female">
+          <h4>Fastest First Finishes (Women)</h4>
+          <div id="tileFastestWomen"></div>
+        </div>
+        <div class="tile tile-purple">
+          <h4>Lowest Attendances</h4>
+          <div id="tileLowestAttendance"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event History Table (Sortable) -->
+    <div id="historyTableContainer" class="panel hidden" style="margin-top: 24px;">
+      <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+        <h4>Sortable Event History Directory</h4>
+        <input type="text" id="historyTableSearch" class="search-bar" placeholder="Search event #, date, or runner...">
+      </div>
+      <div class="table-container">
+        <table id="historyTable" class="data-table">
+          <thead>
+            <tr>
+              <th data-sort="eventNumberNum">Event # ↕</th>
+              <th data-sort="date">Date ↕</th>
+              <th data-sort="finishersNum">Finishers ↕</th>
+              <th data-sort="volunteersNum">Volunteers ↕</th>
+              <th data-sort="maleFirst">Male 1st Finisher ↕</th>
+              <th data-sort="mSec">Male Time ↕</th>
+              <th data-sort="femaleFirst">Female 1st Finisher ↕</th>
+              <th data-sort="fSec">Female Time ↕</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: SINGLE EVENT INFOGRAPHIC ==================== -->
+  <div id="tabSingleGraphic" class="tab-content hidden">
+    <div class="panel">
+      <h3>1. Single Event Detailed Results &amp; Volunteers Data</h3>
+      <div class="instruction-step">
+        <strong>Scrape Instructions:</strong> Switch your parkrun event results page to <strong>Detailed View</strong>, click your <strong>"Scrape Detailed Event Results"</strong> bookmarklet, and paste the output below.
+      </div>
+
+      <details style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted);">
+        <summary style="cursor: pointer; font-weight: bold; color: var(--accent-color);">📖 View / Copy Single Event Bookmarklet Code</summary>
+        <div style="margin-top: 8px; background: #090d11; padding: 12px; border-radius: 6px; border: 1px solid var(--panel-border);">
+          <p style="margin: 0 0 6px 0;">Create a browser bookmark named <strong>"Scrape Detailed Event Results"</strong> and paste this code into the URL field:</p>
+          <textarea readonly class="code-box" rows="2" id="bmSingleCode">javascript:(function(){const finisherRows=document.querySelectorAll('tr.Results-table-row, table.parkrun-table tbody tr');const volRows=document.querySelectorAll('tr.Volunteers-table-row, table.Volunteers-table tbody tr');if(!finisherRows.length&&!volRows.length){alert('No parkrun results or volunteers table found!');return;}const finishers=Array.from(finisherRows).map(row=>{const ds=row.dataset;const position=ds.position||row.querySelector('.Results-table-td--position')?.innerText.trim()||'';if(!position)return null;const name=ds.name||row.querySelector('.Results-table-td--name a')?.innerText.trim()||'';const gender=ds.gender||(row.innerText.includes('Female')?'Female':'Male');const ageGroup=ds.agegroup||'';const ageGrade=ds.agegrade||'';const totalRuns=ds.runs?parseInt(ds.runs,10):null;const totalVols=ds.vols?parseInt(ds.vols,10):0;const timeCell=row.querySelector('.Results-table-td--time');const timeText=timeCell?timeCell.innerText.trim():'';const rowText=row.innerText||'';const timeMatch=timeText.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/);const time=timeMatch?timeMatch[0]:'';const achievement=(ds.achievement||'').toLowerCase();const isNewPB=/\bNew PB!\b/i.test(rowText)||(achievement.includes('pb')&&!achievement.includes('previous'));const isFirstTimerAtEvent=/\bFirst Timer!\b/i.test(rowText)||achievement.includes('first');let runnerName=name||'';if(!runnerName||runnerName.includes('finish')||runnerName.includes('milestone')){const lines=rowText.split('\n').map(l=>l.trim()).filter(Boolean);const nameMatch=rowText.match(/^(\d+)\s+([A-Za-z'-]+\s+[A-Za-z'-]+)/);runnerName=nameMatch?nameMatch[2]:lines[1]||'Runner';}return{position:position,parkrunner:runnerName,gender:gender,ageGroup:ageGroup.toUpperCase(),time:time,ageGrade:ageGrade,totalRuns:totalRuns,volMilestone:totalVols,isPB:Boolean(isNewPB),isFirstTimerAtParkrun:totalRuns===1,isFirstTimerAtEvent:Boolean(isFirstTimerAtEvent)};}).filter(Boolean);const volunteers=Array.from(volRows).map(row=>{const ds=row.dataset;const name=ds.name||row.querySelector('.Volunteers-table-td--name a')?.innerText.trim()||'';const role=ds.role||row.querySelector('.Volunteers-table-td--volunteerRoles')?.innerText.trim().replace(/\n/g, ', ')||'';const credits=ds.volunteercredits?parseInt(ds.volunteercredits,10):0;if(!name)return null;return{name:name,role:role.replace(/,$/, ''),credits:credits};}).filter(Boolean);const combinedData={finishers:finishers,volunteers:volunteers,volunteerCount:volunteers.length};const jsonString=JSON.stringify(combinedData,null,2);navigator.clipboard.writeText(jsonString).then(()=>{alert(`Successfully scraped ${finishers.length} finishers and ${volunteers.length} volunteers!\n\nJSON copied to clipboard.`);}).catch(()=>{alert(`Scraped ${finishers.length} finishers & ${volunteers.length} volunteers. Check console if clipboard copy failed.`);});})();</textarea>
+        </div>
+      </details>
+
+      <textarea id="jsonSingleInput" class="json-box" placeholder="Paste detailed results JSON or raw text here..."></textarea>
+      
+      <!-- Configurable Infographic Controls Bar -->
+      <div class="flex-row" style="margin-top: 16px; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--panel-border); padding-top: 16px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Top Age Grades to Show:</label>
+          <select id="cfgAgeGradeCount" class="filter-select">
+            <option value="2" selected>Top 2 Age Grades</option>
+            <option value="3">Top 3 Age Grades</option>
+            <option value="5">Top 5 Age Grades</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Include 1st Finishers Tile:</label>
+          <select id="cfgShowWinners" class="filter-select">
+            <option value="YES" selected>Show 1st Male &amp; Female</option>
+            <option value="NO">Hide P1 Tile</option>
+          </select>
+        </div>
+
+        <div style="align-self: flex-end;">
+          <button id="btnLoadSingle" class="primary-btn">Generate Infographic</button>
+          <button id="btnClearSingleCache" class="secondary-btn" style="margin-left: 8px;">Clear Cache</button>
+          <span id="singleCacheStatus" class="cache-status">✓ Loaded from cache</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="singleGraphicPanel" class="panel hidden" style="margin-top: 24px;">
+      <div class="flex-row" style="justify-content: space-between; margin-bottom: 16px;">
+        <h3>Full Event Summary Infographic</h3>
+        <button id="btnDownloadSingleGraphic" class="primary-btn" style="background-color: #2563eb;">Download Infographic PNG</button>
+      </div>
+      <canvas id="canvasSingleSummary" width="1200" height="2000" style="width: 100%; border-radius: 8px; border: 1px solid var(--panel-border);"></canvas>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 3: SINGLE EVENT INTERACTIVE DASHBOARD ==================== -->
+  <div id="tabSingleInteractive" class="tab-content hidden">
+    <div id="interactivePanel" class="panel hidden">
+      <h3>Interactive Single Event Dashboard</h3>
+      
+      <div class="stats-grid" style="margin-top: 16px;">
+        <div class="stat-card"><div class="lbl">Total Finishers</div><div id="dashTotal" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Male Finishers</div><div id="dashMale" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Female Finishers</div><div id="dashFemale" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">Volunteers</div><div id="dashVolunteers" class="val" style="color: var(--vol-color);">0</div></div>
+        <div class="stat-card"><div class="lbl">New PBs</div><div id="dashPBs" class="val">0</div></div>
+        <div class="stat-card"><div class="lbl">1st Ever parkruns</div><div id="dashFirstTimers" class="val">0</div></div>
+      </div>
+
+      <!-- Single Event Interactive Charts Grid -->
+      <div class="grid-2col" style="margin-top: 24px;">
+        <div class="panel">
+          <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+            <h4>Finish Time Distribution Curve (KDE)</h4>
+            <button id="btnExportDensityChart" class="primary-btn" style="background-color: #2563eb; font-size: 11px; padding: 6px 12px;">PNG</button>
+          </div>
+          <canvas id="canvasDensity" class="chart-canvas" width="600" height="300"></canvas>
+        </div>
+
+        <div class="panel">
+          <div class="flex-row" style="justify-content: space-between; margin-bottom: 12px;">
+            <h4>Age Grade vs Finish Position Density</h4>
+            <button id="btnExportScatterChart" class="primary-btn" style="background-color: #2563eb; font-size: 11px; padding: 6px 12px;">PNG</button>
+          </div>
+          <canvas id="canvasScatter" class="chart-canvas" width="600" height="300"></canvas>
+        </div>
+      </div>
+
+      <!-- Multi-Column Filtering Controls -->
+      <div class="flex-row" style="gap: 12px; flex-wrap: wrap; margin-top: 24px; margin-bottom: 16px;">
+        <input type="text" id="tableSearch" class="search-bar" placeholder="Search runner name...">
+        
+        <select id="filterGender" class="filter-select">
+          <option value="ALL">All Genders</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+
+        <select id="filterStatus" class="filter-select">
+          <option value="ALL">All Statuses</option>
+          <option value="PB">New PBs</option>
+          <option value="FIRST_PARKRUN">1st Ever parkrun</option>
+          <option value="FIRST_EVENT">Event First Timer</option>
+          <option value="VOLUNTEER">Has Volunteer Credits</option>
+        </select>
+      </div>
+
+      <div class="table-container">
+        <table id="resultsTable" class="data-table">
+          <thead>
+            <tr>
+              <th data-sort-single="position">Pos ↕</th>
+              <th data-sort-single="parkrunner">parkrunner ↕</th>
+              <th data-sort-single="gender">Gender ↕</th>
+              <th data-sort-single="time">Time ↕</th>
+              <th data-sort-single="ageGrade">Age Grade ↕</th>
+              <th data-sort-single="totalRuns">Total Runs ↕</th>
+              <th data-sort-single="volMilestone">Vol Credits ↕</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="interactiveNotice" class="panel">
+      <p style="color: var(--text-muted); text-align: center;">Please load a single event dataset on the <strong>Single Event Infographic</strong> tab first.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let currentSingleData = [];
+let currentVolunteersList = [];
+let currentHistoryData = [];
+let isAnonymousMode = false;
+
+let historySortCol = 'eventNumberNum';
+let historySortAsc = false;
+
+let singleSortCol = 'position';
+let singleSortAsc = true;
+
+const STORAGE_KEY_HISTORY = 'parkrun_history_json';
+const STORAGE_KEY_SINGLE = 'parkrun_single_json';
+
+const yearColors = ['#38bdf8', '#22c55e', '#f59e0b', '#ec4899', '#a855f7', '#6366f1', '#14b8a6', '#f43f5e'];
+
+const tabs = {
+  History: document.getElementById('tabHistory'),
+  SingleGraphic: document.getElementById('tabSingleGraphic'),
+  SingleInteractive: document.getElementById('tabSingleInteractive')
+};
+
+const btns = {
+  History: document.getElementById('btnTabHistory'),
+  SingleGraphic: document.getElementById('btnTabSingleGraphic'),
+  SingleInteractive: document.getElementById('btnTabSingleInteractive')
+};
+
+function switchTab(target) {
+  Object.keys(tabs).forEach(k => {
+    tabs[k].classList.add('hidden');
+    btns[k].classList.remove('active');
+  });
+  tabs[target].classList.remove('hidden');
+  btns[target].classList.add('active');
+}
+
+btns.History.addEventListener('click', () => switchTab('History'));
+btns.SingleGraphic.addEventListener('click', () => switchTab('SingleGraphic'));
+btns.SingleInteractive.addEventListener('click', () => switchTab('SingleInteractive'));
+
+function formatName(name, pos) {
+  if (isAnonymousMode) {
+    return pos ? `Runner #${pos}` : 'Runner';
+  }
+  return name || 'Runner';
+}
+
+document.getElementById('toggleAnonymous').addEventListener('change', (e) => {
+  isAnonymousMode = e.target.checked;
+  if (currentHistoryData.length) processHistory(currentHistoryData);
+  if (currentSingleData.length) {
+    renderSingleEventInfographic(currentSingleData);
+    renderInteractiveDashboard(currentSingleData);
+  }
+});
+
+function timeToSec(t) {
+  if (!t) return 0;
+  const parts = t.split(':').map(Number);
+  return parts.length === 3 ? (parts[0] * 3600) + (parts[1] * 60) + parts[2] : (parts[0] * 60) + parts[1];
+}
+
+function secToTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.round(s % 60);
+  return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+}
+
+function getWeekNumber(dateStr) {
+  if (!dateStr) return 1;
+  const parts = dateStr.split('/');
+  if (parts.length < 3) return 1;
+  const d = new Date(parts[2], parts[1] - 1, parts[0]);
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+function getYearNumber(dateStr) {
+  if (!dateStr) return 2026;
+  const parts = dateStr.split('/');
+  return parts.length >= 3 ? parseInt(parts[2], 10) : 2026;
+}
+
+function isMilestoneNumber(n) {
+  if (!n || isNaN(n)) return false;
+  const num = parseInt(n, 10);
+  if (num === 25 || num === 50 || num === 100 || num === 200 || num === 250) return true;
+  return num > 250 && num % 100 === 0;
+}
+
+// ==================== TAB 1: EVENT HISTORY DASHBOARD ====================
+function executeLoadHistory(input, isAuto = false) {
+  try {
+    const data = JSON.parse(input);
+    currentHistoryData = data;
+    processHistory(data);
+
+    localStorage.setItem(STORAGE_KEY_HISTORY, input);
+
+    document.getElementById('historyStatsContainer').classList.remove('hidden');
+    document.getElementById('historyAttendanceChartContainer').classList.remove('hidden');
+    document.getElementById('historySubChartsContainer').classList.remove('hidden');
+    document.getElementById('historyChartContainer').classList.remove('hidden');
+    document.getElementById('historyInfographicContainer').classList.remove('hidden');
+    document.getElementById('historyTableContainer').classList.remove('hidden');
+
+    if (isAuto) document.getElementById('historyCacheStatus').style.display = 'inline';
+  } catch (e) {
+    if (!isAuto) alert('Invalid History JSON format.');
+  }
+}
+
+document.getElementById('btnLoadHistory').addEventListener('click', () => {
+  const input = document.getElementById('jsonHistoryInput').value.trim();
+  if (!input) return alert('Please paste event history data first.');
+  executeLoadHistory(input, false);
+});
+
+document.getElementById('btnClearHistoryCache').addEventListener('click', () => {
+  localStorage.removeItem(STORAGE_KEY_HISTORY);
+  document.getElementById('jsonHistoryInput').value = '';
+  document.getElementById('historyStatsContainer').classList.add('hidden');
+  document.getElementById('historyAttendanceChartContainer').classList.add('hidden');
+  document.getElementById('historySubChartsContainer').classList.add('hidden');
+  document.getElementById('historyChartContainer').classList.add('hidden');
+  document.getElementById('historyInfographicContainer').classList.add('hidden');
+  document.getElementById('historyTableContainer').classList.add('hidden');
+  document.getElementById('historyCacheStatus').style.display = 'none';
+  currentHistoryData = [];
+});
+
+function processHistory(data) {
+  const totalEvents = data.length;
+  const finishers = data.map(d => parseInt(d.finishers, 10)).filter(n => !isNaN(n));
+  const totalFinishers = finishers.reduce((a, b) => a + b, 0);
+  const avgAttendance = Math.round(totalFinishers / totalEvents) || 0;
+  const maxAttendance = Math.max(...finishers) || 0;
+
+  document.getElementById('statTotalEvents').textContent = totalEvents;
+  document.getElementById('statTotalFinishers').textContent = totalFinishers.toLocaleString();
+  document.getElementById('statAvgAttendance').textContent = avgAttendance;
+  document.getElementById('statMaxAttendance').textContent = maxAttendance;
+
+  const mTimes = data.map(d => timeToSec(d.maleTime)).filter(t => t > 0);
+  const fTimes = data.map(d => timeToSec(d.femaleTime)).filter(t => t > 0);
+  const allTimes = [...mTimes, ...fTimes];
+
+  const sub20 = allTimes.filter(t => t < 1200).length;
+  const sub25 = allTimes.filter(t => t < 1500).length;
+
+  document.getElementById('statSub20Pct').textContent = allTimes.length ? `${Math.round((sub20 / allTimes.length) * 100)}%` : '0%';
+  document.getElementById('statSub25Pct').textContent = allTimes.length ? `${Math.round((sub25 / allTimes.length) * 100)}%` : '0%';
+
+  const years = Array.from(new Set(data.map(d => getYearNumber(d.date)))).sort((a,b) => b - a);
+  const selectYr = document.getElementById('selectFocusYear');
+  selectYr.innerHTML = '<option value="LATEST" selected>Highlight Latest Year (' + (years[0] || '2026') + ')</option><option value="ALL">Show All Equally</option>';
+  years.forEach(yr => {
+    selectYr.innerHTML += `<option value="${yr}">${yr} Focus</option>`;
+  });
+
+  renderYearOnYearAttendanceChart(data);
+  renderVolunteerRatioChart(data);
+  renderAttendanceHistogramChart(data);
+  renderHistoryChart(data);
+  renderSummaryTiles(data);
+  populateHistoryTable(data);
+}
+
+document.getElementById('selectFocusYear').addEventListener('change', () => {
+  if (currentHistoryData.length) renderYearOnYearAttendanceChart(currentHistoryData);
+});
+
+document.getElementById('selectSmoothing').addEventListener('change', () => {
+  if (currentHistoryData.length) renderYearOnYearAttendanceChart(currentHistoryData);
+});
+
+function renderYearOnYearAttendanceChart(data) {
+  const canvas = document.getElementById('canvasAttendance');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const focusYrChoice = document.getElementById('selectFocusYear').value;
+  const smoothingWindow = parseInt(document.getElementById('selectSmoothing').value, 10) || 1;
+
+  const margin = { top: 40, right: 140, bottom: 50, left: 60 };
+  const w = canvas.width - margin.left - margin.right;
+  const h = canvas.height - margin.top - margin.bottom;
+
+  const yearGroups = {};
+  data.forEach(d => {
+    const yr = getYearNumber(d.date);
+    const wk = getWeekNumber(d.date);
+    const att = parseInt(d.finishers, 10) || 0;
+
+    if (!yearGroups[yr]) yearGroups[yr] = {};
+    yearGroups[yr][wk] = att;
+  });
+
+  const years = Object.keys(yearGroups).sort((a,b) => a - b);
+  if (!years.length) return;
+
+  const latestYear = years[years.length - 1];
+  const activeFocusYear = focusYrChoice === 'LATEST' ? latestYear : focusYrChoice;
+
+  const allAtts = data.map(d => parseInt(d.finishers, 10) || 0);
+  const maxAtt = Math.max(...allAtts, 10) + 20;
+
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+  for (let yVal = 0; yVal <= maxAtt; yVal += Math.ceil(maxAtt / 5 / 10) * 10) {
+    const py = margin.top + h - (yVal / maxAtt) * h;
+    ctx.beginPath(); ctx.moveTo(margin.left, py); ctx.lineTo(canvas.width - margin.right, py); ctx.stroke();
+    ctx.fillStyle = '#8b949e'; ctx.font = '12px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(yVal, margin.left - 10, py + 4);
+  }
+
+  for (let wk = 1; wk <= 52; wk += 4) {
+    const px = margin.left + ((wk - 1) / 51) * w;
+    ctx.fillStyle = '#8b949e'; ctx.textAlign = 'center';
+    ctx.fillText(`Wk ${wk}`, px, canvas.height - margin.bottom + 20);
+  }
+
+  years.forEach((yr) => {
+    const isTarget = activeFocusYear === 'ALL' || activeFocusYear === yr.toString();
+    if (isTarget) return;
+
+    const weeksData = yearGroups[yr];
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.beginPath();
+    let isStarted = false;
+
+    for (let wk = 1; wk <= 52; wk++) {
+      if (weeksData[wk] !== undefined) {
+        const px = margin.left + ((wk - 1) / 51) * w;
+        const py = margin.top + h - (weeksData[wk] / maxAtt) * h;
+        if (!isStarted) { ctx.moveTo(px, py); isStarted = true; }
+        else { ctx.lineTo(px, py); }
+      }
+    }
+    ctx.stroke();
+  });
+
+  years.forEach((yr, idx) => {
+    const isTarget = activeFocusYear === 'ALL' || activeFocusYear === yr.toString();
+    if (!isTarget) return;
+
+    const color = yearColors[idx % yearColors.length];
+    const weeksData = yearGroups[yr];
+
+    const smoothData = {};
+    for (let wk = 1; wk <= 52; wk++) {
+      if (weeksData[wk] !== undefined) {
+        if (smoothingWindow === 1) {
+          smoothData[wk] = weeksData[wk];
+        } else {
+          let sum = 0, count = 0;
+          for (let s = Math.max(1, wk - smoothingWindow + 1); s <= wk; s++) {
+            if (weeksData[s] !== undefined) { sum += weeksData[s]; count++; }
+          }
+          smoothData[wk] = count > 0 ? sum / count : weeksData[wk];
+        }
+      }
+    }
+
+    ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.beginPath();
+    let isStarted = false;
+
+    for (let wk = 1; wk <= 52; wk++) {
+      if (smoothData[wk] !== undefined) {
+        const px = margin.left + ((wk - 1) / 51) * w;
+        const py = margin.top + h - (smoothData[wk] / maxAtt) * h;
+
+        if (!isStarted) { ctx.moveTo(px, py); isStarted = true; }
+        else { ctx.lineTo(px, py); }
+      }
+    }
+    ctx.stroke();
+
+    const legendY = margin.top + (idx * 22);
+    ctx.fillStyle = color; ctx.fillRect(canvas.width - margin.right + 20, legendY, 14, 14);
+    ctx.fillStyle = '#f0f6fc'; ctx.font = '13px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(yr + (activeFocusYear === yr.toString() ? ' ★' : ''), canvas.width - margin.right + 42, legendY + 12);
+  });
+}
+
+function renderVolunteerRatioChart(data) {
+  const canvas = document.getElementById('canvasVolRatio');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const margin = { top: 30, right: 30, bottom: 40, left: 50 };
+  const w = canvas.width - margin.left - margin.right;
+  const h = canvas.height - margin.top - margin.bottom;
+
+  const valid = [...data].reverse().map(d => {
+    const fin = parseInt(d.finishers, 10) || 0;
+    const vol = parseInt(d.volunteers, 10) || 0;
+    return fin > 0 ? (vol / fin) * 100 : 0;
+  });
+
+  if (!valid.length) return;
+  const maxVal = Math.max(...valid, 15);
+
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+  for (let v = 0; v <= maxVal; v += 5) {
+    const py = margin.top + h - (v / maxVal) * h;
+    ctx.beginPath(); ctx.moveTo(margin.left, py); ctx.lineTo(canvas.width - margin.right, py); ctx.stroke();
+    ctx.fillStyle = '#8b949e'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(v + '%', margin.left - 8, py + 4);
+  }
+
+  const stepX = w / Math.max(1, valid.length - 1);
+  ctx.strokeStyle = '#e0aaff'; ctx.lineWidth = 2; ctx.beginPath();
+  valid.forEach((ratio, i) => {
+    const px = margin.left + i * stepX;
+    const py = margin.top + h - (ratio / maxVal) * h;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+}
+
+function renderAttendanceHistogramChart(data) {
+  const canvas = document.getElementById('canvasAttHistogram');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const margin = { top: 30, right: 30, bottom: 40, left: 50 };
+  const w = canvas.width - margin.left - margin.right;
+  const h = canvas.height - margin.top - margin.bottom;
+
+  const atts = data.map(d => parseInt(d.finishers, 10) || 0).filter(n => n > 0);
+  if (!atts.length) return;
+
+  const minA = Math.floor(Math.min(...atts) / 50) * 50;
+  const maxA = Math.ceil(Math.max(...atts) / 50) * 50;
+  const bucketCount = Math.max(1, Math.ceil((maxA - minA) / 50));
+
+  const buckets = Array(bucketCount).fill(0);
+  atts.forEach(a => {
+    const idx = Math.min(bucketCount - 1, Math.floor((a - minA) / 50));
+    buckets[idx]++;
+  });
+
+  const maxB = Math.max(...buckets, 1);
+  const barWidth = (w / bucketCount) - 6;
+
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(margin.left, margin.top + h); ctx.lineTo(margin.left + w, margin.top + h); ctx.stroke();
+
+  buckets.forEach((count, i) => {
+    const px = margin.left + i * (barWidth + 6) + 3;
+    const barH = (count / maxB) * h;
+    const py = margin.top + h - barH;
+
+    ctx.fillStyle = '#22c55e'; ctx.fillRect(px, py, barWidth, barH);
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${minA + i*50}-${minA + (i+1)*50}`, px + barWidth/2, margin.top + h + 15);
+  });
+}
+
+function renderHistoryChart(data) {
+  const canvas = document.getElementById('canvasHistory');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const margin = { top: 40, right: 40, bottom: 60, left: 60 };
+  const w = canvas.width - margin.left - margin.right;
+  const h = canvas.height - margin.top - margin.bottom;
+
+  const validData = [...data].reverse().map(d => ({
+    ...d,
+    mSec: timeToSec(d.maleTime),
+    fSec: timeToSec(d.femaleTime)
+  })).filter(d => d.mSec > 0 && d.fSec > 0);
+
+  if (!validData.length) return;
+
+  const times = [...validData.map(d => d.mSec), ...validData.map(d => d.fSec)];
+  const minTime = Math.min(...times) - 30;
+  const maxTime = Math.max(...times) + 30;
+
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+  for (let yVal = minTime; yVal <= maxTime; yVal += 60) {
+    const py = margin.top + h - ((yVal - minTime) / (maxTime - minTime)) * h;
+    ctx.beginPath(); ctx.moveTo(margin.left, py); ctx.lineTo(canvas.width - margin.right, py); ctx.stroke();
+    ctx.fillStyle = '#8b949e'; ctx.font = '14px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(secToTime(yVal), margin.left - 10, py + 5);
+  }
+
+  const stepX = w / Math.max(1, validData.length - 1);
+
+  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.beginPath();
+  validData.forEach((d, i) => {
+    const px = margin.left + i * stepX;
+    const py = margin.top + h - ((d.mSec - minTime) / (maxTime - minTime)) * h;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3; ctx.beginPath();
+  validData.forEach((d, i) => {
+    const px = margin.left + i * stepX;
+    const py = margin.top + h - ((d.fSec - minTime) / (maxTime - minTime)) * h;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+}
+
+function renderSummaryTiles(data) {
+  const countM = {}, countF = {};
+  data.forEach(d => {
+    if (d.maleFirst) countM[d.maleFirst] = (countM[d.maleFirst] || 0) + 1;
+    if (d.femaleFirst) countF[d.femaleFirst] = (countF[d.femaleFirst] || 0) + 1;
+  });
+
+  const topMen = Object.entries(countM).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  const topWomen = Object.entries(countF).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+  document.getElementById('tileMostMen').innerHTML = topMen.map(([name, val], idx) => 
+    `<div class="tile-row"><span>${formatName(name, idx+1)}</span><strong>${val}</strong></div>`).join('');
+
+  document.getElementById('tileMostWomen').innerHTML = topWomen.map(([name, val], idx) => 
+    `<div class="tile-row"><span>${formatName(name, idx+1)}</span><strong>${val}</strong></div>`).join('');
+
+  const sortedByAtt = [...data].sort((a,b) => parseInt(b.finishers,10) - parseInt(a.finishers,10));
+  const biggest = sortedByAtt.slice(0, 5);
+  const lowest = [...sortedByAtt].reverse().slice(0, 5);
+
+  document.getElementById('tileBiggestAttendance').innerHTML = biggest.map(d => 
+    `<div class="tile-row"><span>${d.date} #${d.eventNumber}</span><strong>${d.finishers}</strong></div>`).join('');
+
+  document.getElementById('tileLowestAttendance').innerHTML = lowest.map(d => 
+    `<div class="tile-row"><span>${d.date} #${d.eventNumber}</span><strong>${d.finishers}</strong></div>`).join('');
+
+  const fastestMen = [...data].sort((a,b) => timeToSec(a.maleTime) - timeToSec(b.maleTime)).slice(0, 5);
+  const fastestWomen = [...data].sort((a,b) => timeToSec(a.femaleTime) - timeToSec(b.femaleTime)).slice(0, 5);
+
+  document.getElementById('tileFastestMen').innerHTML = fastestMen.map((d, idx) => 
+    `<div class="tile-row"><span>${formatName(d.maleFirst, idx+1)}</span><strong>${d.maleTime}</strong></div>`).join('');
+
+  document.getElementById('tileFastestWomen').innerHTML = fastestWomen.map((d, idx) => 
+    `<div class="tile-row"><span>${formatName(d.femaleFirst, idx+1)}</span><strong>${d.femaleTime}</strong></div>`).join('');
+}
+
+function populateHistoryTable(data) {
+  const query = document.getElementById('historyTableSearch').value.toLowerCase();
+  
+  let sorted = [...data].map(d => ({
+    ...d,
+    eventNumberNum: parseInt(d.eventNumber, 10) || 0,
+    finishersNum: parseInt(d.finishers, 10) || 0,
+    volunteersNum: parseInt(d.volunteers, 10) || 0,
+    mSec: timeToSec(d.maleTime),
+    fSec: timeToSec(d.femaleTime)
+  }));
+
+  if (query) {
+    sorted = sorted.filter(d => 
+      (d.eventNumber && d.eventNumber.includes(query)) ||
+      (d.date && d.date.includes(query)) ||
+      (d.maleFirst && d.maleFirst.toLowerCase().includes(query)) ||
+      (d.femaleFirst && d.femaleFirst.toLowerCase().includes(query))
+    );
+  }
+
+  sorted.sort((a, b) => {
+    let valA = a[historySortCol];
+    let valB = b[historySortCol];
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+
+    if (valA < valB) return historySortAsc ? -1 : 1;
+    if (valA > valB) return historySortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('historyTableBody');
+  tbody.innerHTML = '';
+  sorted.forEach((d, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>#${d.eventNumber || '-'}</td>
+      <td>${d.date || '-'}</td>
+      <td><strong>${d.finishers || '-'}</strong></td>
+      <td>${d.volunteers || '-'}</td>
+      <td>${formatName(d.maleFirst, i+1)}</td>
+      <td>${d.maleTime || '-'}</td>
+      <td>${formatName(d.femaleFirst, i+1)}</td>
+      <td>${d.femaleTime || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+document.querySelectorAll('#historyTable th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.getAttribute('data-sort');
+    if (historySortCol === col) historySortAsc = !historySortAsc;
+    else { historySortCol = col; historySortAsc = true; }
+    populateHistoryTable(currentHistoryData);
+  });
+});
+
+document.getElementById('historyTableSearch').addEventListener('input', () => {
+  populateHistoryTable(currentHistoryData);
+});
+
+document.getElementById('btnExportAttendanceChart').addEventListener('click', () => {
+  const canvas = document.getElementById('canvasAttendance');
+  const a = document.createElement('a');
+  a.download = 'parkrun-attendance-trend.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+document.getElementById('btnExportVolChart').addEventListener('click', () => {
+  const canvas = document.getElementById('canvasVolRatio');
+  const a = document.createElement('a');
+  a.download = 'parkrun-volunteer-ratio.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+document.getElementById('btnExportHistAttChart').addEventListener('click', () => {
+  const canvas = document.getElementById('canvasAttHistogram');
+  const a = document.createElement('a');
+  a.download = 'parkrun-turnout-distribution.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+document.getElementById('btnExportFirstFinisherChart').addEventListener('click', () => {
+  const canvas = document.getElementById('canvasHistory');
+  const a = document.createElement('a');
+  a.download = 'parkrun-first-finishers-trend.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+// ==================== TAB 2 & 3: DETAILED SINGLE EVENT LOGIC ====================
+function executeLoadSingle(input, isAuto = false) {
+  let parsedFinishers = [];
+  let parsedVolunteers = [];
+
+  if (!input) return;
+
+  try {
+    const rawParsed = JSON.parse(input);
+    if (Array.isArray(rawParsed)) {
+      parsedFinishers = rawParsed;
+    } else if (rawParsed && typeof rawParsed === 'object') {
+      parsedFinishers = rawParsed.finishers || rawParsed.results || [];
+      parsedVolunteers = rawParsed.volunteers || [];
+    }
+  } catch (e) {
+    const blocks = input.split(/\n(?=\d+\b)/);
+    parsedFinishers = blocks.map(b => {
+      if (!b) return null;
+      const posMatch = b.match(/^(\d+)/);
+      const timeMatch = b.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/);
+      const runsMatch = b.match(/(\d+)\s+(?:finish|finishes|parkrun|parkruns)/i);
+      const volMatch = b.match(/(\d+)\s+volunteer/i);
+      const ageGradeMatch = b.match(/(\d{1,2}\.\d{2}%)/);
+      const isNewPB = /\bNew PB!\b/i.test(b) || (b.includes('PB') && !b.includes('PB ') && !b.includes('PB:'));
+      
+      const totalRuns = runsMatch ? parseInt(runsMatch[1], 10) : null;
+      const gender = b.includes('Female') ? 'Female' : b.includes('Male') ? 'Male' : 'Unknown';
+      const nameLine = b.split('\n')[0] || '';
+      const cleanName = nameLine.replace(/^\d+/, '').trim();
+
+      const ageGroupMatch = b.match(/(J[MF]\d{1,2}|[S|V][MF]\d{2}-\d{2}|[S|V][MF]\d{2})/i);
+
+      return {
+        position: posMatch ? parseInt(posMatch[1], 10) : null,
+        parkrunner: cleanName || 'Runner',
+        gender: gender,
+        ageGroup: ageGroupMatch ? ageGroupMatch[1].toUpperCase() : '',
+        time: timeMatch ? timeMatch[0] : '',
+        ageGrade: ageGradeMatch ? ageGradeMatch[1] : '',
+        totalRuns: totalRuns,
+        volMilestone: volMatch ? parseInt(volMatch[1], 10) : 0,
+        isPB: isNewPB,
+        isFirstTimerAtParkrun: totalRuns === 1,
+        isFirstTimerAtEvent: b.includes('First Timer!')
+      };
+    }).filter(Boolean);
+  }
+
+  if (!parsedFinishers || parsedFinishers.length === 0) {
+    if (!isAuto) alert('Could not parse any valid detailed results.');
+    return;
+  }
+
+  localStorage.setItem(STORAGE_KEY_SINGLE, input);
+  currentSingleData = parsedFinishers;
+  currentVolunteersList = parsedVolunteers;
+
+  renderSingleEventInfographic(parsedFinishers);
+  renderInteractiveDashboard(parsedFinishers);
+
+  document.getElementById('singleGraphicPanel').classList.remove('hidden');
+  document.getElementById('interactiveNotice').classList.add('hidden');
+  document.getElementById('interactivePanel').classList.remove('hidden');
+
+  if (isAuto) document.getElementById('singleCacheStatus').style.display = 'inline';
+}
+
+document.getElementById('btnLoadSingle').addEventListener('click', () => {
+  const input = document.getElementById('jsonSingleInput').value.trim();
+  if (!input) return alert('Please paste detailed single event results first.');
+  executeLoadSingle(input, false);
+});
+
+document.getElementById('cfgAgeGradeCount').addEventListener('change', () => {
+  if (currentSingleData.length) renderSingleEventInfographic(currentSingleData);
+});
+
+document.getElementById('cfgShowWinners').addEventListener('change', () => {
+  if (currentSingleData.length) renderSingleEventInfographic(currentSingleData);
+});
+
+document.getElementById('btnClearSingleCache').addEventListener('click', () => {
+  localStorage.removeItem(STORAGE_KEY_SINGLE);
+  document.getElementById('jsonSingleInput').value = '';
+  document.getElementById('singleGraphicPanel').classList.add('hidden');
+  document.getElementById('interactivePanel').classList.add('hidden');
+  document.getElementById('interactiveNotice').classList.remove('hidden');
+  document.getElementById('singleCacheStatus').style.display = 'none';
+  currentSingleData = [];
+  currentVolunteersList = [];
+});
+
+function drawCardRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function renderSingleEventInfographic(data) {
+  const safeData = data || [];
+  const total = safeData.length;
+
+  // ACCURATE UNKNOWN DETECTION
+  const unknowns = safeData.filter(d => d.gender === 'Unknown' || !d.parkrunner || d.parkrunner.trim().toLowerCase() === 'unknown').length;
+  const males = safeData.filter(d => d.gender === 'Male' && d.parkrunner.trim().toLowerCase() !== 'unknown').length;
+  const females = safeData.filter(d => d.gender === 'Female' && d.parkrunner.trim().toLowerCase() !== 'unknown').length;
+
+  const pbs = safeData.filter(d => d.isPB).length;
+  
+  const trueFirstTimers = safeData.filter(d => d.isFirstTimerAtParkrun || d.totalRuns === 1);
+  const eventFirstTimers = safeData.filter(d => d.isFirstTimerAtEvent);
+
+  // SAFE CLIENT-SIDE MILESTONE DETECTION (25, 50, 100, 200, 250, 300, 400, 500...)
+  const runMilestones = safeData.filter(d => isMilestoneNumber(d.totalRuns));
+  const volMilestones = currentVolunteersList.filter(v => isMilestoneNumber(v.credits));
+
+  // TOP VOLUNTEERS BY CREDITS (TOP 3)
+  const topVolunteers = [...currentVolunteersList].sort((a,b) => (b.credits || 0) - (a.credits || 0)).slice(0, 3);
+
+  const showWinners = document.getElementById('cfgShowWinners').value === 'YES';
+  const ageGradeCount = parseInt(document.getElementById('cfgAgeGradeCount').value, 10) || 2;
+
+  // DYNAMIC CANVAS HEIGHT CALCULATION
+  const ageGradeBoxHeight = 60 + (ageGradeCount * 32);
+  const hasMilestones = runMilestones.length > 0 || volMilestones.length > 0;
+  const milestoneBoxHeight = hasMilestones ? 180 : 0;
+  const topVolsBoxHeight = topVolunteers.length > 0 ? 160 : 0;
+
+  let rightColumnHeight = 410 + ageGradeBoxHeight + 20 + (showWinners ? 150 : 0) + (topVolunteers.length > 0 ? topVolsBoxHeight + 20 : 0) + 220 + 300 + (hasMilestones ? milestoneBoxHeight + 20 : 0);
+  let totalRequiredHeight = Math.max(1550, rightColumnHeight + 280);
+
+  const canvas = document.getElementById('canvasSingleSummary');
+  canvas.height = totalRequiredHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 1. Header Bar
+  ctx.fillStyle = '#0284c7'; ctx.fillRect(0, 0, canvas.width, 90);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('parkrun Event Summary', 40, 58);
+
+  // 2. Donut Card
+  ctx.fillStyle = '#1e293b'; drawCardRect(ctx, 40, 120, 540, 260, 12);
+
+  const centerX = 160, centerY = 250, radius = 75;
+  let startAngle = 0;
+  const slices = [{ count: males, color: '#0284c7' }, { count: females, color: '#0d9488' }, { count: unknowns, color: '#f59e0b' }];
+
+  slices.forEach(s => {
+    const slice = total > 0 ? (s.count / total) * Math.PI * 2 : 0;
+    ctx.beginPath(); ctx.arc(centerX, centerY, radius, startAngle, startAngle + slice);
+    ctx.lineWidth = 26; ctx.strokeStyle = s.color; ctx.stroke();
+    startAngle += slice;
+  });
+
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 32px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(total, centerX, centerY + 10);
+
+  ctx.textAlign = 'left'; ctx.font = '18px sans-serif';
+  ctx.fillStyle = '#0284c7'; ctx.fillText(`${males} male`, 280, 210);
+  ctx.fillStyle = '#0d9488'; ctx.fillText(`${females} female`, 280, 250);
+  ctx.fillStyle = '#f59e0b'; ctx.fillText(`${unknowns} unknown`, 280, 290);
+
+  // 3. PB & 1st Timers Box
+  ctx.fillStyle = '#1e293b'; drawCardRect(ctx, 610, 120, 550, 260, 12);
+  ctx.fillStyle = '#22c55e'; ctx.font = 'bold 34px sans-serif'; ctx.fillText(`New PBs: ${pbs}`, 650, 185);
+  ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 34px sans-serif'; ctx.fillText(`1st Ever parkrun: ${trueFirstTimers.length}`, 650, 250);
+  ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 34px sans-serif'; ctx.fillText(`First Visit to Event: ${eventFirstTimers.length}`, 650, 315);
+
+  // 4. Annotated Finishers per Minute Histogram Box
+  ctx.fillStyle = '#1e293b'; drawCardRect(ctx, 40, 410, 540, 320, 12);
+  ctx.fillStyle = '#8b949e'; ctx.font = 'bold 15px sans-serif'; ctx.fillText('NUMBER OF FINISHERS PER MINUTE', 60, 440);
+
+  const minBuckets = {};
+  safeData.forEach(d => {
+    const sec = timeToSec(d.time);
+    if (sec > 0) {
+      const min = Math.floor(sec / 60);
+      minBuckets[min] = (minBuckets[min] || 0) + 1;
+    }
+  });
+
+  const maxMinCount = Math.max(...Object.values(minBuckets), 1);
+  const minKeys = Object.keys(minBuckets).map(Number).sort((a,b)=>a-b);
+  const minStart = Math.min(...minKeys, 18);
+  const minEnd = Math.max(...minKeys, 55);
+
+  ctx.strokeStyle = '#475569'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(90, 470); ctx.lineTo(90, 670); ctx.lineTo(520, 670); ctx.stroke();
+
+  ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText(maxMinCount, 82, 475);
+  ctx.fillText(Math.round(maxMinCount / 2), 82, 572);
+  ctx.fillText('0', 82, 670);
+
+  ctx.strokeStyle = '#0d9488'; ctx.lineWidth = 8;
+  for (let m = minStart; m <= minEnd; m++) {
+    const count = minBuckets[m] || 0;
+    const px = 100 + ((m - minStart) / Math.max(1, minEnd - minStart)) * 400;
+    const barHeight = (count / maxMinCount) * 190;
+    
+    if (count > 0) {
+      ctx.beginPath(); ctx.moveTo(px, 670); ctx.lineTo(px, 670 - barHeight); ctx.stroke();
+    }
+
+    if (m % 5 === 0) {
+      ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
+      ctx.fillText(`${m}m`, px, 688);
+    }
+  }
+
+  // 5. Gender / Age Demographic Population Pyramid (WITH CLEAR FEMALE / MALE HEADERS)
+  ctx.fillStyle = '#1e293b'; drawCardRect(ctx, 40, 750, 540, 360, 12);
+  ctx.fillStyle = '#8b949e'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('GENDER / AGE DEMOGRAPHIC', 60, 780);
+
+  // EXPLICIT GENDER LABELS DIRECTLY ON THE GRAPH
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillStyle = '#0d9488'; ctx.textAlign = 'right';
+  ctx.fillText('← FEMALE', 270, 780);
+  ctx.fillStyle = '#0284c7'; ctx.textAlign = 'left';
+  ctx.fillText('MALE →', 350, 780);
+
+  const ageBrackets = ['Jnr', '18-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59', '60-64', '65+'];
+  const ageM = {}, ageF = {};
+
+  safeData.forEach(d => {
+    if (d.parkrunner && d.parkrunner.trim().toLowerCase() === 'unknown') return;
+
+    const grp = (d.ageGroup || '').toUpperCase().trim();
+    let b = null;
+
+    if (grp.startsWith('J')) {
+      b = 'Jnr';
+    } else {
+      const match = grp.match(/(\d{2})/);
+      if (match) {
+        const age = parseInt(match[1], 10);
+        if (age < 25) b = '18-24';
+        else if (age < 30) b = '25-29';
+        else if (age < 35) b = '30-34';
+        else if (age < 40) b = '35-39';
+        else if (age < 45) b = '40-44';
+        else if (age < 50) b = '45-49';
+        else if (age < 55) b = '50-54';
+        else if (age < 60) b = '55-59';
+        else if (age < 65) b = '60-64';
+        else b = '65+';
+      }
+    }
+
+    if (b) {
+      if (d.gender === 'Male') ageM[b] = (ageM[b] || 0) + 1;
+      else if (d.gender === 'Female') ageF[b] = (ageF[b] || 0) + 1;
+    }
+  });
+
+  const maxDem = Math.max(...Object.values(ageM), ...Object.values(ageF), 1);
+  const midX = 310;
+
+  ageBrackets.forEach((b, idx) => {
+    const py = 810 + (idx * 25);
+    const mCount = ageM[b] || 0;
+    const fCount = ageF[b] || 0;
+
+    const mLen = (mCount / maxDem) * 180;
+    const fLen = (fCount / maxDem) * 180;
+
+    if (fLen > 0) {
+      ctx.fillStyle = '#0d9488'; 
+      ctx.fillRect(midX - 30 - fLen, py, fLen, 18);
+    }
+    if (mLen > 0) {
+      ctx.fillStyle = '#0284c7'; 
+      ctx.fillRect(midX + 30, py, mLen, 18);
+    }
+
+    ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(b, midX, py + 13);
+  });
+
+  // 6. Configurable Highest Age Grade Card
+  ctx.fillStyle = '#0284c7'; drawCardRect(ctx, 610, 410, 550, ageGradeBoxHeight, 12);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`HIGHEST AGE GRADE % (TOP ${ageGradeCount})`, 630, 445);
+
+  const topAgeGrade = [...safeData].filter(d => d.parkrunner && d.parkrunner.trim().toLowerCase() !== 'unknown').sort((a,b) => parseFloat(b.ageGrade || 0) - parseFloat(a.ageGrade || 0)).slice(0, ageGradeCount);
+  topAgeGrade.forEach((item, idx) => {
+    ctx.font = '16px sans-serif';
+    ctx.fillText(`${formatName(item.parkrunner, item.position)} (${item.gender === 'Male' ? 'M' : 'F'})`, 630, 485 + (idx * 32));
+    ctx.textAlign = 'right'; ctx.fillText(`${item.ageGrade || '-'}`, 1130, 485 + (idx * 32)); ctx.textAlign = 'left';
+  });
+
+  let currentY = 410 + ageGradeBoxHeight + 20;
+
+  // Optional First Male & Female Finishers Callout Tile
+  if (showWinners) {
+    const maleWinner = safeData.find(d => d.gender === 'Male' && d.parkrunner.trim().toLowerCase() !== 'unknown');
+    const femaleWinner = safeData.find(d => d.gender === 'Female' && d.parkrunner.trim().toLowerCase() !== 'unknown');
+
+    ctx.fillStyle = '#d97706'; drawCardRect(ctx, 610, currentY, 550, 130, 12);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('FIRST FINISHERS (MALE & FEMALE)', 630, currentY + 35);
+
+    ctx.font = '15px sans-serif';
+    if (maleWinner) {
+      ctx.fillText(`1st Male: ${formatName(maleWinner.parkrunner, maleWinner.position)} (${maleWinner.time})`, 630, currentY + 70);
+    }
+    if (femaleWinner) {
+      ctx.fillText(`1st Female: ${formatName(femaleWinner.parkrunner, femaleWinner.position)} (${femaleWinner.time})`, 630, currentY + 102);
+    }
+    currentY += 150;
+  }
+
+  // 7. Most Volunteer Credits Tile (Top 3 Volunteers)
+  if (topVolunteers.length > 0) {
+    ctx.fillStyle = '#8b5cf6'; drawCardRect(ctx, 610, currentY, 550, topVolsBoxHeight, 12);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('MOST VOLUNTEER CREDITS (TOP 3)', 630, currentY + 35);
+
+    topVolunteers.forEach((vol, idx) => {
+      ctx.font = '15px sans-serif';
+      ctx.fillText(`${formatName(vol.name, null)}`, 630, currentY + 70 + (idx * 28));
+      ctx.textAlign = 'right';
+      ctx.fillText(`${vol.credits || 0} vols`, 1130, currentY + 70 + (idx * 28));
+      ctx.textAlign = 'left';
+    });
+    currentY += topVolsBoxHeight + 20;
+  }
+
+  // 8. Milestone Achievements Box (Purple)
+  if (hasMilestones) {
+    ctx.fillStyle = '#4338ca'; drawCardRect(ctx, 610, currentY, 550, milestoneBoxHeight, 12);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`MILESTONE ACHIEVEMENTS (${runMilestones.length + volMilestones.length})`, 630, currentY + 35);
+
+    const mList = [
+      ...runMilestones.map(d => `${formatName(d.parkrunner, d.position)} (${d.totalRuns} runs)`),
+      ...volMilestones.map(v => `${formatName(v.name, null)} (${v.credits} vols)`)
+    ].join(', ');
+
+    ctx.font = '15px sans-serif';
+    wrapText(ctx, mList || 'No official milestone clubs hit today.', 630, currentY + 70, 510, 24);
+    currentY += milestoneBoxHeight + 20;
+  }
+
+  // 9. 1st Ever parkrunners Callout Box
+  ctx.fillStyle = '#0d9488'; drawCardRect(ctx, 610, currentY, 550, 200, 12);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(`FIRST TIMERS AT PARKRUN (${trueFirstTimers.length})`, 630, currentY + 35);
+
+  const ftList = trueFirstTimers.map(d => formatName(d.parkrunner, d.position)).filter(Boolean).slice(0, 12).join(', ');
+  ctx.font = '15px sans-serif';
+  wrapText(ctx, ftList || 'No brand-new parkrunners recorded for this event.', 630, currentY + 70, 510, 24);
+  currentY += 220;
+
+  // 10. New Personal Bests Callout Box
+  ctx.fillStyle = '#22c55e'; drawCardRect(ctx, 610, currentY, 550, 280, 12);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(`NEW PERSONAL BESTS (${pbs})`, 630, currentY + 35);
+
+  const pbList = safeData.filter(d => d.isPB).map(d => `${formatName(d.parkrunner, d.position)} (${d.time})`).filter(Boolean).slice(0, 15).join(', ');
+  ctx.font = '14px sans-serif';
+  wrapText(ctx, pbList || 'No new PBs recorded on the day.', 630, currentY + 70, 510, 22);
+  currentY += 300;
+
+  // 11. Volunteers Callout Tile (Pink/Magenta)
+  const volNames = currentVolunteersList.map(v => formatName(v.name, null)).filter(Boolean);
+  const volCount = currentVolunteersList.length || safeData.filter(d => d.volMilestone > 0).length;
+
+  const volY = Math.max(1140, currentY);
+  ctx.fillStyle = '#e06666'; drawCardRect(ctx, 40, volY, 1120, 220, 12);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(`THANKS TO THE VOLUNTEERS (${volCount})`, 60, volY + 40);
+
+  const volTextList = volNames.length > 0 
+    ? volNames.join(', ') 
+    : safeData.filter(d => d.volMilestone > 0).map(d => formatName(d.parkrunner, d.position)).slice(0, 25).join(', ');
+
+  ctx.font = '15px sans-serif';
+  wrapText(ctx, volTextList || 'Thanks to all volunteers who made this event possible!', 60, volY + 75, 1080, 26);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  if (!text) return;
+  const words = text.split(' ');
+  let line = '';
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      ctx.fillText(line, x, y);
+      line = words[n] + ' ';
+      y += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, x, y);
+}
+
+document.getElementById('btnDownloadSingleGraphic').addEventListener('click', () => {
+  const canvas = document.getElementById('canvasSingleSummary');
+  const a = document.createElement('a');
+  a.download = 'parkrun-event-infographic.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+
+function renderDensityChart(data) {
+  const canvas = document.getElementById('canvasDensity');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const margin = { top: 30, right: 30, bottom: 40, left: 50 };
+  const w = canvas.width - margin.left - margin.right;
+  const h = canvas.height - margin.top - margin.bottom;
+
+  const times = data.map(d => timeToSec(d.time) / 60).filter(t => t > 0);
+  if (!times.length) return;
+
+  const minT = Math.floor(Math.min(...times)) - 1;
+  const maxT = Math.ceil(Math.max(...times)) + 1;
+
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(margin.left, margin.top + h); ctx.lineTo(margin.left + w, margin.top + h); ctx.stroke();
+
+  for (let t = Math.ceil(minT); t <= maxT; t += 5) {
+    const px = margin.left + ((t - minT) / (maxT - minT)) * w;
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${t}m`, px, margin.top + h + 15);
+  }
+
+  const bins = Array(100).fill(0);
+  times.forEach(t => {
+    const idx = Math.min(99, Math.floor(((t - minT) / (maxT - minT)) * 100));
+    bins[idx]++;
+  });
+
+  const maxB = Math.max(...bins, 1);
+  ctx.strokeStyle = '#22c55e'; ctx.fillStyle = 'rgba(34, 197, 94, 0.2)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(margin.left, margin.top + h);
+
+  bins.forEach((count, i) => {
+    const px = margin.left + (i / 99) * w;
+    const py = margin.top + h - (count / maxB) * h;
+    ctx.lineTo(px, py);
+  });
+
+  ctx.lineTo(margin.left + w, margin.top + h); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+}
+
+function renderScatterChart(data) {
+  const canvas = document.getElementById('canvasScatter');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const margin = { top: 30, right: 30, bottom: 40, left: 50 };
+  const w = canvas.width - margin.left - margin.right;
+  const h = canvas.height - margin.top - margin.bottom;
+
+  const valid = data.map(d => ({
+    pos: parseInt(d.position, 10) || 0,
+    ag: parseFloat(d.ageGrade) || 0,
+    gender: d.gender
+  })).filter(d => d.pos > 0 && d.ag > 0);
+
+  if (!valid.length) return;
+
+  const maxPos = Math.max(...valid.map(d => d.pos)) + 5;
+
+  ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+  for (let ag = 30; ag <= 90; ag += 20) {
+    const py = margin.top + h - ((ag - 30) / 60) * h;
+    ctx.beginPath(); ctx.moveTo(margin.left, py); ctx.lineTo(margin.left + w, py); ctx.stroke();
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(ag + '%', margin.left - 8, py + 4);
+  }
+
+  valid.forEach(d => {
+    const px = margin.left + (d.pos / maxPos) * w;
+    const py = margin.top + h - ((d.ag - 30) / 60) * h;
+
+    ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = d.gender === 'Male' ? '#0284c7' : '#0d9488';
+    ctx.fill();
+  });
+}
+
+function renderInteractiveDashboard(data) {
+  const safeData = data || [];
+  const total = safeData.length;
+
+  const unknowns = safeData.filter(d => d.gender === 'Unknown' || !d.parkrunner || d.parkrunner.trim().toLowerCase() === 'unknown').length;
+  const males = safeData.filter(d => d.gender === 'Male' && d.parkrunner.trim().toLowerCase() !== 'unknown').length;
+  const females = safeData.filter(d => d.gender === 'Female' && d.parkrunner.trim().toLowerCase() !== 'unknown').length;
+
+  const pbs = safeData.filter(d => d.isPB).length;
+  const trueFirstTimers = safeData.filter(d => d.isFirstTimerAtParkrun || d.totalRuns === 1).length;
+  const eventFirstTimers = safeData.filter(d => d.isFirstTimerAtEvent).length;
+  const volunteerTotalCount = currentVolunteersList.length || safeData.filter(d => d.volMilestone > 0).length;
+
+  const elTotal = document.getElementById('dashTotal');
+  const elMale = document.getElementById('dashMale');
+  const elFemale = document.getElementById('dashFemale');
+  const elVolunteers = document.getElementById('dashVolunteers');
+  const elPBs = document.getElementById('dashPBs');
+  const elFirstTimers = document.getElementById('dashFirstTimers');
+  const elEventFirstTimers = document.getElementById('dashEventFirstTimers');
+
+  if (elTotal) elTotal.textContent = total;
+  if (elMale) elMale.textContent = males;
+  if (elFemale) elFemale.textContent = females;
+  if (elVolunteers) elVolunteers.textContent = volunteerTotalCount;
+  if (elPBs) elPBs.textContent = pbs;
+  if (elFirstTimers) elFirstTimers.textContent = trueFirstTimers;
+  if (elEventFirstTimers) elEventFirstTimers.textContent = eventFirstTimers;
+
+  renderDensityChart(safeData);
+  renderScatterChart(safeData);
+  populateTable(safeData);
+}
+
+function populateTable(data) {
+  let sorted = [...data].map(d => ({
+    ...d,
+    posNum: parseInt(d.position, 10) || 0,
+    agNum: parseFloat(d.ageGrade) || 0,
+    runsNum: parseInt(d.totalRuns, 10) || 0,
+    volNum: parseInt(d.volMilestone, 10) || 0,
+    secNum: timeToSec(d.time)
+  }));
+
+  sorted.sort((a, b) => {
+    let valA = a[singleSortCol];
+    let valB = b[singleSortCol];
+    if (singleSortCol === 'position') { valA = a.posNum; valB = b.posNum; }
+    else if (singleSortCol === 'time') { valA = a.secNum; valB = b.secNum; }
+    else if (singleSortCol === 'ageGrade') { valA = a.agNum; valB = b.agNum; }
+    else if (singleSortCol === 'totalRuns') { valA = a.runsNum; valB = b.runsNum; }
+    else if (singleSortCol === 'volMilestone') { valA = a.volNum; valB = b.volNum; }
+    else if (typeof valA === 'string') { valA = valA.toLowerCase(); valB = (valB || '').toLowerCase(); }
+
+    if (valA < valB) return singleSortAsc ? -1 : 1;
+    if (valA > valB) return singleSortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  sorted.forEach(d => {
+    const isUnknown = !d.parkrunner || d.parkrunner.trim().toLowerCase() === 'unknown';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>#${d.position || '-'}</td>
+      <td><strong>${isUnknown ? 'Unknown' : formatName(d.parkrunner, d.position)}</strong></td>
+      <td>${isUnknown ? '-' : d.gender || '-'}</td>
+      <td>${d.time || '-'}</td>
+      <td>${isUnknown ? '-' : d.ageGrade || '-'}</td>
+      <td>${isUnknown ? '-' : d.totalRuns || '-'}</td>
+      <td>${d.volMilestone ? `<span style="color:#e0aaff; font-weight:bold;">${d.volMilestone} vols</span>` : '-'}</td>
+      <td>
+        ${d.isPB ? '<span style="color:#22c55e; font-weight:bold;">New PB!</span> ' : ''}
+        ${(d.isFirstTimerAtParkrun || d.totalRuns === 1) ? '<span style="color:#38bdf8; font-weight:bold;">1st parkrun</span> ' : ''}
+        ${d.isFirstTimerAtEvent ? '<span style="color:#f59e0b; font-weight:bold;">1st Visit</span>' : ''}
+        ${isMilestoneNumber(d.totalRuns) ? '<span style="color:#a855f7; font-weight:bold;">Milestone!</span> ' : ''}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+document.querySelectorAll('#resultsTable th[data-sort-single]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.getAttribute('data-sort-single');
+    if (singleSortCol === col) singleSortAsc = !singleSortAsc;
+    else { singleSortCol = col; singleSortAsc = true; }
+    applyTableFilters();
+  });
+});
+
+function applyTableFilters() {
+  const query = document.getElementById('tableSearch').value.toLowerCase();
+  const genderFilter = document.getElementById('filterGender').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+
+  const filtered = currentSingleData.filter(d => {
+    const nameMatch = !query || (d.parkrunner && d.parkrunner.toLowerCase().includes(query)) || (d.position && d.position.toString().includes(query));
+    const genderMatch = genderFilter === 'ALL' || d.gender === genderFilter;
+
+    let statusMatch = true;
+    if (statusFilter === 'PB') statusMatch = d.isPB;
+    else if (statusFilter === 'FIRST_PARKRUN') statusMatch = d.isFirstTimerAtParkrun || d.totalRuns === 1;
+    else if (statusFilter === 'FIRST_EVENT') statusMatch = d.isFirstTimerAtEvent;
+    else if (statusFilter === 'VOLUNTEER') statusMatch = d.volMilestone > 0;
+
+    return nameMatch && genderMatch && statusMatch;
+  });
+
+  populateTable(filtered);
+}
+
+document.getElementById('tableSearch').addEventListener('input', applyTableFilters);
+document.getElementById('filterGender').addEventListener('change', applyTableFilters);
+document.getElementById('filterStatus').addEventListener('change', applyTableFilters);
+
+window.addEventListener('DOMContentLoaded', () => {
+  const cachedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
+  if (cachedHistory) {
+    document.getElementById('jsonHistoryInput').value = cachedHistory;
+    executeLoadHistory(cachedHistory, true);
+  }
+
+  const cachedSingle = localStorage.getItem(STORAGE_KEY_SINGLE);
+  if (cachedSingle) {
+    document.getElementById('jsonSingleInput').value = cachedSingle;
+    executeLoadSingle(cachedSingle, true);
+  }
+});
+</script>
+
+</body>
+</html>

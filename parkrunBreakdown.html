@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en-GB" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Course & Performance Analytics Workbench v8.4</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Apache ECharts via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <!-- Leaflet CSS & JS via CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .drag-active { border-color: #38bdf8 !important; background-color: rgba(56, 189, 248, 0.1) !important; }
+    .minimap { height: 220px; width: 100%; border-radius: 0.5rem; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans p-4 md:p-6 min-h-screen">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="border-b border-slate-800 pb-4 flex justify-between items-center flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-extrabold text-sky-400">Course & Progression Analytics Workbench v8.4</h1>
+        <p class="text-sm text-slate-400">Fixed Temperature Recalculation Duplication, Spatial Bearing Turn Index, Map Heatmaps, and DuckDB WASM Engine.</p>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Map Overlay Color Mode -->
+        <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs">
+          <label for="mapHeatmode" class="text-slate-400 font-semibold">Map Heatmap Mode:</label>
+          <select id="mapHeatmode" onchange="updateSplitMaps()" class="bg-slate-800 border border-slate-700 text-sky-400 font-bold rounded px-1.5 py-0.5 focus:outline-none">
+            <option value="solid">Activity Color</option>
+            <option value="pace">Pace (Min/km)</option>
+            <option value="gradient">Gradient (%)</option>
+            <option value="hr">Heart Rate (BPM)</option>
+          </select>
+        </div>
+        <!-- Ideal Temperature Preference Config -->
+        <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs">
+          <label for="prefTemp" class="text-slate-400 font-semibold">Ideal Temp:</label>
+          <input type="number" id="prefTemp" value="5" min="-5" max="25" class="w-12 bg-slate-800 border border-slate-700 text-sky-400 font-bold rounded px-1.5 py-0.5 text-center focus:outline-none" onchange="saveUserPrefTemp()">
+          <span class="text-slate-400 font-semibold">°C</span>
+        </div>
+        <button id="btnExportCSV" onclick="exportParquet()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-lg transition">
+          💾 Export Telemetry (CSV)
+        </button>
+        <span id="statusText" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          Initializing DuckDB-WASM...
+        </span>
+      </div>
+    </header>
+
+    <!-- File Drop & Saved Course Baseline Controls -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div id="dropZone" class="md:col-span-2 border-2 border-dashed border-slate-700 bg-slate-900 rounded-xl p-6 text-center cursor-pointer transition flex flex-col justify-center items-center">
+        <input type="file" id="fileInput" multiple accept=".gpx,.tcx" class="hidden">
+        <div class="text-3xl mb-1">🏃‍♂️</div>
+        <p class="text-sm font-semibold text-slate-300">Drag & Drop GPX or TCX Files Here (or Click to Browse)</p>
+        <p class="text-xs text-slate-500">Supports Polar TCX, Garmin, Strava, Coros, and standard GPX exports</p>
+      </div>
+
+      <!-- Saved Baselines & Preferences -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+        <div>
+          <h3 class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-1">Saved Course Baselines Library</h3>
+          <p class="text-xs text-slate-400 mb-2">Save loaded runs to browser memory as master course baselines.</p>
+          <div class="flex items-center gap-2">
+            <select id="savedBaselinesSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded px-2 py-1 focus:outline-none">
+              <option value="">No saved baselines in memory</option>
+            </select>
+            <button onclick="loadSavedBaseline()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs px-2.5 py-1 rounded transition">Load</button>
+          </div>
+        </div>
+        <div class="border-t border-slate-800 pt-2 flex justify-between items-center">
+          <button onclick="saveCurrentAsBaseline()" class="text-xs text-emerald-400 font-bold hover:underline">💾 Save Selected Activity as Baseline</button>
+          <button onclick="clearSession()" class="text-xs text-rose-400 font-bold hover:underline">Clear Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Metrics & "Perfect Time" Comparison Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Summary Activity, Technicality & Environmental Metrics</h3>
+        <div class="flex items-center gap-2 text-xs">
+          <label for="baselineSelect" class="text-slate-400 font-semibold">Baseline Run:</label>
+          <select id="baselineSelect" class="bg-slate-800 border border-slate-700 text-sky-400 font-semibold rounded px-2 py-1 focus:outline-none" onchange="renderUI()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+      <table class="w-full text-xs text-left">
+        <thead class="text-slate-400 border-b border-slate-800">
+          <tr>
+            <th class="p-2">Activity Label</th>
+            <th class="p-2">Surface</th>
+            <th class="p-2">Weather (Auto-Fetched)</th>
+            <th class="p-2">Actual Time</th>
+            <th class="p-2 font-bold text-emerald-400">Ideal Conditions Time ("Perfect Time")</th>
+            <th class="p-2">Avg Pace</th>
+            <th class="p-2">Technicality (Sharp Turns)</th>
+            <th class="p-2">Split Strategy</th>
+            <th class="p-2">vs Baseline</th>
+            <th class="p-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="metricsTableBody" class="divide-y divide-slate-800 text-slate-200">
+          <tr><td colspan="10" class="p-4 text-slate-500 italic text-center">No files loaded yet. Drop GPX or TCX files above to begin.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Isolated Time Loss Breakdown Matrix (Hill vs Turns vs Decay) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Environmental & Course Overhead Breakdown</h3>
+        <span class="text-xs text-slate-500">Quantifying Hills, Cornering, Surface, and Weather Losses</span>
+      </div>
+      <div id="isolationMatrix" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p class="text-xs text-slate-500 italic col-span-full py-2 text-center">Load activities to inspect isolated course penalties...</p>
+      </div>
+    </div>
+
+    <!-- Split Maps Grid (Dynamic per activity) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Multi-Course Individual GPS Route Maps</h3>
+        <span class="text-xs text-slate-500">Rendered on Focused Geographic Bounds</span>
+      </div>
+      <div id="mapsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p class="text-xs text-slate-500 italic col-span-full py-4 text-center">Load files to view individual course maps...</p>
+      </div>
+    </div>
+
+    <!-- Ghost Mode Sector Matrix (1km Splits) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Ghost Mode: Sector Time Delta Breakdown (vs Baseline)</h3>
+        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">1km Splits</span>
+      </div>
+      <table class="w-full text-xs text-left">
+        <thead class="text-slate-400 border-b border-slate-800">
+          <tr>
+            <th class="p-1.5">Activity</th>
+            <th class="p-1.5">0–1km</th>
+            <th class="p-1.5">1–2km</th>
+            <th class="p-1.5">2–3km</th>
+            <th class="p-1.5">3–4km</th>
+            <th class="p-1.5">4–5km</th>
+          </tr>
+        </thead>
+        <tbody id="splitTableBody" class="divide-y divide-slate-800 font-mono text-slate-300">
+          <tr><td colspan="6" class="p-3 text-slate-500 italic text-center">Load activities to inspect split performance...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Analytics Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Chart 1: Time Elapsed vs Distance Progress -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-1">
+          <h3 class="text-sm font-bold text-slate-300">1. Time Elapsed vs Distance Progress</h3>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Scroll/Drag to Zoom</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">Faster runs pull ahead and reach 5km earlier.</p>
+        <div id="chartTimeVsDist" class="w-full h-72"></div>
+      </div>
+
+      <!-- Chart 2: Cumulative Time Gap / Lead (Seconds) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-1">
+          <h3 class="text-sm font-bold text-slate-300">2. Time Lead / Lag Delta vs Baseline</h3>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Synchronized Zoom</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">Above 0 = Ahead of baseline; Below 0 = Behind baseline.</p>
+        <div id="chartTimeDelta" class="w-full h-72"></div>
+      </div>
+
+      <!-- Chart 3: Pace & Grade-Adjusted Pace Overlay -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-1">
+          <h3 class="text-sm font-bold text-slate-300">3. Rolling Pace vs Grade-Adjusted Pace</h3>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Minetti Model</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">Flat-ground effort equivalent pace (min/km).</p>
+        <div id="chartPace" class="w-full h-72"></div>
+      </div>
+
+      <!-- Chart 4: Cumulative Elevation Gain Comparison -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-1">
+          <h3 class="text-sm font-bold text-slate-300">4. Cumulative Elevation Gain Comparison</h3>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Total Vertical Ascent</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">Accumulated climbing load (m) across course profiles.</p>
+        <div id="chartCumElev" class="w-full h-72"></div>
+      </div>
+
+      <!-- Chart 5: HR Zone Distribution (Stacked Bars) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 col-span-1 lg:col-span-2">
+        <div class="flex justify-between items-center mb-1">
+          <h3 class="text-sm font-bold text-slate-300">5. Heart Rate Zone Distribution (Time in Zones)</h3>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Effort Comparison</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-2">Time spent in Zone 1 (<140), Zone 2 (140-155), Zone 3 (155-168), Zone 4 (168-180), Zone 5 (>180).</p>
+        <div id="chartHRZones" class="w-full h-72"></div>
+      </div>
+
+    </div>
+
+    <!-- SQL Developer Workbench Console -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+      <div class="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">DuckDB SQL Analytics Console</h3>
+          <p class="text-xs text-slate-500">Query trackpoint telemetry directly in browser memory using ANSI SQL</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="queryTemplateSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded px-2 py-1.5 focus:outline-none" onchange="loadQueryTemplate()">
+            <option value="checkpoints">Template: 1k Split Leaderboard</option>
+            <option value="pacingDecay">Template: First 1k vs Last 1k Pacing Decay</option>
+            <option value="gradientEffort">Template: Pace & HR by Gradient Brackets</option>
+            <option value="rawSample">Template: Raw Trackpoint Sample (Top 50)</option>
+          </select>
+          <button id="btnRunQuery" disabled class="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-bold text-xs py-1.5 px-4 rounded transition" onclick="executeCustomSQL()">
+            Run SQL Query
+          </button>
+        </div>
+      </div>
+
+      <textarea id="sqlConsole" class="w-full h-36 bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-xs p-3 rounded-lg focus:outline-none focus:border-sky-400 resize-none" placeholder="Write custom DuckDB SQL query..."></textarea>
+
+      <div class="overflow-x-auto max-h-60 bg-slate-950 border border-slate-800 rounded-lg p-2">
+        <table class="w-full text-xs text-left" id="sqlResultTable">
+          <thead class="text-slate-400 border-b border-slate-800" id="sqlResultHeader">
+            <tr><th class="p-2 italic text-slate-600">Execute query to inspect SQL results...</th></tr>
+          </thead>
+          <tbody id="sqlResultBody" class="font-mono text-slate-200 divide-y divide-slate-900"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DuckDB-WASM Module & Core Logic -->
+  <script type="module">
+    import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm';
+
+    let db, conn;
+    let rawParsedFiles = []; 
+    let activities = [];    
+    let chartTimeVsDist = null, chartTimeDelta = null, chartPace = null, chartCumElev = null, chartHRZones = null;
+    let mapInstances = [], mapHoverMarkers = [];
+
+    const COLORS = ['#38bdf8', '#10b981', '#f59e0b', '#c084fc', '#ef4444', '#f43f5e'];
+    const SURFACE_PENALTIES = { 'asphalt': 1.0, 'grass': 1.015, 'trail': 1.025, 'shingle': 1.04 };
+
+    // --- 1. User Preference & localStorage Baseline Memory ---
+    window.saveUserPrefTemp = function() {
+      const val = document.getElementById('prefTemp').value;
+      localStorage.setItem('pref_ideal_temp_c', val);
+      reprocessAll();
+    };
+
+    function getUserPrefTemp() {
+      return parseFloat(localStorage.getItem('pref_ideal_temp_c') || '5.0');
+    }
+
+    function updateSavedBaselinesUI() {
+      const select = document.getElementById('savedBaselinesSelect');
+      const baselines = JSON.parse(localStorage.getItem('saved_course_baselines') || '{}');
+      select.innerHTML = '';
+
+      const keys = Object.keys(baselines);
+      if (keys.length === 0) {
+        select.innerHTML = '<option value="">No saved baselines in memory</option>';
+        return;
+      }
+
+      keys.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = `${k} (${baselines[k].movingTimeStr})`;
+        select.appendChild(opt);
+      });
+    }
+
+    window.saveCurrentAsBaseline = function() {
+      const baselineSelect = document.getElementById('baselineSelect');
+      if (!baselineSelect.value) {
+        alert("Load an activity first to save as a course baseline.");
+        return;
+      }
+
+      const act = activities.find(a => a.id === baselineSelect.value);
+      if (!act) return;
+
+      const profileName = prompt("Enter Course Baseline Profile Name (e.g., 'Eastbourne parkrun PB'):", act.id);
+      if (!profileName) return;
+
+      const baselines = JSON.parse(localStorage.getItem('saved_course_baselines') || '{}');
+      const rawItem = rawParsedFiles.find(r => r.fileName === act.id);
+
+      baselines[profileName] = {
+        profileName: profileName,
+        fileName: act.id,
+        movingTimeStr: act.movingTimeStr,
+        surface: act.surface,
+        trackpoints: rawItem ? rawItem.trackpoints : []
+      };
+
+      localStorage.setItem('saved_course_baselines', JSON.stringify(baselines));
+      updateSavedBaselinesUI();
+      alert(`Saved baseline profile '${profileName}'!`);
+    };
+
+    window.loadSavedBaseline = async function() {
+      const select = document.getElementById('savedBaselinesSelect');
+      const profileName = select.value;
+      if (!profileName) return;
+
+      const baselines = JSON.parse(localStorage.getItem('saved_course_baselines') || '{}');
+      const profile = baselines[profileName];
+
+      if (profile && profile.trackpoints) {
+        const weatherObj = await fetchHistoricalWeather(profile.trackpoints[0].lat, profile.trackpoints[0].lon, profile.trackpoints[0].time_s);
+        
+        // Prevent rawParsedFiles duplication on load
+        if (!rawParsedFiles.some(r => r.fileName === profile.profileName)) {
+          rawParsedFiles.push({ fileName: profile.profileName, trackpoints: profile.trackpoints, surface: profile.surface, weatherObj });
+        }
+        
+        await processAndIngest(profile.profileName, profile.trackpoints, profile.surface, weatherObj, true);
+      }
+    };
+
+    window.clearSession = function() {
+      if (confirm("Clear all currently loaded session files?")) {
+        rawParsedFiles = [];
+        activities = [];
+        conn.query(`DELETE FROM master_trackpoints;`);
+        renderUI();
+      }
+    };
+
+    // --- 2. Minetti Polynomial Grade-Adjusted Pace Model ---
+    function getMinettiCost(gradientDecimal) {
+      const g = Math.max(-0.45, Math.min(0.45, gradientDecimal));
+      return (155.4 * Math.pow(g, 5)) - (30.4 * Math.pow(g, 4)) - (43.3 * Math.pow(g, 3)) + (46.3 * Math.pow(g, 2)) + (19.5 * g) + 3.6;
+    }
+
+    function calculateGAPRatio(gradientDecimal) {
+      return getMinettiCost(gradientDecimal) / 3.6;
+    }
+
+    // --- 3. Haversine Distance & Bearing Calculation ---
+    function haversineDist(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180);
+      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    // --- 4. Open-Meteo Historical Weather Auto-Lookup ---
+    async function fetchHistoricalWeather(lat, lon, epochSec) {
+      try {
+        const dateStr = new Date(epochSec * 1000).toISOString().split('T')[0];
+        const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m`;
+        
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        
+        if (data && data.hourly) {
+          const hourIdx = new Date(epochSec * 1000).getUTCHours();
+          const tempC = data.hourly.temperature_2m[hourIdx];
+          const windKmH = data.hourly.wind_speed_10m[hourIdx];
+          const windDir = data.hourly.wind_direction_10m[hourIdx];
+          const humidity = data.hourly.relative_humidity_2m[hourIdx];
+
+          return {
+            summary: `${tempC}°C, Wind ${windKmH}km/h (${windDir}°), Hum ${humidity}%`,
+            tempC: tempC,
+            windKmH: windKmH
+          };
+        }
+      } catch (err) {
+        console.warn("Open-Meteo Weather Lookup warning:", err);
+      }
+      return { summary: 'Auto-fetch unavailable', tempC: 5, windKmH: 0 };
+    }
+
+    // --- 5. DuckDB-WASM Setup ---
+    async function initDuckDB() {
+      const statusEl = document.getElementById('statusText');
+      try {
+        initCharts();
+        updateSavedBaselinesUI();
+
+        const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+        const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+
+        const workerCode = `importScripts("${bundle.mainWorker}");`;
+        const workerBlob = new Blob([workerCode], { type: 'text/javascript' });
+        const workerUrl = URL.createObjectURL(workerBlob);
+
+        const worker = new Worker(workerUrl);
+        const logger = new duckdb.ConsoleLogger();
+
+        db = new duckdb.AsyncDuckDB(logger, worker);
+        await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+        URL.revokeObjectURL(workerUrl);
+
+        conn = await db.connect();
+
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS master_trackpoints (
+            activity_id VARCHAR,
+            pt_idx INTEGER,
+            lat DOUBLE,
+            lon DOUBLE,
+            ele DOUBLE,
+            time_s DOUBLE,
+            dist_m DOUBLE,
+            hr INTEGER
+          );
+        `);
+
+        statusEl.innerText = "DuckDB-WASM Engine Ready";
+        statusEl.className = "text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        document.getElementById('btnRunQuery').disabled = false;
+        
+        loadQueryTemplate();
+      } catch (e) {
+        console.error("DuckDB Init Error:", e);
+        statusEl.innerText = "Init Error";
+        statusEl.className = "text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20";
+      }
+    }
+
+    // --- 6. Dynamic Split Multi-Map Grid & Teardown-Safe Heatmaps ---
+    window.updateSplitMaps = function() {
+      const container = document.getElementById('mapsGrid');
+
+      mapInstances.forEach(item => {
+        if (item.map) {
+          item.map.off();
+          item.map.remove();
+        }
+      });
+
+      container.innerHTML = '';
+      mapInstances = [];
+      mapHoverMarkers = [];
+
+      if (activities.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 italic col-span-full py-4 text-center">Load files to view individual course maps...</p>';
+        return;
+      }
+
+      const heatMode = document.getElementById('mapHeatmode').value;
+
+      activities.forEach((act, idx) => {
+        const mapWrapper = document.createElement('div');
+        mapWrapper.className = 'bg-slate-950 p-2 border border-slate-800 rounded-lg space-y-1';
+        
+        const mapHeader = document.createElement('div');
+        mapHeader.className = 'flex justify-between items-center text-xs px-1';
+        mapHeader.innerHTML = `<span class="font-bold truncate" style="color:${act.color}">${escapeHtml(act.id)}</span><span class="text-[10px] text-slate-500">${act.totalDistKm}km</span>`;
+
+        const mapDiv = document.createElement('div');
+        mapDiv.id = `minimap_${idx}`;
+        mapDiv.className = 'minimap';
+
+        mapWrapper.appendChild(mapHeader);
+        mapWrapper.appendChild(mapDiv);
+        container.appendChild(mapWrapper);
+
+        const coords = act.points.map(p => [p.lat, p.lon]);
+        const m = L.map(`minimap_${idx}`, { zoomControl: false, attributionControl: false }).setView(coords[0] || [50.85, 0.22], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(m);
+
+        if (heatMode === 'solid') {
+          const poly = L.polyline(coords, { color: act.color, weight: 3.5, opacity: 0.9 }).addTo(m);
+          m.fitBounds(poly.getBounds(), { padding: [15, 15] });
+        } else {
+          for (let i = 1; i < act.points.length; i++) {
+            const p1 = act.points[i-1];
+            const p2 = act.points[i];
+            let segColor = act.color;
+
+            if (heatMode === 'pace' && p2.pace_minkm) {
+              segColor = p2.pace_minkm < 3.8 ? '#10b981' : (p2.pace_minkm < 4.8 ? '#38bdf8' : '#ef4444');
+            } else if (heatMode === 'gradient' && p2.gradient !== undefined) {
+              segColor = p2.gradient > 0.025 ? '#ef4444' : (p2.gradient < -0.015 ? '#10b981' : '#38bdf8');
+            } else if (heatMode === 'hr' && p2.hr) {
+              segColor = p2.hr > 175 ? '#ef4444' : (p2.hr > 160 ? '#f59e0b' : '#10b981');
+            }
+
+            L.polyline([[p1.lat, p1.lon], [p2.lat, p2.lon]], { color: segColor, weight: 4.5, opacity: 0.9 }).addTo(m);
+          }
+          m.fitBounds(L.polyline(coords).getBounds(), { padding: [15, 15] });
+        }
+
+        m.invalidateSize();
+        mapInstances.push({ map: m, activity: act });
+      });
+    };
+
+    function syncMapCursor(distKm) {
+      mapHoverMarkers.forEach(item => item.map.removeLayer(item.marker));
+      mapHoverMarkers = [];
+
+      const distM = distKm * 1000;
+      mapInstances.forEach(item => {
+        const pt = item.activity.points.find(p => p.dist_m >= distM) || item.activity.points[item.activity.points.length - 1];
+        if (pt) {
+          const marker = L.circleMarker([pt.lat, pt.lon], {
+            radius: 5,
+            color: '#ffffff',
+            fillColor: item.activity.color,
+            fillOpacity: 1,
+            weight: 2
+          }).addTo(item.map);
+          mapHoverMarkers.push({ map: item.map, marker });
+        }
+      });
+    }
+
+    // --- 7. Unified GPX & TCX Parser Engine ---
+    async function parseFile(file) {
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+
+        const isTCX = file.name.toLowerCase().endsWith('.tcx') || xml.getElementsByTagName("TrainingCenterDatabase").length > 0;
+        const trackpoints = [];
+        let cumDistance = 0;
+        let prevPt = null;
+
+        if (isTCX) {
+          const tcxPts = xml.getElementsByTagName("Trackpoint");
+          for (let i = 0; i < tcxPts.length; i++) {
+            const pt = tcxPts[i];
+            const latEl = pt.getElementsByTagName("LatitudeDegrees")[0];
+            const lonEl = pt.getElementsByTagName("LongitudeDegrees")[0];
+            if (!latEl || !lonEl) continue;
+
+            const lat = parseFloat(latEl.textContent);
+            const lon = parseFloat(lonEl.textContent);
+            const altEl = pt.getElementsByTagName("AltitudeMeters")[0];
+            const timeEl = pt.getElementsByTagName("Time")[0];
+            const hrEl = pt.getElementsByTagName("HeartRateBpm")[0];
+
+            const ele = altEl ? parseFloat(altEl.textContent) : 0;
+            const timeS = timeEl ? (new Date(timeEl.textContent).getTime() / 1000.0) : ((Date.now() / 1000.0) + i);
+            const hr = hrEl ? parseInt(hrEl.getElementsByTagName("Value")[0]?.textContent || 0, 10) : 0;
+
+            if (prevPt) cumDistance += haversineDist(prevPt.lat, prevPt.lon, lat, lon);
+
+            trackpoints.push({ 
+              activity_id: file.name, 
+              pt_idx: i, 
+              lat: isNaN(lat) ? 0 : lat, 
+              lon: isNaN(lon) ? 0 : lon, 
+              ele: isNaN(ele) ? 0 : ele, 
+              time_s: isNaN(timeS) ? 0 : timeS, 
+              dist_m: isNaN(cumDistance) ? 0 : cumDistance, 
+              hr: isNaN(hr) ? 0 : hr 
+            });
+            prevPt = { lat, lon };
+          }
+        } else {
+          let trkpts = xml.getElementsByTagName("trkpt");
+          if (trkpts.length === 0) trkpts = xml.getElementsByTagName("rtept");
+
+          for (let i = 0; i < trkpts.length; i++) {
+            const pt = trkpts[i];
+            const lat = parseFloat(pt.getAttribute("lat"));
+            const lon = parseFloat(pt.getAttribute("lon"));
+            if (isNaN(lat) || isNaN(lon)) continue;
+
+            const eleNodes = pt.getElementsByTagName("ele");
+            const timeNodes = pt.getElementsByTagName("time");
+            const hrNodes = pt.getElementsByTagName("hr");
+
+            const ele = eleNodes.length > 0 ? parseFloat(eleNodes[0].textContent) : 0;
+            const timeS = timeNodes.length > 0 ? (new Date(timeNodes[0].textContent).getTime() / 1000.0) : ((Date.now() / 1000.0) + i);
+            const hr = hrNodes.length > 0 ? parseInt(hrNodes[0].textContent, 10) : 0;
+
+            if (prevPt) cumDistance += haversineDist(prevPt.lat, prevPt.lon, lat, lon);
+
+            trackpoints.push({ 
+              activity_id: file.name, 
+              pt_idx: i, 
+              lat: isNaN(lat) ? 0 : lat, 
+              lon: isNaN(lon) ? 0 : lon, 
+              ele: isNaN(ele) ? 0 : ele, 
+              time_s: isNaN(timeS) ? 0 : timeS, 
+              dist_m: isNaN(cumDistance) ? 0 : cumDistance, 
+              hr: isNaN(hr) ? 0 : hr 
+            });
+            prevPt = { lat, lon };
+          }
+        }
+
+        if (trackpoints.length > 0) {
+          const weatherObj = await fetchHistoricalWeather(trackpoints[0].lat, trackpoints[0].lon, trackpoints[0].time_s);
+          
+          if (!rawParsedFiles.some(r => r.fileName === file.name)) {
+            rawParsedFiles.push({ fileName: file.name, trackpoints, surface: 'asphalt', weatherObj });
+          }
+          await processAndIngest(file.name, trackpoints, 'asphalt', weatherObj, true);
+        } else {
+          alert(`Could not extract valid GPS trackpoints from ${file.name}`);
+        }
+      } catch (err) {
+        console.error(`Error parsing file ${file.name}:`, err);
+        alert(`Failed to parse ${file.name}: ${err.message}`);
+      }
+    }
+
+    window.reprocessAll = async function() {
+      activities = [];
+      await conn.query(`DELETE FROM master_trackpoints;`);
+      for (const item of rawParsedFiles) {
+        await processAndIngest(item.fileName, item.trackpoints, item.surface, item.weatherObj, false);
+      }
+      renderUI();
+    };
+
+    // --- 8. DuckDB Ingestion, Filtered Spatial Bearing Turn Index & Calibrated Hill Model ---
+    async function processAndIngest(fileName, trackpoints, surfaceType, weatherObj, triggerUIRender = true) {
+      try {
+        const cleanFileId = fileName.replace(/'/g, "''");
+        const totalDist = trackpoints[trackpoints.length - 1].dist_m;
+        const totalTimeSec = trackpoints[trackpoints.length - 1].time_s - trackpoints[0].time_s;
+
+        await conn.query(`DELETE FROM master_trackpoints WHERE activity_id = '${cleanFileId}';`);
+
+        const stmt = await conn.prepare(`
+          INSERT INTO master_trackpoints VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+        `);
+
+        for (let i = 0; i < trackpoints.length; i++) {
+          const p = trackpoints[i];
+          await stmt.query(p.activity_id, p.pt_idx, p.lat, p.lon, p.ele, p.time_s, p.dist_m, p.hr);
+        }
+
+        const sql = `
+          WITH point_deltas AS (
+            SELECT 
+              activity_id,
+              pt_idx,
+              lat,
+              lon,
+              dist_m,
+              ele,
+              time_s,
+              hr,
+              (time_s - FIRST_VALUE(time_s) OVER (PARTITION BY activity_id ORDER BY pt_idx)) as elapsed_sec,
+              dist_m - LAG(dist_m) OVER (PARTITION BY activity_id ORDER BY pt_idx) as delta_d,
+              ele - LAG(ele) OVER (PARTITION BY activity_id ORDER BY pt_idx) as delta_e,
+              time_s - LAG(time_s) OVER (PARTITION BY activity_id ORDER BY pt_idx) as delta_t
+            FROM master_trackpoints
+            WHERE activity_id = '${cleanFileId}'
+          ),
+          metrics AS (
+            SELECT 
+              *,
+              CASE WHEN delta_d > 0 THEN delta_e / delta_d ELSE 0 END as gradient,
+              CASE WHEN delta_t > 0 AND delta_d > 0 THEN (delta_t / delta_d) * 1000.0 / 60.0 ELSE NULL END as pace_minkm,
+              CASE WHEN delta_t > 0 THEN (delta_d / delta_t) ELSE NULL END as speed_ms,
+              CASE WHEN delta_e > 0 THEN delta_e ELSE 0 END as positive_ascent
+            FROM point_deltas
+          )
+          SELECT 
+            *,
+            SUM(positive_ascent) OVER (PARTITION BY activity_id ORDER BY pt_idx) as cum_ascent_m
+          FROM metrics ORDER BY pt_idx;
+        `;
+
+        const result = await conn.query(sql);
+        const rows = result.toArray().map(r => r.toJSON());
+
+        const surfPenalty = SURFACE_PENALTIES[surfaceType] || 1.0;
+        const idealTempC = getUserPrefTemp();
+        
+        const actualTempC = weatherObj ? weatherObj.tempC : 5;
+        const tempDeltaC = Math.max(0, actualTempC - idealTempC);
+        const tempPenaltyPct = Math.min(0.035, tempDeltaC * 0.0015); 
+
+        const windKmH = weatherObj ? weatherObj.windKmH : 0;
+        const windPenaltyPct = Math.min(0.03, Math.max(0, windKmH - 8) * 0.001);
+
+        let z1 = 0, z2 = 0, z3 = 0, z4 = 0, z5 = 0;
+        let totalGradientOverheadSec = 0;
+        let sharpTurnsCount = 0;
+
+        // Filtered Spatial Bearing Turn Index (>3.0m displacement filter to eliminate arm-swing jitter)
+        let lastRefPt = rows[0];
+        for (let i = 2; i < rows.length; i++) {
+          const pPrev = rows[i-1];
+          const pCurr = rows[i];
+
+          const distStep = haversineDist(pPrev.lat, pPrev.lon, pCurr.lat, pCurr.lon);
+          if (distStep >= 3.0 && lastRefPt) {
+            const b1 = calculateBearing(lastRefPt.lat, lastRefPt.lon, pPrev.lat, pPrev.lon);
+            const b2 = calculateBearing(pPrev.lat, pPrev.lon, pCurr.lat, pCurr.lon);
+            const diff = Math.abs(b2 - b1);
+            const turnAngle = diff > 180 ? 360 - diff : diff;
+
+            if (turnAngle > 45) {
+              sharpTurnsCount++;
+            }
+            lastRefPt = pPrev;
+          }
+        }
+
+        const turnCostSec = Math.round(sharpTurnsCount * 0.5);
+
+        const processedRows = rows.map((r, i, arr) => {
+          const minettiRatio = calculateGAPRatio(r.gradient || 0);
+          const gapFactor = minettiRatio;
+          let pace = r.pace_minkm;
+
+          if (i >= 2 && i < arr.length - 2) {
+            const window = [arr[i-2], arr[i-1], arr[i], arr[i+1], arr[i+2]].filter(w => w.pace_minkm && !isNaN(w.pace_minkm));
+            if (window.length > 0) pace = window.reduce((sum, w) => sum + w.pace_minkm, 0) / window.length;
+          }
+
+          const gapMinKm = pace ? pace / gapFactor : null;
+          const dt = r.delta_t || 1.0;
+
+          if (minettiRatio > 1.0 && dt > 0) {
+            totalGradientOverheadSec += (dt - (dt / minettiRatio));
+          }
+
+          if (r.hr > 0) {
+            if (r.hr < 140) z1 += dt;
+            else if (r.hr < 155) z2 += dt;
+            else if (r.hr < 168) z3 += dt;
+            else if (r.hr < 180) z4 += dt;
+            else z5 += dt;
+          }
+
+          return {
+            ...r,
+            gap_minkm: (gapMinKm && !isNaN(gapMinKm) && gapMinKm > 2 && gapMinKm < 15) ? gapMinKm : null,
+            pace_minkm: (pace && !isNaN(pace) && pace > 2 && pace < 15) ? pace : null,
+            cum_ascent_m: r.cum_ascent_m ? parseFloat(r.cum_ascent_m.toFixed(1)) : 0
+          };
+        });
+
+        let elevGain = 0;
+        for (let i = 1; i < trackpoints.length; i++) {
+          const dE = trackpoints[i].ele - trackpoints[i-1].ele;
+          if (dE > 0) elevGain += dE;
+        }
+
+        const avgPaceSec = totalTimeSec / (totalDist / 1000);
+        const validHRs = trackpoints.filter(p => p.hr && p.hr > 0).map(p => p.hr);
+        const avgHR = validHRs.length > 0 ? Math.round(validHRs.reduce((a,b)=>a+b,0) / validHRs.length) : null;
+
+        const hillCostSec = Math.round(totalGradientOverheadSec);
+        const surfaceCostSec = Math.round(totalTimeSec * (surfPenalty - 1.0));
+        const heatCostSec = Math.round(totalTimeSec * tempPenaltyPct);
+        const windCostSec = Math.round(totalTimeSec * windPenaltyPct);
+        
+        const totalEnvPenaltySec = hillCostSec + surfaceCostSec + heatCostSec + windCostSec + turnCostSec;
+        const perfectTimeSec = Math.max(600, totalTimeSec - totalEnvPenaltySec);
+
+        const ptMid = processedRows.find(p => p.dist_m >= (totalDist / 2.0));
+        const firstHalfPace = ptMid ? (ptMid.elapsed_sec / (ptMid.dist_m / 1000.0)) : avgPaceSec;
+        const secondHalfPace = ptMid ? ((totalTimeSec - ptMid.elapsed_sec) / ((totalDist - ptMid.dist_m) / 1000.0)) : avgPaceSec;
+        const splitStrategy = secondHalfPace < firstHalfPace ? 'Negative Split' : 'Positive Split';
+
+        const validPaces = processedRows.filter(p => p.pace_minkm).map(p => p.pace_minkm);
+        const meanPace = validPaces.reduce((a,b)=>a+b,0) / validPaces.length;
+        const variance = validPaces.reduce((sum, p) => sum + Math.pow(p - meanPace, 2), 0) / validPaces.length;
+        const pvi = (Math.sqrt(variance) / meanPace).toFixed(3);
+
+        const activityRecord = {
+          id: fileName,
+          color: COLORS[activities.length % COLORS.length],
+          totalDistKm: (totalDist / 1000).toFixed(2),
+          totalTimeSec: totalTimeSec,
+          movingTimeStr: formatSeconds(totalTimeSec),
+          perfectTimeSec: perfectTimeSec,
+          perfectTimeStr: formatSeconds(perfectTimeSec),
+          envBreakdown: { hillCostSec, surfaceCostSec, heatCostSec, windCostSec, turnCostSec, totalEnvPenaltySec },
+          sharpTurnsCount: sharpTurnsCount,
+          avgPaceStr: formatPaceSec(avgPaceSec),
+          elevGainM: Math.round(elevGain),
+          avgHR: avgHR ? `${avgHR} bpm` : '-',
+          surface: surfaceType,
+          weatherStr: weatherObj ? weatherObj.summary : 'Auto-fetch unavailable',
+          splitStrategy: splitStrategy,
+          pvi: pvi,
+          hrZones: { z1: Math.round(z1), z2: Math.round(z2), z3: Math.round(z3), z4: Math.round(z4), z5: Math.round(z5) },
+          points: processedRows
+        };
+
+        // Deduplicate in state layer to prevent UI row duplication
+        const existingIdx = activities.findIndex(a => a.id === fileName);
+        if (existingIdx >= 0) {
+          activities[existingIdx] = activityRecord;
+        } else {
+          activities.push(activityRecord);
+        }
+
+        updateBaselineDropdown();
+        if (triggerUIRender) renderUI();
+      } catch (err) {
+        console.error(`DuckDB Processing Error for ${fileName}:`, err);
+        alert(`DuckDB Error while processing ${fileName}: ${err.message}`);
+      }
+    }
+
+    function updateBaselineDropdown() {
+      const select = document.getElementById('baselineSelect');
+      const currentVal = select.value;
+      select.innerHTML = '';
+
+      activities.forEach((act) => {
+        const opt = document.createElement('option');
+        opt.value = act.id;
+        opt.textContent = `${act.id} (${act.movingTimeStr})`;
+        if (currentVal && currentVal === act.id) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    // --- 9. Rendering UI Table, Isolation Matrix & ECharts ---
+    function renderUI() {
+      const tbody = document.getElementById('metricsTableBody');
+      tbody.innerHTML = '';
+
+      if (activities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="p-4 text-slate-500 italic text-center">No files loaded yet. Drop GPX or TCX files above to begin.</td></tr>';
+        renderSplitMatrix();
+        renderIsolationMatrix();
+        updateSplitMaps();
+        return;
+      }
+
+      const baselineId = document.getElementById('baselineSelect').value || activities[0].id;
+      const baselineAct = activities.find(a => a.id === baselineId) || activities[0];
+
+      activities.forEach((act, idx) => {
+        const validGAPs = act.points.filter(p => p.gap_minkm).map(p => p.gap_minkm);
+        const avgGAPMins = validGAPs.length > 0 ? validGAPs.reduce((a,b)=>a+b,0)/validGAPs.length : null;
+
+        const timeDiffSec = act.totalTimeSec - baselineAct.totalTimeSec;
+        let gapStr = '-';
+        let gapClass = 'text-slate-400';
+
+        if (act.id !== baselineAct.id) {
+          if (timeDiffSec > 0) {
+            gapStr = `+${formatSeconds(timeDiffSec)} slower`;
+            gapClass = 'text-rose-400 font-bold';
+          } else {
+            gapStr = `-${formatSeconds(Math.abs(timeDiffSec))} faster`;
+            gapClass = 'text-emerald-400 font-bold';
+          }
+        } else {
+          gapStr = 'BASELINE';
+          gapClass = 'text-sky-400 font-bold';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/50 transition";
+        tr.innerHTML = `
+          <td class="p-2 font-bold" style="color:${act.color};">${escapeHtml(act.id)}</td>
+          <td class="p-2">
+            <select onchange="updateSurface(${idx}, this.value)" class="bg-slate-800 border border-slate-700 text-xs rounded px-1 py-0.5 text-slate-300">
+              <option value="asphalt" ${act.surface==='asphalt'?'selected':''}>Asphalt</option>
+              <option value="grass" ${act.surface==='grass'?'selected':''}>Grass</option>
+              <option value="trail" ${act.surface==='trail'?'selected':''}>Trail/Mud</option>
+              <option value="shingle" ${act.surface==='shingle'?'selected':''}>Shingle</option>
+            </select>
+          </td>
+          <td class="p-2 text-slate-400">${escapeHtml(act.weatherStr)}</td>
+          <td class="p-2 font-mono">${act.movingTimeStr}</td>
+          <td class="p-2 font-mono font-bold text-emerald-400" title="Ideal Flat/Tarmac/5°C/Still-Air Equivalent">${act.perfectTimeStr} <span class="text-[10px] text-slate-500">(-${act.envBreakdown.totalEnvPenaltySec}s)</span></td>
+          <td class="p-2 font-mono">${act.avgPaceStr} /km</td>
+          <td class="p-2 font-mono text-amber-400">${act.sharpTurnsCount} turns</td>
+          <td class="p-2 font-semibold ${act.splitStrategy==='Negative Split'?'text-emerald-400':'text-amber-400'}">${act.splitStrategy}</td>
+          <td class="p-2 ${gapClass}">${gapStr}</td>
+          <td class="p-2">
+            <button class="text-rose-400 hover:text-rose-300 text-xs font-bold" onclick="removeActivity(${idx})">Remove</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      renderSplitMatrix();
+      renderIsolationMatrix();
+      updateSplitMaps();
+      updateCharts();
+    }
+
+    window.updateSurface = function(idx, surf) {
+      if (rawParsedFiles[idx]) {
+        rawParsedFiles[idx].surface = surf;
+        reprocessAll();
+      }
+    };
+
+    function renderIsolationMatrix() {
+      const container = document.getElementById('isolationMatrix');
+      container.innerHTML = '';
+
+      if (activities.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 italic col-span-full py-2 text-center">Load activities to inspect isolated course penalties...</p>';
+        return;
+      }
+
+      activities.forEach(act => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-950 border border-slate-800 p-3 rounded-lg space-y-2';
+
+        const eb = act.envBreakdown;
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center text-xs border-b border-slate-800 pb-1">
+            <span class="font-bold" style="color:${act.color}">${escapeHtml(act.id)}</span>
+            <span class="text-[10px] text-emerald-400 font-bold">Ideal: ${act.perfectTimeStr}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div class="bg-slate-900/60 p-1.5 rounded">
+              <span class="text-[10px] text-slate-500 block uppercase">Hills / Gradient</span>
+              <span class="text-amber-400 font-bold">+${eb.hillCostSec}s</span>
+            </div>
+            <div class="bg-slate-900/60 p-1.5 rounded">
+              <span class="text-[10px] text-slate-500 block uppercase">Surface Drag</span>
+              <span class="text-amber-400 font-bold">+${eb.surfaceCostSec}s</span>
+            </div>
+            <div class="bg-slate-900/60 p-1.5 rounded">
+              <span class="text-[10px] text-slate-500 block uppercase">Heat Stress</span>
+              <span class="text-amber-400 font-bold">+${eb.heatCostSec}s</span>
+            </div>
+            <div class="bg-slate-900/60 p-1.5 rounded">
+              <span class="text-[10px] text-slate-500 block uppercase">Cornering Drag</span>
+              <span class="text-amber-400 font-bold">+${eb.turnCostSec}s</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderSplitMatrix() {
+      const tbody = document.getElementById('splitTableBody');
+      tbody.innerHTML = '';
+
+      if (activities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-slate-500 italic text-center">Load activities to inspect split performance...</td></tr>';
+        return;
+      }
+
+      const baselineId = document.getElementById('baselineSelect').value || activities[0].id;
+      const baselineAct = activities.find(a => a.id === baselineId) || activities[0];
+
+      activities.forEach(act => {
+        const sectorDeltas = [];
+        for (let km = 1; km <= 5; km++) {
+          const targetDistM = km * 1000;
+          const prevDistM = (km - 1) * 1000;
+
+          const ptActEnd = act.points.find(p => p.dist_m >= targetDistM) || act.points[act.points.length - 1];
+          const ptActStart = act.points.find(p => p.dist_m >= prevDistM) || act.points[0];
+
+          const ptBaseEnd = baselineAct.points.find(p => p.dist_m >= targetDistM) || baselineAct.points[baselineAct.points.length - 1];
+          const ptBaseStart = baselineAct.points.find(p => p.dist_m >= prevDistM) || baselineAct.points[0];
+
+          if (ptActEnd && ptActStart && ptBaseEnd && ptBaseStart) {
+            const actSectorTime = ptActEnd.elapsed_sec - ptActStart.elapsed_sec;
+            const baseSectorTime = ptBaseEnd.elapsed_sec - ptBaseStart.elapsed_sec;
+            const deltaSec = actSectorTime - baseSectorTime;
+
+            if (act.id === baselineAct.id) {
+              sectorDeltas.push(`<span class="text-slate-400">${formatSeconds(actSectorTime)}</span>`);
+            } else {
+              if (deltaSec > 0) {
+                sectorDeltas.push(`<span class="text-rose-400 font-bold">+${formatSeconds(deltaSec)}</span>`);
+              } else {
+                sectorDeltas.push(`<span class="text-emerald-400 font-bold">-${formatSeconds(Math.abs(deltaSec))}</span>`);
+              }
+            }
+          } else {
+            sectorDeltas.push('-');
+          }
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/50 transition";
+        tr.innerHTML = `
+          <td class="p-1.5 font-bold" style="color:${act.color}">${escapeHtml(act.id)}</td>
+          <td class="p-1.5">${sectorDeltas[0]}</td>
+          <td class="p-1.5">${sectorDeltas[1]}</td>
+          <td class="p-1.5">${sectorDeltas[2]}</td>
+          <td class="p-1.5">${sectorDeltas[3]}</td>
+          <td class="p-1.5">${sectorDeltas[4]}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateCharts() {
+      if (activities.length === 0) return;
+
+      const baselineId = document.getElementById('baselineSelect').value || activities[0].id;
+      const baselineAct = activities.find(a => a.id === baselineId) || activities[0];
+
+      const seriesTimeVsDist = [];
+      const seriesTimeDelta = [];
+      const seriesPace = [];
+      const seriesCumElev = [];
+
+      activities.forEach(act => {
+        const timeDistData = [];
+        const paceData = [];
+        const cumElevData = [];
+
+        act.points.forEach((p, i) => {
+          if (i % 2 !== 0 && i !== act.points.length - 1) return;
+
+          const distKm = parseFloat((p.dist_m / 1000).toFixed(2));
+          const elapsedSec = parseFloat(p.elapsed_sec.toFixed(1));
+
+          timeDistData.push([elapsedSec, distKm]);
+          if (p.pace_minkm) paceData.push([distKm, parseFloat(p.pace_minkm.toFixed(2))]);
+          if (p.cum_ascent_m !== undefined) cumElevData.push([distKm, p.cum_ascent_m]);
+        });
+
+        seriesTimeVsDist.push({ name: act.id, type: 'line', smooth: true, showSymbol: false, data: timeDistData, lineStyle: { width: 2, color: act.color } });
+        seriesPace.push({ name: act.id, type: 'line', smooth: true, showSymbol: false, data: paceData, lineStyle: { width: 2, color: act.color } });
+        seriesCumElev.push({ name: act.id, type: 'line', smooth: true, showSymbol: false, data: cumElevData, lineStyle: { width: 2, color: act.color } });
+
+        if (act.id !== baselineAct.id) {
+          const deltaPoints = [];
+          for (let distM = 100; distM <= Math.min(parseFloat(act.totalDistKm)*1000, parseFloat(baselineAct.totalDistKm)*1000); distM += 100) {
+            const ptAct = act.points.find(p => p.dist_m >= distM);
+            const ptBase = baselineAct.points.find(p => p.dist_m >= distM);
+
+            if (ptAct && ptBase) {
+              const secDelta = parseFloat((ptBase.elapsed_sec - ptAct.elapsed_sec).toFixed(1));
+              deltaPoints.push([(distM / 1000).toFixed(2), secDelta]);
+            }
+          }
+
+          seriesTimeDelta.push({
+            name: `${act.id} vs ${baselineAct.id}`,
+            type: 'line',
+            smooth: true,
+            showSymbol: false,
+            data: deltaPoints,
+            lineStyle: { width: 2.5, color: act.color }
+          });
+        }
+      });
+
+      const categories = activities.map(a => a.id);
+      const z1Data = activities.map(a => a.hrZones.z1);
+      const z2Data = activities.map(a => a.hrZones.z2);
+      const z3Data = activities.map(a => a.hrZones.z3);
+      const z4Data = activities.map(a => a.hrZones.z4);
+      const z5Data = activities.map(a => a.hrZones.z5);
+
+      if (chartHRZones) {
+        chartHRZones.setOption({
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+          legend: { data: ['Zone 1 (<140)', 'Zone 2 (140-155)', 'Zone 3 (155-168)', 'Zone 4 (168-180)', 'Zone 5 (>180)'], textStyle: { color: '#94a3b8', fontSize: 10 } },
+          grid: { left: 55, right: 35, top: 35, bottom: 40 },
+          xAxis: { type: 'category', data: categories, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+          yAxis: { type: 'value', name: 'Time (Sec)', nameTextStyle: { color: '#94a3b8' }, axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+          series: [
+            { name: 'Zone 1 (<140)', type: 'bar', stack: 'total', data: z1Data, itemStyle: { color: '#38bdf8' } },
+            { name: 'Zone 2 (140-155)', type: 'bar', stack: 'total', data: z2Data, itemStyle: { color: '#10b981' } },
+            { name: 'Zone 3 (155-168)', type: 'bar', stack: 'total', data: z3Data, itemStyle: { color: '#f59e0b' } },
+            { name: 'Zone 4 (168-180)', type: 'bar', stack: 'total', data: z4Data, itemStyle: { color: '#c084fc' } },
+            { name: 'Zone 5 (>180)', type: 'bar', stack: 'total', data: z5Data, itemStyle: { color: '#ef4444' } }
+          ]
+        }, true);
+      }
+
+      if (chartTimeVsDist) chartTimeVsDist.setOption({ series: seriesTimeVsDist.length > 0 ? seriesTimeVsDist : [{ type: 'line', data: [] }] }, { replaceMerge: ['series'] });
+      if (chartTimeDelta) chartTimeDelta.setOption({ series: seriesTimeDelta.length > 0 ? seriesTimeDelta : [{ type: 'line', data: [] }] }, { replaceMerge: ['series'] });
+      if (chartPace) chartPace.setOption({ series: seriesPace.length > 0 ? seriesPace : [{ type: 'line', data: [] }] }, { replaceMerge: ['series'] });
+      if (chartCumElev) chartCumElev.setOption({ series: seriesCumElev.length > 0 ? seriesCumElev : [{ type: 'line', data: [] }] }, { replaceMerge: ['series'] });
+    }
+
+    function initCharts() {
+      const baseOption = {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        grid: { left: 55, right: 35, top: 35, bottom: 60, containLabel: false },
+        dataZoom: [
+          { type: 'inside', start: 0, end: 100 },
+          { type: 'slider', start: 0, end: 100, height: 18, bottom: 10, borderColor: '#334155', fillerColor: 'rgba(56, 189, 248, 0.15)', handleStyle: { color: '#38bdf8' }, textStyle: { color: '#94a3b8', fontSize: 10 } }
+        ],
+        xAxis: { type: 'value', scale: true, nameLocation: 'middle', nameGap: 25, nameTextStyle: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold' }, axisLabel: { color: '#94a3b8', fontSize: 10 }, axisLine: { lineStyle: { color: '#334155' } }, splitLine: { lineStyle: { color: '#1e293b' } } },
+        yAxis: { type: 'value', scale: true, nameGap: 15, nameTextStyle: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold' }, axisLabel: { color: '#94a3b8', fontSize: 10 }, axisLine: { lineStyle: { color: '#334155' } }, splitLine: { lineStyle: { color: '#1e293b' } } },
+        series: [{ type: 'line', data: [] }]
+      };
+
+      const timeVsDistEl = document.getElementById('chartTimeVsDist');
+      const timeDeltaEl = document.getElementById('chartTimeDelta');
+      const paceEl = document.getElementById('chartPace');
+      const cumElevEl = document.getElementById('chartCumElev');
+      const hrZonesEl = document.getElementById('chartHRZones');
+
+      if (timeVsDistEl) {
+        chartTimeVsDist = echarts.init(timeVsDistEl, 'dark');
+        chartTimeVsDist.setOption({ ...baseOption, xAxis: { ...baseOption.xAxis, name: 'Elapsed Time (Sec)' }, yAxis: { ...baseOption.yAxis, name: 'Distance (km)' } });
+      }
+
+      if (timeDeltaEl) {
+        chartTimeDelta = echarts.init(timeDeltaEl, 'dark');
+        chartTimeDelta.setOption({ ...baseOption, xAxis: { ...baseOption.xAxis, name: 'Distance Checkpoint (km)' }, yAxis: { ...baseOption.yAxis, name: 'Time Lead (+) / Lag (-) (Sec)' } });
+      }
+
+      if (paceEl) {
+        chartPace = echarts.init(paceEl, 'dark');
+        chartPace.setOption({ ...baseOption, xAxis: { ...baseOption.xAxis, name: 'Distance Checkpoint (km)' }, yAxis: { ...baseOption.yAxis, name: 'Pace (min/km)', inverse: true } });
+      }
+
+      if (cumElevEl) {
+        chartCumElev = echarts.init(cumElevEl, 'dark');
+        chartCumElev.setOption({ ...baseOption, xAxis: { ...baseOption.xAxis, name: 'Distance Checkpoint (km)' }, yAxis: { ...baseOption.yAxis, name: 'Cumulative Ascent (m)' } });
+      }
+
+      if (hrZonesEl) {
+        chartHRZones = echarts.init(hrZonesEl, 'dark');
+      }
+
+      const activeCharts = [chartTimeVsDist, chartTimeDelta, chartPace, chartCumElev].filter(c => c !== null);
+      if (activeCharts.length > 0) {
+        echarts.connect(activeCharts);
+
+        chartPace.on('updateAxisPointer', (event) => {
+          const xAxisInfo = event.axesInfo[0];
+          if (xAxisInfo && xAxisInfo.value !== undefined) {
+            syncMapCursor(xAxisInfo.value);
+          }
+        });
+      }
+    }
+
+    // --- 10. Export Telemetry to CSV ---
+    window.exportParquet = async function() {
+      if (activities.length === 0) {
+        alert("No activities loaded to export.");
+        return;
+      }
+      try {
+        const result = await conn.query(`SELECT * FROM master_trackpoints;`);
+        const rows = result.toArray().map(r => r.toJSON());
+        const csvContent = "data:text/csv;charset=utf-8," + Object.keys(rows[0]).join(",") + "\n" + rows.map(e => Object.values(e).join(",")).join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "telemetry_export_5k.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        alert("Export Error: " + err.message);
+      }
+    };
+
+    // --- 11. SQL Console Templates ---
+    window.loadQueryTemplate = function() {
+      const t = document.getElementById('queryTemplateSelect').value;
+      const consoleEl = document.getElementById('sqlConsole');
+
+      if (t === 'checkpoints') {
+        consoleEl.value = `-- Checkpoint Analysis: 1k Split Times & Average HR
+SELECT 
+  activity_id,
+  CAST(ROUND(dist_m / 1000.0) AS INT) as km_checkpoint,
+  ROUND(MIN(time_s) / 60.0, 2) as elapsed_mins,
+  ROUND(AVG(hr), 0) as avg_hr_at_checkpoint
+FROM master_trackpoints
+WHERE dist_m > 0
+GROUP BY activity_id, km_checkpoint
+HAVING km_checkpoint IN (1, 2, 3, 4, 5)
+ORDER BY activity_id, km_checkpoint;`;
+      } else if (t === 'pacingDecay') {
+        consoleEl.value = `-- Pacing Decay: First 1km vs Last 1km comparison
+SELECT 
+  activity_id,
+  ROUND(AVG(CASE WHEN dist_m <= 1000 THEN hr END), 1) as km1_avg_hr,
+  ROUND(AVG(CASE WHEN dist_m >= 4000 THEN hr END), 1) as km5_avg_hr,
+  ROUND(MAX(time_s) - MIN(time_s), 1) as total_duration_s
+FROM master_trackpoints
+GROUP BY activity_id;`;
+      } else if (t === 'gradientEffort') {
+        consoleEl.value = `-- Gradient Effort Breakdown
+WITH gradients AS (
+  SELECT 
+    activity_id,
+    pt_idx,
+    hr,
+    (ele - LAG(ele) OVER (PARTITION BY activity_id ORDER BY pt_idx)) / 
+    NULLIF(dist_m - LAG(dist_m) OVER (PARTITION BY activity_id ORDER BY pt_idx), 0) as gradient
+  FROM master_trackpoints
+)
+SELECT 
+  activity_id,
+  CASE 
+    WHEN gradient < 0 THEN 'Downhill (<0%)'
+    WHEN gradient BETWEEN 0 AND 0.03 THEN 'Flat (0-3%)'
+    WHEN gradient BETWEEN 0.03 AND 0.06 THEN 'Moderate Incline (3-6%)'
+    ELSE 'Steep Incline (>6%)'
+  END as terrain_category,
+  COUNT(*) as trackpoint_count,
+  ROUND(AVG(hr), 0) as avg_hr
+FROM gradients
+WHERE gradient IS NOT NULL
+GROUP BY activity_id, terrain_category
+ORDER BY activity_id, terrain_category;`;
+      } else if (t === 'rawSample') {
+        consoleEl.value = `-- Raw Trackpoint Sample
+SELECT activity_id, pt_idx, lat, lon, ele, dist_m, hr 
+FROM master_trackpoints 
+LIMIT 50;`;
+      }
+    };
+
+    window.executeCustomSQL = async function() {
+      const sql = document.getElementById('sqlConsole').value.trim();
+      const headerEl = document.getElementById('sqlResultHeader');
+      const bodyEl = document.getElementById('sqlResultBody');
+
+      if (!sql) return;
+
+      try {
+        const result = await conn.query(sql);
+        const rows = result.toArray().map(r => r.toJSON());
+
+        headerEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+
+        if (rows.length === 0) {
+          headerEl.innerHTML = '<tr><th class="p-2 text-amber-400">Query executed successfully (0 rows returned).</th></tr>';
+          return;
+        }
+
+        const cols = Object.keys(rows[0]);
+        const trHead = document.createElement('tr');
+        cols.forEach(c => {
+          const th = document.createElement('th');
+          th.className = 'p-2 text-sky-400 font-bold uppercase tracking-wider border-b border-slate-800';
+          th.textContent = c;
+          trHead.appendChild(th);
+        });
+        headerEl.appendChild(trHead);
+
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-900 transition';
+          cols.forEach(c => {
+            const td = document.createElement('td');
+            td.className = 'p-2 border-b border-slate-900';
+            td.textContent = r[c] !== null ? r[c] : '-';
+            tr.appendChild(td);
+          });
+          bodyEl.appendChild(tr);
+        });
+
+      } catch (err) {
+        alert("SQL Execution Error: " + err.message);
+      }
+    };
+
+    // --- Helpers ---
+    window.removeActivity = function(idx) {
+      const act = activities[idx];
+      activities.splice(idx, 1);
+      rawParsedFiles.splice(idx, 1);
+      
+      if (act) {
+        conn.query(`DELETE FROM master_trackpoints WHERE activity_id = '${act.id.replace(/'/g, "''")}';`);
+      }
+
+      updateBaselineDropdown();
+      renderUI();
+    };
+
+    function formatSeconds(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function formatPaceSec(secPerKm) {
+      const m = Math.floor(secPerKm / 60);
+      const s = Math.floor(secPerKm % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function formatPaceDec(decMins) {
+      const m = Math.floor(decMins);
+      const s = Math.round((decMins - m) * 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function escapeHtml(str) {
+      return str ? str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) : '';
+    }
+
+    // --- Drag & Drop Handlers ---
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-active'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-active');
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFiles(e.target.files);
+    });
+
+    async function handleFiles(files) {
+      for (let i = 0; i < files.length; i++) {
+        const name = files[i].name.toLowerCase();
+        if (name.endsWith('.gpx') || name.endsWith('.tcx')) {
+          await parseFile(files[i]);
+        }
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      chartTimeVsDist && chartTimeVsDist.resize();
+      chartTimeDelta && chartTimeDelta.resize();
+      chartPace && chartPace.resize();
+      chartCumElev && chartCumElev.resize();
+      chartHRZones && chartHRZones.resize();
+      mapInstances.forEach(item => item.map.invalidateSize());
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initDuckDB();
+    });
+  </script>
+</body>
+</html>

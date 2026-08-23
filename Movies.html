@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UK Cinema Tracker, Tier List & Analytics</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+
+      /* Tier Colours */
+      --tier-s: #ff7f7f;
+      --tier-a: #ffbf7f;
+      --tier-b: #ffff7f;
+      --tier-c: #7fff7f;
+      --tier-d: #7fbfff;
+      --tier-f: #ff7fff;
+
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.5;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    h1 { font-size: 1.75rem; font-weight: 800; }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover {
+      background-color: var(--bg-card-hover);
+      border-color: var(--accent-blue);
+    }
+
+    .btn-accent {
+      background-color: var(--accent-blue);
+      color: #0f172a;
+      border-color: var(--accent-blue);
+    }
+
+    .btn-accent:hover { background-color: #7dd3fc; }
+
+    /* Nav Tabs */
+    .tab-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background-color: var(--bg-card);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background-color: var(--accent-blue);
+      color: #0f172a;
+      border-color: var(--accent-blue);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .add-film-form {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      flex-grow: 1;
+    }
+
+    .add-film-form input, .add-film-form select, .filter-group select, .modal-edit-input {
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .add-film-form input[type="text"] { flex-grow: 1; min-width: 180px; }
+    .add-film-form input[type="number"] { width: 90px; }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Tier List Grid */
+    .tier-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .tier-row {
+      display: flex;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      min-height: 70px;
+      overflow: hidden;
+    }
+
+    .tier-label {
+      width: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #0f172a;
+      flex-shrink: 0;
+    }
+
+    .tier-s { background-color: var(--tier-s); }
+    .tier-a { background-color: var(--tier-a); }
+    .tier-b { background-color: var(--tier-b); }
+    .tier-c { background-color: var(--tier-c); }
+    .tier-d { background-color: var(--tier-d); }
+    .tier-f { background-color: var(--tier-f); }
+
+    .tier-dropzone {
+      flex-grow: 1;
+      padding: 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      transition: background-color 0.2s ease;
+    }
+
+    .tier-dropzone.drag-over { background-color: rgba(56, 189, 248, 0.1); }
+
+    /* Film Card Element */
+    .film-card {
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.4rem 0.65rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: grab;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      user-select: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .film-card:hover { border-color: var(--accent-blue); }
+    .film-card:active { cursor: grabbing; }
+
+    .year-tag {
+      font-size: 0.7rem;
+      background-color: var(--bg-card-hover);
+      color: var(--accent-blue);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .film-card .remove-btn {
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .film-card .remove-btn:hover { color: var(--accent-red); }
+
+    /* Upcoming Calendar View */
+    .upcoming-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .upcoming-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .upcoming-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .upcoming-date { font-size: 0.8rem; color: var(--accent-blue); font-weight: 700; margin-bottom: 0.5rem; }
+    .upcoming-meta { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+
+    /* Analytics Dashboard Styling */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .metric-card h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-card .metric-value {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--accent-blue);
+      line-height: 1;
+    }
+
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 800px) {
+      .analytics-grid { grid-template-columns: 1fr; }
+    }
+
+    .chart-box {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .chart-box h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .bar-chart-container {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      height: 180px;
+      padding-top: 1rem;
+    }
+
+    .bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .bar-fill {
+      width: 100%;
+      background-color: var(--accent-blue);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      transition: height 0.3s ease;
+    }
+
+    .bar-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .bar-val {
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    /* Pool Container */
+    .pool-container {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .pool-container h3 {
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(15, 23, 42, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+    .modal-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-header h2 { font-size: 1.25rem; font-weight: 800; }
+
+    .close-modal {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .close-modal:hover { color: var(--text-main); }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem 1rem;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-item span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .modal-item p { font-weight: 600; color: var(--text-main); }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+
+    .paste-textarea {
+      width: 100%;
+      height: 160px;
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+      resize: vertical;
+    }
+
+    .guide-section {
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .guide-section h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 0.5rem;
+    }
+
+    .guide-section p, .guide-section ol {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .guide-section ol { margin-left: 1.2rem; margin-top: 0.4rem; }
+
+    #fileInput { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1>UK Cinema Tracker & Tier List</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Rank watched films, track upcoming UK releases, and view viewing analytics.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn" onclick="openGuideModal()">User Guide & Tools</button>
+        <button type="button" class="btn btn-accent" onclick="openPasteModal()">Paste JSON Payload</button>
+        <button type="button" class="btn btn-accent" onclick="exportGraphic()">Export Graphic (PNG)</button>
+        <button type="button" class="btn" onclick="exportJSON()">Export Backup (JSON)</button>
+        <button type="button" class="btn" onclick="document.getElementById('fileInput').click()">Import Backup File</button>
+        <button type="button" class="btn" onclick="exportCSV()">Export CSV</button>
+        <input type="file" id="fileInput" accept=".json" onchange="importJSON(event)">
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('watchedTab', this)">Watched Tier List</button>
+      <button class="tab-btn" onclick="switchTab('upcomingTab', this)">Upcoming UK Releases</button>
+      <button class="tab-btn" onclick="switchTab('analyticsTab', this)">Analytics Dashboard</button>
+    </div>
+
+    <!-- TAB 1: Watched Tier List -->
+    <div id="watchedTab" class="tab-content active">
+      <section class="controls-bar">
+        <form class="add-film-form" id="filmForm" onsubmit="addFilm(event)">
+          <input type="text" id="filmTitle" placeholder="Film title..." required>
+          <input type="number" id="filmYear" placeholder="Year" min="1900" max="2100" required>
+          <select id="filmTier">
+            <option value="unranked">Unranked (Pool)</option>
+            <option value="S">S Tier</option>
+            <option value="A">A Tier</option>
+            <option value="B">B Tier</option>
+            <option value="C">C Tier</option>
+            <option value="D">D Tier</option>
+            <option value="F">F Tier</option>
+          </select>
+          <button type="submit" class="btn btn-accent">Add Film</button>
+        </form>
+
+        <div class="filter-group">
+          <label for="filterYear">Filter Tier List:</label>
+          <select id="filterYear" onchange="renderWatched()">
+            <option value="ALL">All Years</option>
+          </select>
+        </div>
+      </section>
+
+      <main class="tier-container" id="tierGrid">
+        <div class="tier-row"><div class="tier-label tier-s">S</div><div class="tier-dropzone" data-tier="S"></div></div>
+        <div class="tier-row"><div class="tier-label tier-a">A</div><div class="tier-dropzone" data-tier="A"></div></div>
+        <div class="tier-row"><div class="tier-label tier-b">B</div><div class="tier-dropzone" data-tier="B"></div></div>
+        <div class="tier-row"><div class="tier-label tier-c">C</div><div class="tier-dropzone" data-tier="C"></div></div>
+        <div class="tier-row"><div class="tier-label tier-d">D</div><div class="tier-dropzone" data-tier="D"></div></div>
+        <div class="tier-row"><div class="tier-label tier-f">F</div><div class="tier-dropzone" data-tier="F"></div></div>
+      </main>
+
+      <section class="pool-container">
+        <h3>Unranked Watched Queue</h3>
+        <div class="tier-dropzone" data-tier="unranked" style="min-height: 50px;"></div>
+      </section>
+    </div>
+
+    <!-- TAB 2: Upcoming UK Release Calendar -->
+    <div id="upcomingTab" class="tab-content">
+      <section class="controls-bar">
+        <div class="add-film-form">
+          <input type="text" id="searchUpcoming" placeholder="Search upcoming titles..." onkeyup="renderUpcoming()">
+        </div>
+      </section>
+
+      <div class="upcoming-grid" id="upcomingGrid"></div>
+    </div>
+
+    <!-- TAB 3: Analytics Dashboard -->
+    <div id="analyticsTab" class="tab-content">
+      <section class="controls-bar">
+        <div class="filter-group">
+          <label for="analyticsYear">Analytics Filter Year:</label>
+          <select id="analyticsYear" onchange="renderAnalytics()">
+            <option value="ALL">All Time</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Key Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <h4>Total Watched</h4>
+          <div class="metric-value" id="metricTotal">0</div>
+        </div>
+        <div class="metric-card">
+          <h4>Cinema Time</h4>
+          <div class="metric-value" id="metricHours">0h</div>
+        </div>
+        <div class="metric-card">
+          <h4>Avg Runtime</h4>
+          <div class="metric-value" id="metricAvgRuntime">0m</div>
+        </div>
+        <div class="metric-card">
+          <h4>Top Rated Tier</h4>
+          <div class="metric-value" id="metricTopTier">-</div>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="analytics-grid">
+        <!-- Monthly Distribution Bar Chart -->
+        <div class="chart-box">
+          <h3>Films Watched by Month</h3>
+          <div class="bar-chart-container" id="monthlyChart"></div>
+        </div>
+
+        <!-- Runtime vs Tier Correlation -->
+        <div class="chart-box">
+          <h3>Average Runtime by Tier (Minutes)</h3>
+          <div class="bar-chart-container" id="tierRuntimeChart"></div>
+        </div>
+
+        <!-- Age Ratings Distribution -->
+        <div class="chart-box">
+          <h3>Age Rating (Certification) Breakdown</h3>
+          <div class="bar-chart-container" id="certChart"></div>
+        </div>
+
+        <!-- Screening Format Breakdown -->
+        <div class="chart-box">
+          <h3>Screening Formats (2D vs 3D / IMAX)</h3>
+          <div class="bar-chart-container" id="formatChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail & Edit Modal -->
+  <div class="modal-overlay" id="detailModal" onclick="closeModal('detailModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalTitle">Film Title</h2>
+          <p id="modalSubtitle" style="font-size:0.8rem; color:var(--text-muted);"></p>
+        </div>
+        <button class="close-modal" onclick="closeModal('detailModal')">&times;</button>
+      </div>
+      <div class="modal-grid" id="modalGrid"></div>
+      <div class="modal-actions">
+        <button class="btn" id="modalEditToggleBtn" onclick="toggleEditMode()">Edit Details</button>
+        <button class="btn btn-accent" id="modalSaveBtn" style="display:none;" onclick="saveModalEdits()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paste JSON Modal -->
+  <div class="modal-overlay" id="pasteModal" onclick="closeModal('pasteModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Import JSON Payload</h2>
+        <button class="close-modal" onclick="closeModal('pasteModal')">&times;</button>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        Paste JSON extracted from your Gmail bookmarklets, FDA scraper, or Apps Script backups:
+      </p>
+      <textarea id="jsonPasteInput" class="paste-textarea" placeholder='{"films": [...]} OR {"upcoming": [...]}'></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-accent" onclick="importPastedJSON()">Import Payload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Guide & Tools Modal -->
+  <div class="modal-overlay" id="guideModal" onclick="closeModal('guideModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>User Guide & Data Tools</h2>
+        <button class="close-modal" onclick="closeModal('guideModal')">&times;</button>
+      </div>
+
+      <div class="guide-section">
+        <h3>1. Historical Bulk Load (Google Apps Script)</h3>
+        <p>Extract all historical ticket confirmation emails from <code>tickets@cineworldtickets.com</code> directly into a Google Drive JSON backup file:</p>
+        <ol>
+          <li>Open <strong><a href="https://script.google.com" target="_blank" style="color:var(--accent-blue)">Google Apps Script</a></strong> and click New Project.</li>
+          <li>Click below to download <code>CineworldBulkExporter.gs</code> and paste its code into the editor.</li>
+          <li>Click <strong>Run</strong>, authorize read permissions, and download <code>cineworld_history_backup.json</code> from Google Drive.</li>
+          <li>Click <strong>Import Backup File</strong> in the header above.</li>
+        </ol>
+        <button class="btn btn-accent" style="width:100%; margin-top:0.5rem;" onclick="downloadAppsScriptFile()">Download CineworldBulkExporter.gs</button>
+      </div>
+
+      <div class="guide-section">
+        <h3>2. Ongoing Ticket Logging (Gmail Bookmarklet)</h3>
+        <p>When you book a new film and open the booking email in <strong><a href="https://mail.google.com" target="_blank" style="color:var(--accent-blue)">Gmail</a></strong>, run this bookmarklet to copy the ticket metadata to your clipboard:</p>
+        <button class="btn" style="width:100%; margin:0.5rem 0;" onclick="copyEmailBookmarklet()">Copy Gmail Bookmarklet Code</button>
+        <p><em>To install: Create a new browser bookmark named "🎬 Add Ticket" and paste the copied code into the URL box.</em></p>
+      </div>
+
+      <div class="guide-section" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
+        <h3>3. Upcoming UK Releases (FDA Schedule Harvester)</h3>
+        <p>Harvest official upcoming UK theatrical release dates from the <strong><a href="https://filmdistributorsassociation.com/release-schedule/all-future-releases/" target="_blank" style="color:var(--accent-blue)">FDA Release Schedule</a></strong>:</p>
+        <button class="btn" style="width:100%; margin:0.5rem 0;" onclick="copyFDABookmarklet()">Copy FDA Bookmarklet Code</button>
+        <p><em>Run this bookmarklet while on the FDA schedule page, then click "Paste JSON Payload" in the header to import into the Upcoming tab.</em></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'uk_cinema_tracker_data_v3';
+
+    let appState = {
+      films: [],
+      upcoming: []
+    };
+
+    let activeFilmId = null;
+    let isEditing = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('filmYear').value = new Date().getFullYear();
+      loadState();
+      setupDragAndDrop();
+    });
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+
+      if (tabId === 'upcomingTab') renderUpcoming();
+      if (tabId === 'analyticsTab') {
+        updateAnalyticsYearDropdown();
+        renderAnalytics();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error("Storage save error:", e);
+      }
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && Array.isArray(parsed.films)) appState.films = parsed.films;
+          if (parsed && Array.isArray(parsed.upcoming)) appState.upcoming = parsed.upcoming;
+        } catch (e) {
+          console.error("Storage load error:", e);
+        }
+      }
+      updateYearFilterDropdown();
+      renderWatched();
+    }
+
+    function addFilm(event) {
+      if (event) event.preventDefault();
+
+      const titleInput = document.getElementById('filmTitle');
+      const yearInput = document.getElementById('filmYear');
+      const tierInput = document.getElementById('filmTier');
+
+      const title = titleInput.value.trim();
+      if (!title) return;
+
+      const newFilm = {
+        id: 'film_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        title: title,
+        year: parseInt(yearInput.value) || new Date().getFullYear(),
+        tier: tierInput.value,
+        metadata: { dateWatched: '', timeWatched: '', cinema: '', screeningType: '', screen: '', certification: '', runningTime: '', bookingRef: '' }
+      };
+
+      appState.films.push(newFilm);
+      saveState();
+      updateYearFilterDropdown();
+      renderWatched();
+
+      titleInput.value = '';
+    }
+
+    function removeFilm(id) {
+      appState.films = appState.films.filter(f => f.id !== id);
+      saveState();
+      updateYearFilterDropdown();
+      renderWatched();
+    }
+
+    function removeUpcoming(id) {
+      appState.upcoming = appState.upcoming.filter(f => f.id !== id);
+      saveState();
+      renderUpcoming();
+    }
+
+    function renderUpcoming() {
+      const grid = document.getElementById('upcomingGrid');
+      const query = (document.getElementById('searchUpcoming').value || '').toLowerCase();
+      grid.innerHTML = '';
+
+      const filtered = appState.upcoming.filter(f => f.title.toLowerCase().includes(query));
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<p style="color:var(--text-muted); grid-column:1/-1; text-align:center; padding:2rem;">No upcoming releases found. Run the FDA Bookmarklet and click Paste JSON Payload to import calendar releases.</p>';
+        return;
+      }
+
+      filtered.forEach(f => {
+        const meta = f.metadata || {};
+        const card = document.createElement('div');
+        card.className = 'upcoming-card';
+        card.innerHTML = `
+          <div>
+            <div class="upcoming-title">${escapeHtml(f.title)}</div>
+            <div class="upcoming-date">${escapeHtml(meta.releaseDate || f.year.toString())}</div>
+            <div class="upcoming-meta">
+              ${meta.director ? `<strong>Director:</strong> ${escapeHtml(meta.director)}<br>` : ''}
+              ${meta.starring ? `<strong>Starring:</strong> ${escapeHtml(meta.starring)}<br>` : ''}
+              ${meta.formats ? `<strong>Formats:</strong> ${escapeHtml(meta.formats)}` : ''}
+            </div>
+          </div>
+          <button class="btn" style="margin-top:0.75rem; color:var(--accent-red); padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="removeUpcoming('${f.id}')">Remove</button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    /* Analytics Dashboard Engine */
+    function updateAnalyticsYearDropdown() {
+      const select = document.getElementById('analyticsYear');
+      const currentSelected = select.value || 'ALL';
+
+      const years = [...new Set(appState.films.map(f => f.year))].sort((a, b) => b - a);
+
+      select.innerHTML = '<option value="ALL">All Time</option>';
+      years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y.toString();
+        opt.textContent = y.toString();
+        if (y.toString() === currentSelected) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderAnalytics() {
+      const selectedYear = document.getElementById('analyticsYear').value;
+      const filtered = appState.films.filter(f => selectedYear === 'ALL' || f.year.toString() === selectedYear);
+
+      // Key Metrics Calculations
+      document.getElementById('metricTotal').textContent = filtered.length;
+
+      let totalMinutes = 0;
+      let ratedCount = 0;
+      const tierCounts = { S:0, A:0, B:0, C:0, D:0, F:0 };
+      const tierRuntimes = { S:[], A:[], B:[], C:[], D:[], F:[] };
+      const monthCounts = Array(12).fill(0);
+      const certCounts = {};
+      const formatCounts = { '2D': 0, '3D / IMAX / 4DX': 0, 'Other': 0 };
+
+      filtered.forEach(f => {
+        const meta = f.metadata || {};
+
+        // Parse Runtime
+        if (meta.runningTime) {
+          const m = meta.runningTime.match(/\d+/);
+          if (m) {
+            const mins = parseInt(m[0], 10);
+            totalMinutes += mins;
+            ratedCount++;
+            if (tierRuntimes[f.tier]) tierRuntimes[f.tier].push(mins);
+          }
+        }
+
+        // Tiers
+        if (tierCounts[f.tier] !== undefined) tierCounts[f.tier]++;
+
+        // Month parsing
+        if (meta.dateWatched) {
+          const parts = meta.dateWatched.split('/');
+          if (parts.length === 3) {
+            const mIdx = parseInt(parts[1], 10) - 1;
+            if (mIdx >= 0 && mIdx < 12) monthCounts[mIdx]++;
+          }
+        }
+
+        // Certification
+        if (meta.certification) {
+          const c = meta.certification.trim().toUpperCase();
+          certCounts[c] = (certCounts[c] || 0) + 1;
+        }
+
+        // Formats
+        if (meta.screeningType) {
+          const st = meta.screeningType.toUpperCase();
+          if (st.includes('3D') || st.includes('IMAX') || st.includes('4DX')) {
+            formatCounts['3D / IMAX / 4DX']++;
+          } else if (st.includes('2D')) {
+            formatCounts['2D']++;
+          } else {
+            formatCounts['Other']++;
+          }
+        }
+      });
+
+      document.getElementById('metricHours').textContent = Math.round(totalMinutes / 60) + 'h';
+      document.getElementById('metricAvgRuntime').textContent = ratedCount > 0 ? Math.round(totalMinutes / ratedCount) + 'm' : '0m';
+
+      let topTier = '-';
+      let maxTierCount = 0;
+      Object.keys(tierCounts).forEach(t => {
+        if (tierCounts[t] > maxTierCount) {
+          maxTierCount = tierCounts[t];
+          topTier = t + ' Tier';
+        }
+      });
+      document.getElementById('metricTopTier').textContent = topTier;
+
+      // Render Charts
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      renderBarChart('monthlyChart', months.map((m, i) => ({ label: m, val: monthCounts[i] })));
+
+      const tierAverages = Object.keys(tierRuntimes).map(t => {
+        const arr = tierRuntimes[t];
+        const avg = arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+        return { label: t, val: avg };
+      });
+      renderBarChart('tierRuntimeChart', tierAverages);
+
+      const certData = Object.keys(certCounts).map(c => ({ label: c, val: certCounts[c] }));
+      renderBarChart('certChart', certData);
+
+      const formatData = Object.keys(formatCounts).map(fmt => ({ label: fmt, val: formatCounts[fmt] }));
+      renderBarChart('formatChart', formatData);
+    }
+
+    function renderBarChart(containerId, items) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+
+      if (items.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); font-size:0.8rem; text-align:center; width:100%;">No metadata available for chart.</p>';
+        return;
+      }
+
+      const maxVal = Math.max(...items.map(i => i.val), 1);
+
+      items.forEach(item => {
+        const pct = Math.round((item.val / maxVal) * 100);
+        const col = document.createElement('div');
+        col.className = 'bar-col';
+        col.innerHTML = `
+          <div class="bar-val">${item.val > 0 ? item.val : ''}</div>
+          <div class="bar-fill" style="height: ${pct}%;"></div>
+          <div class="bar-label">${item.label}</div>
+        `;
+        container.appendChild(col);
+      });
+    }
+
+    function openModal(filmId) {
+      activeFilmId = filmId;
+      isEditing = false;
+      const film = appState.films.find(f => f.id === filmId);
+      if (!film) return;
+
+      document.getElementById('modalTitle').textContent = film.title;
+      document.getElementById('modalSubtitle').textContent = `Viewing Year: ${film.year} • Tier: ${film.tier.toUpperCase()}`;
+      document.getElementById('modalEditToggleBtn').style.display = 'inline-block';
+      document.getElementById('modalEditToggleBtn').textContent = 'Edit Details';
+      document.getElementById('modalSaveBtn').style.display = 'none';
+
+      renderModalContent(film);
+      document.getElementById('detailModal').classList.add('active');
+    }
+
+    function renderModalContent(film) {
+      const grid = document.getElementById('modalGrid');
+      grid.innerHTML = '';
+      const meta = film.metadata || {};
+
+      const fields = [
+        { key: 'dateWatched', label: 'Date Watched', val: meta.dateWatched || '' },
+        { key: 'timeWatched', label: 'Time Watched', val: meta.timeWatched || '' },
+        { key: 'cinema', label: 'Cinema', val: meta.cinema || '' },
+        { key: 'screeningType', label: 'Screening Type', val: meta.screeningType || '' },
+        { key: 'screen', label: 'Screen Number', val: meta.screen || '' },
+        { key: 'certification', label: 'Certification', val: meta.certification || '' },
+        { key: 'runningTime', label: 'Running Time', val: meta.runningTime || '' },
+        { key: 'bookingRef', label: 'Booking Ref', val: meta.bookingRef || '' }
+      ];
+
+      fields.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'modal-item';
+        if (isEditing) {
+          item.innerHTML = `<span>${f.label}</span><input type="text" class="modal-edit-input" data-key="${f.key}" value="${escapeHtml(f.val)}">`;
+        } else {
+          item.innerHTML = `<span>${f.label}</span><p>${f.val ? escapeHtml(f.val) : '-'}</p>`;
+        }
+        grid.appendChild(item);
+      });
+    }
+
+    function toggleEditMode() {
+      const film = appState.films.find(f => f.id === activeFilmId);
+      if (!film) return;
+
+      isEditing = !isEditing;
+      renderModalContent(film);
+
+      if (isEditing) {
+        document.getElementById('modalEditToggleBtn').textContent = 'Cancel';
+        document.getElementById('modalSaveBtn').style.display = 'inline-block';
+      } else {
+        document.getElementById('modalEditToggleBtn').textContent = 'Edit Details';
+        document.getElementById('modalSaveBtn').style.display = 'none';
+      }
+    }
+
+    function saveModalEdits() {
+      const film = appState.films.find(f => f.id === activeFilmId);
+      if (!film) return;
+
+      if (!film.metadata) film.metadata = {};
+
+      document.querySelectorAll('.modal-edit-input').forEach(input => {
+        const key = input.dataset.key;
+        film.metadata[key] = input.value.trim();
+      });
+
+      saveState();
+      isEditing = false;
+      document.getElementById('modalEditToggleBtn').textContent = 'Edit Details';
+      document.getElementById('modalSaveBtn').style.display = 'none';
+      renderModalContent(film);
+      renderWatched();
+    }
+
+    function openGuideModal() { document.getElementById('guideModal').classList.add('active'); }
+    function openPasteModal() {
+      document.getElementById('jsonPasteInput').value = '';
+      document.getElementById('pasteModal').classList.add('active');
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function copyEmailBookmarklet() {
+      const code = `javascript:(function(){const b=document.body.innerText;function e(r){const m=b.match(r);if(!m)return"";let v=m[1].replace(/[\\r\\n]+/g,' ').replace(/\\s+/g,' ').trim();return v.replace(/\\*/g,'').trim();}const t=e(/You are going to see:\\s*([\\s\\S]*?)(?=Certification:|$)/i);const cert=e(/Certification:\\s*([^\\r\\n]+)/i);const rt=e(/Running time:\\s*([^\\r\\n]+)/i);const ref=e(/Booking reference number:\\s*([^\\r\\n]+)/i);const dRaw=e(/Date:\\s*([^\\r\\n]+)/i);const cin=e(/Cinema:\\s*([^\\r\\n]+)/i);const st=e(/Screening type:\\s*([^\\r\\n]+)/i);const sc=e(/Screen:\\s*([^\\r\\n]+)/i);if(!t){alert("Could not detect Cineworld ticket details. Ensure a booking email is open in Gmail.");return;}const dMatch=dRaw.match(/(\\d{2}\\/\\d{2}\\/\\d{4})\\s*(\\d{2}:\\d{2})?/);const fDate=dMatch?dMatch[1]:"";const fTime=dMatch&&dMatch[2]?dMatch[2]:"";let y=new Date().getFullYear();if(fDate){const p=fDate.split('/');if(p.length===3)y=parseInt(p[2],10);}const payload={films:[{id:'film_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),title:t,year:y,tier:'unranked',metadata:{dateWatched:fDate,timeWatched:fTime,certification:cert,runningTime:rt,bookingRef:ref,cinema:cin,screeningType:st,screen:sc}}]};const pStr=JSON.stringify(payload,null,2);navigator.clipboard.writeText(pStr).then(()=>{alert('Extracted ticket for "'+t+'" ('+y+')!\\nJSON copied to clipboard. Return to Cinema Tracker and click Paste JSON Payload.');}).catch(()=>{prompt('Copy JSON payload below and click Paste JSON Payload in your app:',pStr);});})();`;
+      navigator.clipboard.writeText(code).then(() => alert("Gmail Bookmarklet code copied to clipboard!")).catch(() => prompt("Copy code below:", code));
+    }
+
+    function copyFDABookmarklet() {
+      const code = `javascript:(function(){const r=document.body.innerText;const d=/\\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\\s+\\d{1,2}\\s+(January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{4}\\b/gi;const m=[...r.matchAll(d)];const u=[];for(let i=0;i<m.length;i++){const ds=m[i][0];const si=m[i].index+ds.length;const ei=(i+1<m.length)?m[i+1].index:r.length;const ck=r.substring(si,ei);const ln=ck.split('\\n').map(l=>l.trim()).filter(l=>l.length>1);ln.forEach((l,idx)=>{if(!l.match(/^(Director:|Starring:|Locations:|Film Formats:|Access Formats:|Trailer|Film website|Press office|Access files|Print version|$)/i)&&!l.match(/\\d+\\+|2D|3D|IMAX|Dolby/i)&&l.length<80){const ym=ds.match(/\\b(20\\d{2})\\b/);const y=ym?parseInt(ym[1],10):new Date().getFullYear();let dir="",st="",fmt="";for(let j=idx+1;j<Math.min(idx+6,ln.length);j++){if(ln[j].startsWith("Director:"))dir=ln[j].replace("Director:","").trim();if(ln[j].startsWith("Starring:"))st=ln[j].replace("Starring:","").trim();if(ln[j].startsWith("Film Formats:"))fmt=ln[j].replace("Film Formats:","").trim();}if(!u.some(f=>f.title===l)){u.push({id:'upcoming_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),title:l,year:y,type:'upcoming',metadata:{releaseDate:ds,director:dir,starring:st,formats:fmt}});}}});}if(u.length===0){alert("No release items found. Ensure you are on the FDA Future Releases page.");return;}const p=JSON.stringify({upcoming:u},null,2);navigator.clipboard.writeText(p).then(()=>{alert("Successfully extracted "+u.length+" upcoming releases!\\nPayload copied to clipboard. Return to Cinema Tracker and click 'Paste JSON Payload'.");}).catch(()=>{prompt("Copy JSON payload below:",p);});})();`;
+      navigator.clipboard.writeText(code).then(() => alert("FDA Bookmarklet code copied to clipboard!")).catch(() => prompt("Copy code below:", code));
+    }
+
+    function importPastedJSON() {
+      const raw = document.getElementById('jsonPasteInput').value.trim();
+      if (!raw) return;
+
+      try {
+        const imported = JSON.parse(raw);
+        let addedWatched = 0;
+        let addedUpcoming = 0;
+
+        if (imported.films && Array.isArray(imported.films)) {
+          imported.films.forEach(f => {
+            if (!appState.films.some(x => x.title.toLowerCase() === f.title.toLowerCase() && x.year === f.year)) {
+              appState.films.push(f);
+              addedWatched++;
+            }
+          });
+        }
+
+        if (imported.upcoming && Array.isArray(imported.upcoming)) {
+          imported.upcoming.forEach(f => {
+            if (!appState.upcoming.some(x => x.title.toLowerCase() === f.title.toLowerCase())) {
+              appState.upcoming.push(f);
+              addedUpcoming++;
+            }
+          });
+        }
+
+        saveState();
+        updateYearFilterDropdown();
+        renderWatched();
+        renderUpcoming();
+        closeModal('pasteModal');
+
+        alert(`Import result:\n• Watched films added: ${addedWatched}\n• Upcoming releases added: ${addedUpcoming}`);
+      } catch (err) {
+        alert('Invalid JSON formatting. Please check your text and try again.');
+      }
+    }
+
+    function downloadAppsScriptFile() {
+      const scriptCode = `function exportAllCineworldTicketsToDrive() {
+  const query = 'from:tickets@cineworldtickets.com subject:"Cineworld Tickets for"';
+  const batchSize = 50;
+  let start = 0;
+  let totalThreadsFetched = 0;
+  const parsedFilms = [];
+
+  while (true) {
+    const threads = GmailApp.search(query, start, batchSize);
+    if (threads.length === 0) break;
+    totalThreadsFetched += threads.length;
+
+    threads.forEach(thread => {
+      const messages = thread.getMessages();
+      messages.forEach(msg => {
+        const body = msg.getPlainBody();
+
+        function extractField(labelRegex) {
+          const match = body.match(labelRegex);
+          if (!match) return "";
+          let val = match[1];
+          val = val.replace(/[\\r\\n]+/g, ' ').replace(/\\s+/g, ' ').trim();
+          val = val.replace(/\\*/g, '');
+          val = val.replace(/<http[^>]+>/gi, '');
+          return val.trim();
+        }
+
+        const title = extractField(/You are going to see:\\s*([\\s\\S]*?)(?=Certification:|$)/i);
+        const cert = extractField(/Certification:\\s*([^\\r\\n]+)/i);
+        const runtime = extractField(/Running time:\\s*([^\\r\\n]+)/i);
+        const ref = extractField(/Booking reference number:\\s*([^\\r\\n]+)/i);
+        const dateRaw = extractField(/Date:\\s*([^\\r\\n]+)/i);
+        const cinema = extractField(/Cinema:\\s*([^\\r\\n]+)/i);
+        const type = extractField(/Screening type:\\s*([^\\r\\n]+)/i);
+        const screen = extractField(/Screen:\\s*([^\\r\\n]+)/i);
+
+        if (title) {
+          const dateMatch = dateRaw.match(/(\\d{2}\\/\\d{2}\\/\\d{4})\\s*(\\d{2}:\\d{2})?/);
+          const fullDateStr = dateMatch ? dateMatch[1] : "";
+          const timeStr = dateMatch && dateMatch[2] ? dateMatch[2] : "";
+
+          let year = msg.getDate().getFullYear();
+          if (fullDateStr) {
+            const parts = fullDateStr.split('/');
+            if (parts.length === 3) year = parseInt(parts[2], 10);
+          }
+
+          const filmRecord = {
+            id: 'film_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            title: title,
+            year: year,
+            tier: 'unranked',
+            metadata: { dateWatched: fullDateStr, timeWatched: timeStr, certification: cert, runningTime: runtime, bookingRef: ref, cinema: cinema, screeningType: type, screen: screen }
+          };
+
+          if (!parsedFilms.some(f => (ref && f.metadata && f.metadata.bookingRef === ref) || (f.title.toLowerCase() === title.toLowerCase() && f.metadata && f.metadata.dateWatched === fullDateStr))) {
+            parsedFilms.push(filmRecord);
+          }
+        }
+      });
+    });
+
+    start += batchSize;
+  }
+
+  const jsonContent = JSON.stringify({ films: parsedFilms }, null, 2);
+  const fileName = "cineworld_history_backup.json";
+  const existingFiles = DriveApp.getFilesByName(fileName);
+  while (existingFiles.hasNext()) { existingFiles.next().setTrashed(true); }
+  DriveApp.createFile(fileName, jsonContent, MimeType.PLAIN_TEXT);
+}`;
+
+      const blob = new Blob([scriptCode], { type: 'text/javascript' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'CineworldBulkExporter.gs';
+      link.click();
+    }
+
+    function updateYearFilterDropdown() {
+      const select = document.getElementById('filterYear');
+      const currentSelected = select.value || 'ALL';
+
+      const years = [...new Set(appState.films.map(f => f.year))].sort((a, b) => b - a);
+
+      select.innerHTML = '<option value="ALL">All Years</option>';
+      years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y.toString();
+        opt.textContent = y.toString();
+        if (y.toString() === currentSelected) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderWatched() {
+      const selectedYear = document.getElementById('filterYear').value;
+      document.querySelectorAll('.tier-dropzone').forEach(dz => dz.innerHTML = '');
+
+      const filteredFilms = appState.films.filter(f => {
+        if (!selectedYear || selectedYear === 'ALL') return true;
+        return f.year.toString() === selectedYear;
+      });
+
+      filteredFilms.forEach(film => {
+        const zone = document.querySelector(`.tier-dropzone[data-tier="${film.tier}"]`);
+        if (zone) zone.appendChild(createFilmElement(film));
+      });
+    }
+
+    function createFilmElement(film) {
+      const el = document.createElement('div');
+      el.className = 'film-card';
+      el.draggable = true;
+      el.dataset.id = film.id;
+      el.onclick = () => openModal(film.id);
+
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = film.title;
+
+      const yearSpan = document.createElement('span');
+      yearSpan.className = 'year-tag';
+      yearSpan.textContent = film.year;
+
+      const removeSpan = document.createElement('span');
+      removeSpan.className = 'remove-btn';
+      removeSpan.innerHTML = '&times;';
+      removeSpan.onclick = (e) => { e.stopPropagation(); removeFilm(film.id); };
+
+      el.appendChild(titleSpan);
+      el.appendChild(yearSpan);
+      el.appendChild(removeSpan);
+
+      el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', film.id); el.style.opacity = '0.5'; });
+      el.addEventListener('dragend', () => { el.style.opacity = '1'; });
+
+      return el;
+    }
+
+    function setupDragAndDrop() {
+      const dropzones = document.querySelectorAll('.tier-dropzone');
+      dropzones.forEach(zone => {
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+        zone.addEventListener('dragleave', () => { zone.classList.remove('drag-over'); });
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('drag-over');
+          const filmId = e.dataTransfer.getData('text/plain');
+          const targetTier = zone.dataset.tier;
+
+          const film = appState.films.find(f => f.id === filmId);
+          if (film && film.tier !== targetTier) {
+            film.tier = targetTier;
+            saveState();
+            renderWatched();
+          }
+        });
+      });
+    }
+
+    function exportGraphic() {
+      const selectedYear = document.getElementById('filterYear').value;
+      const filteredFilms = appState.films.filter(f => {
+        if (!selectedYear || selectedYear === 'ALL') return true;
+        return f.year.toString() === selectedYear;
+      });
+
+      const tiers = [
+        { name: 'S', color: '#ff7f7f' },
+        { name: 'A', color: '#ffbf7f' },
+        { name: 'B', color: '#ffff7f' },
+        { name: 'C', color: '#7fff7f' },
+        { name: 'D', color: '#7fbfff' },
+        { name: 'F', color: '#ff7fff' }
+      ];
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const width = 1000;
+      const rowHeight = 80;
+      const headerHeight = 80;
+      const padding = 10;
+
+      canvas.width = width;
+      canvas.height = headerHeight + (tiers.length * rowHeight);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 28px -apple-system, sans-serif';
+      const titleText = (!selectedYear || selectedYear === 'ALL') ? 'Cinema Tier List' : `${selectedYear} Cinema Tier List`;
+      ctx.fillText(titleText, 20, 50);
+
+      tiers.forEach((t, i) => {
+        const y = headerHeight + (i * rowHeight);
+
+        ctx.fillStyle = t.color;
+        ctx.fillRect(padding, y, 70, rowHeight - padding);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 36px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(t.name, padding + 35, y + 52);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(padding + 75, y, width - padding * 2 - 75, rowHeight - padding);
+
+        const rowFilms = filteredFilms.filter(f => f.tier === t.name);
+        let xOffset = padding + 85;
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 14px -apple-system, sans-serif';
+
+        rowFilms.forEach(f => {
+          const text = `${f.title} (${f.year})`;
+          const textWidth = ctx.measureText(text).width;
+          const cardWidth = textWidth + 20;
+
+          if (xOffset + cardWidth < width - padding) {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(xOffset, y + 15, cardWidth, 40);
+            
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(xOffset, y + 15, cardWidth, 40);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(text, xOffset + 10, y + 40);
+
+            xOffset += cardWidth + 10;
+          }
+        });
+      });
+
+      const link = document.createElement('a');
+      link.download = `cinema_tier_list_${(selectedYear || 'all').toLowerCase()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `cinema_tracker_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported) {
+            if (imported.films && Array.isArray(imported.films)) appState.films = imported.films;
+            if (imported.upcoming && Array.isArray(imported.upcoming)) appState.upcoming = imported.upcoming;
+            saveState();
+            updateYearFilterDropdown();
+            renderWatched();
+            renderUpcoming();
+            alert("Backup restored successfully!");
+          }
+        } catch (err) { alert('Error reading JSON file.'); }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportCSV() {
+      if (appState.films.length === 0) { alert('No data to export.'); return; }
+      let csv = 'Title,Year,Tier,Date Watched,Cinema,Screening Type\n';
+      appState.films.forEach(f => {
+        const dateWatched = f.metadata ? f.metadata.dateWatched : '';
+        const cinema = f.metadata ? f.metadata.cinema : '';
+        const type = f.metadata ? f.metadata.screeningType : '';
+        csv += `"${f.title.replace(/"/g, '""')}",${f.year},${f.tier},"${dateWatched}","${cinema}","${type}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `cinema_watched_list_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function escapeHtml(str) {
+      return str ? str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m])) : '';
+    }
+  </script>
+</body>
+</html>
