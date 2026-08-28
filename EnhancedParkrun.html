@@ -3,30 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>parkrun Performance Studio</title>
+  <title>parkrun Performance Studio & Analytics Engine</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js + Date Adapter CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <!-- SQL.js (WASM In-Memory Relational Engine) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-6 font-sans">
 
-  <main class="max-w-6xl mx-auto space-y-6">
+  <main class="max-w-7xl mx-auto space-y-6">
     
-    <!-- Top Bar & Header -->
+    <!-- Header & Controls -->
     <header class="border-b border-slate-800 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-black text-emerald-400 tracking-tight">parkrun Performance Studio</h1>
-        <p class="text-slate-400 text-sm mt-1">Enriched Category, Age Grade, and Field Placement Telemetry</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">parkrun Performance Studio</h1>
+          <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono px-2 py-0.5 rounded border border-emerald-500/30 font-bold uppercase">SQL WASM Engine</span>
+        </div>
+        <p class="text-slate-400 text-xs sm:text-sm mt-1">Personal Telemetry, Dynamic BI Explorer, and Self-Relative Progressions</p>
       </div>
 
-      <!-- Athlete & Global Filters -->
+      <!-- Athlete & Global Scope Filters -->
       <div class="flex flex-wrap items-center gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
         <div class="flex items-center gap-2">
           <label for="athleteSelect" class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Athlete:</label>
           <select id="athleteSelect" class="bg-slate-950 border border-slate-700 text-xs font-bold text-slate-100 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
-            <!-- Populated via JS -->
+            <!-- Populated dynamically -->
           </select>
         </div>
 
@@ -46,23 +51,32 @@
       </div>
     </header>
 
-    <!-- Error / Status Notice -->
+    <!-- Notification Banner -->
     <div id="statusNotice" class="hidden p-4 rounded-xl text-xs font-mono"></div>
 
-    <!-- Navigation Tabs -->
+    <!-- Main Tab Navigation -->
     <nav class="flex border-b border-slate-800 space-x-2 overflow-x-auto pb-1">
       <button id="tabBtnTimeline" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap">
-        Performance Distribution Timeline
+        Performance Distribution
       </button>
-      <button id="tabBtnAgeGrade" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
-        Age Grade & Category Deep Dive
+      <button id="tabBtnRollingForm" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        Peak-of-the-Month Rolling Form
+      </button>
+      <button id="tabBtnCategories" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        Age Category Shifts
+      </button>
+      <button id="tabBtnCourseMatrix" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+        Course PB & SB Matrix
+      </button>
+      <button id="tabBtnBiExplorer" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-sky-400 hover:text-sky-300 transition whitespace-nowrap flex items-center gap-1.5">
+        <span>⚡</span> Interactive BI Query Studio
       </button>
     </nav>
 
-    <!-- TAB 1: Performance Distribution Timeline -->
+    <!-- TAB 1: Performance Distribution & Scatter Ledger -->
     <section id="tabTimeline" class="space-y-6">
       
-      <!-- Key KPI Tiles -->
+      <!-- Benchmark Headline Tiles -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
           <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total parkruns</p>
@@ -70,28 +84,28 @@
           <p id="statTotalDist" class="text-xs text-emerald-400 font-mono mt-0.5">-</p>
         </div>
         <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Speed PB</p>
+          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">All-Time Speed PB</p>
           <p id="statSpeedPb" class="text-2xl font-black text-amber-400 mt-1">-</p>
           <p id="statSpeedPbSub" class="text-xs text-slate-400 truncate mt-0.5">-</p>
         </div>
         <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Age Grade PB</p>
+          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">All-Time Age Grade PB</p>
           <p id="statGradePb" class="text-2xl font-black text-sky-400 mt-1">-</p>
           <p id="statGradePbSub" class="text-xs text-slate-400 truncate mt-0.5">-</p>
         </div>
         <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Best Overall Finish</p>
-          <p id="statBestPos" class="text-2xl font-black text-purple-400 mt-1">-</p>
-          <p id="statBestPosSub" class="text-xs text-slate-400 truncate mt-0.5">-</p>
+          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Selected View Season Best</p>
+          <p id="statSeasonBest" class="text-2xl font-black text-teal-300 mt-1">-</p>
+          <p id="statSeasonBestSub" class="text-xs text-slate-400 truncate mt-0.5">-</p>
         </div>
       </div>
 
-      <!-- Timeline Chart Card -->
+      <!-- Performance Scatter Plot -->
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h2 class="text-base font-bold text-slate-100">Performance Distribution Timeline</h2>
-            <p class="text-xs text-slate-400">Finish time, age grade, and placement trajectory over time.</p>
+            <p class="text-xs text-slate-400">All recorded parkruns plotted across time.</p>
           </div>
           <div class="flex items-center gap-2">
             <label for="chartMetricSelect" class="text-xs font-bold text-slate-400">Metric:</label>
@@ -100,8 +114,8 @@
               <option value="ageGrade">Age Grade (%)</option>
               <option value="position">Overall Position (#)</option>
               <option value="genderPosition">Gender Position (#)</option>
-              <option value="categoryPosition">Age Category Position (#)</option>
-              <option value="percentile">Finish Percentile (Top %)</option>
+              <option value="categoryPosition">Category Position (#)</option>
+              <option value="percentile">Field Percentile (Top %)</option>
             </select>
           </div>
         </div>
@@ -111,11 +125,11 @@
         </div>
       </div>
 
-      <!-- Comparative Plot: Overall vs Category Position Over Time -->
+      <!-- Comparative Dual Scatter Plot -->
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
         <div class="border-b border-slate-800 pb-3">
-          <h2 class="text-base font-bold text-slate-100">Finish Position vs Category Position Over Time</h2>
-          <p class="text-xs text-slate-400">Tracking field-wide placement against direct age category placement (lower rank is better).</p>
+          <h2 class="text-base font-bold text-slate-100">Overall Field Position vs Category Position</h2>
+          <p class="text-xs text-slate-400">Dual-scatter comparison of overall placement against your direct age category bracket.</p>
         </div>
 
         <div class="h-80 w-full">
@@ -123,10 +137,10 @@
         </div>
       </div>
 
-      <!-- Detailed Results Table -->
+      <!-- Results Table -->
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-100">Enriched Runs Ledger</h2>
+          <h2 class="text-base font-bold text-slate-100">Personal Runs Ledger</h2>
           <span id="runsTableCount" class="text-xs text-slate-400 font-mono">0 events</span>
         </div>
 
@@ -138,12 +152,12 @@
                 <th class="py-3 px-3">Event</th>
                 <th class="py-3 px-3 text-right">Time</th>
                 <th class="py-3 px-3 text-right text-sky-400">Age Grade</th>
+                <th class="py-3 px-3">Milestone Marker</th>
                 <th class="py-3 px-3 text-right">Overall Pos</th>
                 <th class="py-3 px-3 text-right text-purple-300">Gender Pos</th>
                 <th class="py-3 px-3 text-right text-emerald-300">Cat Pos</th>
                 <th class="py-3 px-3 text-right">Category</th>
-                <th class="py-3 px-3 text-right">Field Size</th>
-                <th class="py-3 px-3 text-right text-amber-300">Top %</th>
+                <th class="py-3 px-3 text-right text-amber-300">Field Top %</th>
               </tr>
             </thead>
             <tbody id="runsTableBody" class="divide-y divide-slate-800/60">
@@ -154,73 +168,210 @@
       </div>
     </section>
 
-    <!-- TAB 2: Age Grade & Category Deep Dive -->
-    <section id="tabAgeGrade" class="hidden space-y-6">
+    <!-- TAB 2: Peak-of-the-Month Rolling Form -->
+    <section id="tabRollingForm" class="hidden space-y-6">
       
-      <!-- Deep Dive Metric Summary Tiles -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Average Age Grade</p>
-          <p id="statAvgGrade" class="text-2xl font-black text-sky-400 mt-1">-</p>
-          <p class="text-[10px] text-slate-400 mt-0.5">Career Mean</p>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Category P1 Wins</p>
-          <p id="statCatWins" class="text-2xl font-black text-amber-400 mt-1">-</p>
-          <p id="statCatWinsSub" class="text-[10px] text-slate-400 mt-0.5">-</p>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gender Top 10s</p>
-          <p id="statGenderTop10" class="text-2xl font-black text-purple-400 mt-1">-</p>
-          <p id="statGenderTop10Sub" class="text-[10px] text-slate-400 mt-0.5">-</p>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-          <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Avg Top Percentile</p>
-          <p id="statAvgPercentile" class="text-2xl font-black text-emerald-400 mt-1">-</p>
-          <p class="text-[10px] text-slate-400 mt-0.5">Top % of Total Field</p>
-        </div>
+      <div class="bg-gradient-to-r from-slate-900 via-emerald-950/20 to-slate-900 border border-slate-800 rounded-xl p-5 space-y-2">
+        <h2 class="text-lg font-bold text-emerald-400">Self-Relative "Peak-of-the-Month" Rolling Form</h2>
+        <p class="text-xs text-slate-300">
+          Isolates your single best effort in each active calendar month. Pacing duties, social runs, or recovery walks do not distort this view.
+        </p>
       </div>
 
-      <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Age Grade Bracket Distribution -->
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-3">
-          <h3 class="text-sm font-bold text-slate-200">Age Grade Bracket Distribution</h3>
-          <div class="h-64 w-full">
-            <canvas id="gradeBracketChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Category Position Distribution -->
-        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-3">
-          <h3 class="text-sm font-bold text-slate-200">Age Category Placements</h3>
-          <div class="h-64 w-full">
-            <canvas id="catPlacementChart"></canvas>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Annual Age Grade & Placement Progression Table -->
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
-        <h3 class="text-sm font-bold text-slate-200">Annual Age Grade & Category Placement Breakdown</h3>
-        
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-200">Monthly Best Trajectory</h3>
+            <p class="text-xs text-slate-400">Fastest time & peak age grade per active calendar month.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="rollingMetricSelect" class="text-xs font-bold text-slate-400">View Mode:</label>
+            <select id="rollingMetricSelect" class="bg-slate-950 border border-slate-700 text-xs text-emerald-400 font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+              <option value="time">Fastest Monthly Time (MM:SS)</option>
+              <option value="ageGrade">Peak Monthly Age Grade (%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="h-80 w-full">
+          <canvas id="monthlyPeakChart"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <h3 class="text-sm font-bold text-slate-200">Monthly Peak Performances</h3>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300 font-mono">
             <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider font-sans border-b border-slate-800">
               <tr>
-                <th class="py-3 px-3">Year</th>
-                <th class="py-3 px-3 text-right">Runs</th>
-                <th class="py-3 px-3 text-right text-sky-400">Best Grade</th>
-                <th class="py-3 px-3 text-right text-sky-300">Avg Grade</th>
-                <th class="py-3 px-3 text-right text-amber-300">Cat P1 Finishes</th>
-                <th class="py-3 px-3 text-right text-purple-300">Gender Top 3</th>
-                <th class="py-3 px-3 text-right text-emerald-300">Avg Percentile</th>
+                <th class="py-3 px-3">Month</th>
+                <th class="py-3 px-3 text-right">Runs in Month</th>
+                <th class="py-3 px-3">Fastest Event</th>
+                <th class="py-3 px-3 text-right text-amber-400">Fastest Time</th>
+                <th class="py-3 px-3 text-right text-sky-400">Peak Age Grade</th>
+                <th class="py-3 px-3 text-right text-slate-300">Spread (Fastest to Slowest)</th>
               </tr>
             </thead>
-            <tbody id="annualGradeTableBody" class="divide-y divide-slate-800/60">
+            <tbody id="monthlyPeakTableBody" class="divide-y divide-slate-800/60">
               <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 3: Age Category Shift & Baselines -->
+    <section id="tabCategories" class="hidden space-y-6">
+      
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-2">
+        <h2 class="text-lg font-bold text-sky-400">Age Category Shift & Personal Baselines</h2>
+        <p class="text-xs text-slate-300">
+          Track how personal baselines, fastest times, and age grading percentages evolved as you stepped into each age category chapter.
+        </p>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <h3 class="text-sm font-bold text-slate-200">Personal Best Time & Age Grade by Age Category</h3>
+        <div class="h-72 w-full">
+          <canvas id="categoryBaselinesChart"></canvas>
+        </div>
+      </div>
+
+      <div id="categoryCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <h3 class="text-sm font-bold text-slate-200">Category Baselines Matrix</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300 font-mono">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider font-sans border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-3">Age Category</th>
+                <th class="py-3 px-3 text-right">Runs</th>
+                <th class="py-3 px-3 text-right text-amber-400">Category Best Time</th>
+                <th class="py-3 px-3 text-right text-sky-400">Category Best Grade</th>
+                <th class="py-3 px-3 text-right text-slate-200">Median Time</th>
+                <th class="py-3 px-3 text-right text-slate-300">Median Grade</th>
+                <th class="py-3 px-3 text-right text-emerald-300">Median Field Top %</th>
+                <th class="py-3 px-3">Date Range</th>
+              </tr>
+            </thead>
+            <tbody id="categoryMatrixTableBody" class="divide-y divide-slate-800/60">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 4: Course PB & SB Matrix -->
+    <section id="tabCourseMatrix" class="hidden space-y-6">
+      
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-2">
+        <h2 class="text-lg font-bold text-amber-400">Course PB & Season Best (SB) Matrix</h2>
+        <p class="text-xs text-slate-300">
+          Personal bests and season-by-season bests achieved across every distinct course you have visited.
+        </p>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-200">Course-by-Course Records</h3>
+          <span id="venueMatrixCount" class="text-xs text-slate-400 font-mono">0 courses</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300 font-mono">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider font-sans border-b border-slate-800 cursor-pointer select-none">
+              <tr id="courseTableHeader">
+                <th data-sort="event" class="py-3 px-3 hover:text-emerald-400">Course / Venue ↕</th>
+                <th data-sort="visits" class="py-3 px-3 text-right hover:text-emerald-400">Total Visits ↕</th>
+                <th data-sort="coursePbTime" class="py-3 px-3 text-right text-amber-400 hover:text-emerald-400">Course Speed PB ↕</th>
+                <th data-sort="coursePbGrade" class="py-3 px-3 text-right text-sky-400 hover:text-emerald-400">Course Grade PB ↕</th>
+                <th data-sort="currentSbTime" class="py-3 px-3 text-right text-teal-300 hover:text-emerald-400">Latest Year SB ↕</th>
+                <th data-sort="avgTime" class="py-3 px-3 text-right text-slate-300 hover:text-emerald-400">Average Time ↕</th>
+                <th data-sort="lastVisit" class="py-3 px-3 text-right text-slate-400 hover:text-emerald-400">Most Recent Visit ↕</th>
+              </tr>
+            </thead>
+            <tbody id="courseMatrixTableBody" class="divide-y divide-slate-800/60">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 5: Interactive BI Query Studio (In-Browser SQL Engine) -->
+    <section id="tabBiExplorer" class="hidden space-y-6">
+      
+      <div class="bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-sky-500/30 rounded-xl p-5 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📊</span>
+            <h2 class="text-lg font-bold text-sky-400">In-Browser BI Explorer & Query Studio</h2>
+          </div>
+          <span class="text-[11px] font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">Target Table: <code class="text-sky-300 font-bold">runs</code></span>
+        </div>
+        <p class="text-xs text-slate-300">
+          Run ad-hoc relational SQL queries directly in your browser or select standard analytical views to render custom tables and dynamic visualisations.
+        </p>
+
+        <!-- Preset Query Buttons -->
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <span class="text-[11px] font-bold uppercase text-slate-400 mr-1">Pre-built Views:</span>
+          <button class="bi-preset-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded transition border border-slate-700" data-query="SELECT year, count(*) as total_runs, min(time_seconds) as fastest_seconds, round(avg(time_seconds), 1) as avg_seconds, round(max(age_grade), 2) as peak_age_grade FROM runs GROUP BY year ORDER BY year DESC">Year-by-Year Aggregates</button>
+          <button class="bi-preset-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded transition border border-slate-700" data-query="SELECT event, count(*) as visits, min(time_seconds) as pb_seconds, round(avg(age_grade), 2) as avg_grade FROM runs GROUP BY event HAVING count(*) >= 3 ORDER BY visits DESC">Frequent Courses (&ge; 3 visits)</button>
+          <button class="bi-preset-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded transition border border-slate-700" data-query="SELECT substr(raw_date_str, 4, 2) as month_num, count(*) as outings, min(time_seconds) as fastest_time_sec, round(avg(age_grade), 2) as avg_age_grade FROM runs GROUP BY month_num ORDER BY month_num ASC">Seasonal Month Breakdown</button>
+          <button class="bi-preset-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded transition border border-slate-700" data-query="SELECT age_category, count(*) as outings, min(time_seconds) as cat_pb_seconds, round(avg(finish_percentile), 1) as avg_percentile FROM runs GROUP BY age_category ORDER BY outings DESC">Category Participation</button>
+        </div>
+      </div>
+
+      <!-- SQL Console & Query Runner -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label for="biSqlInput" class="text-xs font-bold uppercase text-slate-300 tracking-wider">SQL Query Console</label>
+            <span class="text-[11px] text-slate-500 font-mono">Schema: date_str, event, time_seconds, age_grade, position, gender_pos, category_pos, age_category, total_finishers, finish_percentile, year</span>
+          </div>
+          <textarea id="biSqlInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-sky-300 focus:outline-none focus:border-sky-500 transition resize-y">SELECT year, count(*) as total_runs, min(time_seconds) as fastest_seconds, round(avg(time_seconds), 1) as avg_seconds, round(max(age_grade), 2) as peak_age_grade FROM runs GROUP BY year ORDER BY year DESC</textarea>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button id="biRunSqlBtn" class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition shadow flex items-center gap-1.5">
+              <span>▶ Run SQL Query</span>
+            </button>
+            <span id="biQueryStatus" class="text-xs font-mono text-slate-400"></span>
+          </div>
+
+          <!-- Dynamic Visualisation Type Selection -->
+          <div class="flex items-center gap-2">
+            <label for="biChartType" class="text-xs text-slate-400 font-bold">Visualiser Chart:</label>
+            <select id="biChartType" class="bg-slate-950 border border-slate-700 text-xs text-sky-300 font-bold rounded px-2.5 py-1.5 focus:outline-none focus:border-sky-500">
+              <option value="bar">Bar Chart</option>
+              <option value="line">Line Chart</option>
+              <option value="none">Table Only (No Chart)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dynamic Query Visualisation Canvas -->
+        <div id="biChartContainer" class="h-64 w-full pt-2 border-t border-slate-800">
+          <canvas id="biDynamicChart"></canvas>
+        </div>
+
+        <!-- Dynamic Query Results Table -->
+        <div class="overflow-x-auto border-t border-slate-800 pt-3">
+          <table class="w-full text-left text-xs text-slate-300 font-mono">
+            <thead id="biTableHead" class="bg-slate-950 text-slate-400 uppercase tracking-wider font-sans border-b border-slate-800">
+              <!-- Dynamic headers -->
+            </thead>
+            <tbody id="biTableBody" class="divide-y divide-slate-800/60">
+              <!-- Dynamic rows -->
             </tbody>
           </table>
         </div>
@@ -233,10 +384,17 @@
   <script>
     let rawDataset = [];
     let athleteRuns = [];
+    let sqlDb = null;
+    let sqlEngineReady = false;
+
     let timelineChartInstance = null;
     let comparisonChartInstance = null;
-    let gradeBracketChartInstance = null;
-    let catPlacementChartInstance = null;
+    let monthlyPeakChartInstance = null;
+    let categoryChartInstance = null;
+    let biDynamicChartInstance = null;
+
+    let courseSortCol = 'visits';
+    let courseSortAsc = false;
 
     // Helpers
     function parseUkDate(str) {
@@ -273,37 +431,134 @@
       return isNaN(num) ? null : num;
     }
 
-    // Data Load
+    function calculateMedian(numbers) {
+      if (!numbers || !numbers.length) return null;
+      const sorted = [...numbers].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       initTabs();
+      initSqlEngine();
       fetchJsonData();
     });
 
+    async function initSqlEngine() {
+      try {
+        const SQL = await initSqlJs({
+          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+        });
+        sqlDb = new SQL.Database();
+        sqlEngineReady = true;
+        rebuildSqlDatabase();
+      } catch (e) {
+        console.error('Failed to initialise SQL.js WASM:', e);
+      }
+    }
+
+    function rebuildSqlDatabase() {
+      if (!sqlEngineReady || !sqlDb || !athleteRuns.length) return;
+
+      try {
+        sqlDb.run("DROP TABLE IF EXISTS runs;");
+        sqlDb.run(`
+          CREATE TABLE runs (
+            date_str TEXT,
+            raw_date_str TEXT,
+            event TEXT,
+            time_seconds INTEGER,
+            age_grade REAL,
+            position INTEGER,
+            gender_pos INTEGER,
+            category_pos INTEGER,
+            age_category TEXT,
+            total_finishers INTEGER,
+            finish_percentile REAL,
+            year INTEGER
+          );
+        `);
+
+        const stmt = sqlDb.prepare(`
+          INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        `);
+
+        athleteRuns.forEach(r => {
+          stmt.run([
+            r.date.toISOString(),
+            r.rawDateStr,
+            r.event,
+            r.timeSeconds,
+            r.ageGrade,
+            r.position,
+            r.genderPosition,
+            r.categoryPosition,
+            r.ageCategory,
+            r.totalFinishers,
+            r.finishPercentile,
+            r.year
+          ]);
+        });
+        stmt.free();
+
+      } catch (err) {
+        console.error('Error populating SQLite in-memory table:', err);
+      }
+    }
+
     function initTabs() {
-      const btnTimeline = document.getElementById('tabBtnTimeline');
-      const btnAgeGrade = document.getElementById('tabBtnAgeGrade');
-      const tabTimeline = document.getElementById('tabTimeline');
-      const tabAgeGrade = document.getElementById('tabAgeGrade');
+      const tabs = {
+        timeline: { btn: document.getElementById('tabBtnTimeline'), section: document.getElementById('tabTimeline') },
+        rollingForm: { btn: document.getElementById('tabBtnRollingForm'), section: document.getElementById('tabRollingForm') },
+        categories: { btn: document.getElementById('tabBtnCategories'), section: document.getElementById('tabCategories') },
+        courseMatrix: { btn: document.getElementById('tabBtnCourseMatrix'), section: document.getElementById('tabCourseMatrix') },
+        biExplorer: { btn: document.getElementById('tabBtnBiExplorer'), section: document.getElementById('tabBiExplorer') }
+      };
 
-      btnTimeline.addEventListener('click', () => {
-        tabTimeline.classList.remove('hidden');
-        tabAgeGrade.classList.add('hidden');
-        btnTimeline.className = 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap';
-        btnAgeGrade.className = 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap';
-      });
+      Object.keys(tabs).forEach(tabKey => {
+        tabs[tabKey].btn.addEventListener('click', () => {
+          Object.keys(tabs).forEach(k => {
+            const isTarget = k === tabKey;
+            tabs[k].section.classList.toggle('hidden', !isTarget);
+            tabs[k].btn.className = isTarget 
+              ? 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap'
+              : 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap';
+          });
 
-      btnAgeGrade.addEventListener('click', () => {
-        tabAgeGrade.classList.remove('hidden');
-        tabTimeline.classList.add('hidden');
-        btnAgeGrade.className = 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap';
-        btnTimeline.className = 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap';
-        renderAgeGradeDeepDive();
+          if (tabKey === 'rollingForm') renderRollingFormView();
+          if (tabKey === 'categories') renderCategoriesView();
+          if (tabKey === 'courseMatrix') renderCourseMatrixView();
+          if (tabKey === 'biExplorer') executeBiQuery();
+        });
       });
 
       document.getElementById('chartMetricSelect').addEventListener('change', renderTimelineChart);
+      document.getElementById('rollingMetricSelect').addEventListener('change', () => renderRollingFormChart());
       document.getElementById('athleteSelect').addEventListener('change', onAthleteChanged);
       document.getElementById('filterVenue').addEventListener('change', updateFilteredViews);
       document.getElementById('filterYear').addEventListener('change', updateFilteredViews);
+      document.getElementById('biRunSqlBtn').addEventListener('click', executeBiQuery);
+      document.getElementById('biChartType').addEventListener('change', executeBiQuery);
+
+      document.querySelectorAll('.bi-preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.getElementById('biSqlInput').value = e.target.getAttribute('data-query');
+          executeBiQuery();
+        });
+      });
+
+      document.querySelectorAll('#courseTableHeader th').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.getAttribute('data-sort');
+          if (courseSortCol === col) {
+            courseSortAsc = !courseSortAsc;
+          } else {
+            courseSortCol = col;
+            courseSortAsc = (col === 'event');
+          }
+          renderCourseMatrixView();
+        });
+      });
     }
 
     function showNotice(msg, isError = false) {
@@ -338,6 +593,8 @@
             date: parsedDate,
             rawDateStr: item.date || '',
             year: parsedDate ? parsedDate.getFullYear() : null,
+            month: parsedDate ? parsedDate.getMonth() : null,
+            yearMonth: parsedDate ? `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, '0')}` : '',
             runNumber: item.runNumber,
             position: parseInt(item.position, 10) || null,
             timeStr: item.time || '',
@@ -345,7 +602,7 @@
             ageGrade: parseAgeGrade(item.ageGrade),
             totalFinishers: enriched.totalFinishers || null,
             finishPercentile: enriched.finishPercentile !== undefined ? parseFloat(enriched.finishPercentile) : null,
-            ageCategory: enriched.ageCategory || '-',
+            ageCategory: enriched.ageCategory || 'Unassigned',
             categoryPosition: enriched.categoryPosition || null,
             categoryTotal: enriched.categoryTotal || null,
             gender: enriched.gender || '-',
@@ -382,6 +639,7 @@
       athleteRuns = rawDataset.filter(r => r.athleteId === athleteId);
       athleteRuns.sort((a, b) => a.date - b.date);
 
+      rebuildSqlDatabase();
       populateContextFilters();
       updateFilteredViews();
     }
@@ -414,12 +672,14 @@
       renderTimelineChart();
       renderPositionComparisonChart();
       renderRunsTable(filtered);
-      renderAgeGradeDeepDive();
+      renderRollingFormView();
+      renderCategoriesView();
+      renderCourseMatrixView();
     }
 
     function renderHeadlineTiles(runs) {
       if (!runs.length) {
-        ['statTotalRuns', 'statTotalDist', 'statSpeedPb', 'statSpeedPbSub', 'statGradePb', 'statGradePbSub', 'statBestPos', 'statBestPosSub'].forEach(id => {
+        ['statTotalRuns', 'statTotalDist', 'statSpeedPb', 'statSpeedPbSub', 'statGradePb', 'statGradePbSub', 'statSeasonBest', 'statSeasonBestSub'].forEach(id => {
           document.getElementById(id).innerText = '-';
         });
         return;
@@ -439,11 +699,12 @@
         document.getElementById('statGradePbSub').innerText = `${bestGradeRun.event} (${bestGradeRun.rawDateStr})`;
       }
 
-      const posRuns = runs.filter(r => r.position);
-      if (posRuns.length) {
-        const bestPosRun = [...posRuns].sort((a, b) => a.position - b.position)[0];
-        document.getElementById('statBestPos').innerText = `#${bestPosRun.position}`;
-        document.getElementById('statBestPosSub').innerText = `${bestPosRun.event} (${bestPosRun.rawDateStr})`;
+      const latestYear = Math.max(...runs.map(r => r.year));
+      const seasonRuns = runs.filter(r => r.year === latestYear);
+      if (seasonRuns.length) {
+        const seasonBestRun = [...seasonRuns].sort((a, b) => a.timeSeconds - b.timeSeconds)[0];
+        document.getElementById('statSeasonBest').innerText = seasonBestRun.timeStr;
+        document.getElementById('statSeasonBestSub').innerText = `${latestYear} SB at ${seasonBestRun.event}`;
       }
     }
 
@@ -460,25 +721,14 @@
 
       const chartData = runs.map(r => {
         let val = null;
-        if (metric === 'time') {
-          val = r.timeSeconds / 60;
-        } else if (metric === 'ageGrade') {
-          val = r.ageGrade;
-        } else if (metric === 'position') {
-          val = r.position;
-        } else if (metric === 'genderPosition') {
-          val = r.genderPosition;
-        } else if (metric === 'categoryPosition') {
-          val = r.categoryPosition;
-        } else if (metric === 'percentile') {
-          val = r.finishPercentile;
-        }
+        if (metric === 'time') val = r.timeSeconds / 60;
+        else if (metric === 'ageGrade') val = r.ageGrade;
+        else if (metric === 'position') val = r.position;
+        else if (metric === 'genderPosition') val = r.genderPosition;
+        else if (metric === 'categoryPosition') val = r.categoryPosition;
+        else if (metric === 'percentile') val = r.finishPercentile;
 
-        return {
-          x: r.date,
-          y: val,
-          runRef: r
-        };
+        return { x: r.date, y: val, runRef: r };
       }).filter(p => p.y !== null && !isNaN(p.y));
 
       if (metric === 'time') {
@@ -490,11 +740,11 @@
         isReversed = false;
         datasetLabel = 'Age Grade';
       } else if (['position', 'genderPosition', 'categoryPosition'].includes(metric)) {
-        yLabel = 'Finish Position (#)';
+        yLabel = 'Position (#)';
         isReversed = true;
         datasetLabel = 'Position';
       } else if (metric === 'percentile') {
-        yLabel = 'Percentile (Top %)';
+        yLabel = 'Field Percentile (Top %)';
         isReversed = true;
         datasetLabel = 'Field Percentile';
       }
@@ -539,7 +789,7 @@
               callbacks: {
                 label: function(ctx) {
                   const r = ctx.raw.runRef;
-                  return `${r.event} (${r.rawDateStr}): ${r.timeStr} | Pos: #${r.position || '-'} | Grade: ${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'} | Cat Pos: #${r.categoryPosition || '-'}/${r.categoryTotal || '-'}`;
+                  return `${r.event} (${r.rawDateStr}): ${r.timeStr} | Grade: ${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'} | Pos: #${r.position || '-'}`;
                 }
               }
             }
@@ -558,12 +808,8 @@
       const categoryData = [];
 
       runs.forEach(r => {
-        if (r.position !== null) {
-          overallData.push({ x: r.date, y: r.position, runRef: r });
-        }
-        if (r.categoryPosition !== null) {
-          categoryData.push({ x: r.date, y: r.categoryPosition, runRef: r });
-        }
+        if (r.position !== null) overallData.push({ x: r.date, y: r.position, runRef: r });
+        if (r.categoryPosition !== null) categoryData.push({ x: r.date, y: r.categoryPosition, runRef: r });
       });
 
       comparisonChartInstance = new Chart(ctx, {
@@ -612,25 +858,20 @@
               type: 'linear',
               position: 'right',
               reverse: true,
-              title: { display: true, text: 'Age Category Position (#)', color: '#f59e0b' },
+              title: { display: true, text: 'Category Position (#)', color: '#f59e0b' },
               grid: { drawOnChartArea: false },
               ticks: { color: '#f59e0b', precision: 0 }
             }
           },
           plugins: {
-            legend: {
-              position: 'top',
-              labels: { color: '#cbd5e1', font: { size: 11 } }
-            },
+            legend: { position: 'top', labels: { color: '#cbd5e1', font: { size: 11 } } },
             tooltip: {
               callbacks: {
                 label: function(ctx) {
                   const r = ctx.raw.runRef;
-                  if (ctx.datasetIndex === 0) {
-                    return `${r.event} (${r.rawDateStr}) — Overall Pos: #${r.position || '-'}/${r.totalFinishers || '-'}`;
-                  } else {
-                    return `${r.event} (${r.rawDateStr}) — Category Pos: #${r.categoryPosition || '-'}/${r.categoryTotal || '-'} (${r.ageCategory})`;
-                  }
+                  return ctx.datasetIndex === 0 
+                    ? `${r.event} (${r.rawDateStr}) — Overall Pos: #${r.position || '-'}/${r.totalFinishers || '-'}`
+                    : `${r.event} (${r.rawDateStr}) — Category Pos: #${r.categoryPosition || '-'}/${r.categoryTotal || '-'} (${r.ageCategory})`;
                 }
               }
             }
@@ -645,7 +886,41 @@
       counter.innerText = `${runs.length} events`;
       tbody.innerHTML = '';
 
+      let runningBestTime = 999999;
+      const chronological = [...athleteRuns].sort((a, b) => a.date - b.date);
+      const allTimePbDates = new Set();
+      const coursePbDates = new Set();
+      const seasonPbDates = new Set();
+
+      const venueBests = {};
+      const seasonBests = {};
+
+      chronological.forEach(r => {
+        if (r.timeSeconds < runningBestTime) {
+          allTimePbDates.add(r.date.getTime());
+          runningBestTime = r.timeSeconds;
+        }
+
+        if (!venueBests[r.event] || r.timeSeconds < venueBests[r.event]) {
+          venueBests[r.event] = r.timeSeconds;
+          coursePbDates.add(r.date.getTime());
+        }
+
+        const sbKey = `${r.year}_${r.event}`;
+        if (!seasonBests[sbKey] || r.timeSeconds < seasonBests[sbKey]) {
+          seasonBests[sbKey] = r.timeSeconds;
+          seasonPbDates.add(r.date.getTime());
+        }
+      });
+
       [...runs].reverse().forEach(r => {
+        const dateTime = r.date.getTime();
+        const badges = [];
+
+        if (allTimePbDates.has(dateTime)) badges.push('<span class="bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold text-[10px]">PB</span>');
+        else if (coursePbDates.has(dateTime)) badges.push('<span class="bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold text-[10px]">Course PB</span>');
+        else if (seasonPbDates.has(dateTime)) badges.push('<span class="bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-bold text-[10px]">SB</span>');
+
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-800/40 transition';
         tr.innerHTML = `
@@ -653,11 +928,11 @@
           <td class="py-2.5 px-3 font-sans font-semibold text-slate-100">${r.event}</td>
           <td class="py-2.5 px-3 text-right font-bold text-amber-400">${r.timeStr}</td>
           <td class="py-2.5 px-3 text-right font-bold text-sky-400">${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3">${badges.join(' ') || '<span class="text-slate-600">-</span>'}</td>
           <td class="py-2.5 px-3 text-right text-slate-200">${r.position ? '#' + r.position : '-'}</td>
           <td class="py-2.5 px-3 text-right text-purple-300">${r.genderPosition ? '#' + r.genderPosition + '/' + (r.genderTotal || '-') : '-'}</td>
           <td class="py-2.5 px-3 text-right text-emerald-300">${r.categoryPosition ? '#' + r.categoryPosition + '/' + (r.categoryTotal || '-') : '-'}</td>
           <td class="py-2.5 px-3 text-right text-slate-400 font-sans text-[11px]">${r.ageCategory}</td>
-          <td class="py-2.5 px-3 text-right text-slate-400">${r.totalFinishers || '-'}</td>
           <td class="py-2.5 px-3 text-right text-amber-300 font-bold">${r.finishPercentile !== null ? r.finishPercentile.toFixed(1) + '%' : '-'}</td>
         `;
         tbody.appendChild(tr);
@@ -668,125 +943,431 @@
       }
     }
 
-    function renderAgeGradeDeepDive() {
+    function getMonthlyPeakEntries() {
       const runs = getFilteredRuns();
-      if (!runs.length) return;
+      if (!runs.length) return [];
 
-      const validGrades = runs.map(r => r.ageGrade).filter(g => g !== null && !isNaN(g));
-      const avgGrade = validGrades.length ? (validGrades.reduce((a, b) => a + b, 0) / validGrades.length) : 0;
-      document.getElementById('statAvgGrade').innerText = `${avgGrade.toFixed(2)}%`;
-
-      const catWins = runs.filter(r => r.categoryPosition === 1).length;
-      document.getElementById('statCatWins').innerText = catWins;
-      document.getElementById('statCatWinsSub').innerText = `${((catWins / runs.length) * 100).toFixed(1)}% of runs`;
-
-      const genderTop10 = runs.filter(r => r.genderPosition && r.genderPosition <= 10).length;
-      document.getElementById('statGenderTop10').innerText = genderTop10;
-      document.getElementById('statGenderTop10Sub').innerText = `${((genderTop10 / runs.length) * 100).toFixed(1)}% of runs`;
-
-      const percentiles = runs.map(r => r.finishPercentile).filter(p => p !== null && !isNaN(p));
-      const avgPct = percentiles.length ? (percentiles.reduce((a, b) => a + b, 0) / percentiles.length) : 0;
-      document.getElementById('statAvgPercentile').innerText = `Top ${avgPct.toFixed(1)}%`;
-
-      // 1. Bracket Doughnut Chart
-      const gradeCtx = document.getElementById('gradeBracketChart').getContext('2d');
-      if (gradeBracketChartInstance) gradeBracketChartInstance.destroy();
-
-      const brackets = { '≥70%': 0, '60–69.9%': 0, '50–59.9%': 0, '<50%': 0 };
+      const monthGroups = {};
       runs.forEach(r => {
-        if (!r.ageGrade) return;
-        if (r.ageGrade >= 70) brackets['≥70%']++;
-        else if (r.ageGrade >= 60) brackets['60–69.9%']++;
-        else if (r.ageGrade >= 50) brackets['50–59.9%']++;
-        else brackets['<50%']++;
+        if (!monthGroups[r.yearMonth]) monthGroups[r.yearMonth] = [];
+        monthGroups[r.yearMonth].push(r);
       });
 
-      gradeBracketChartInstance = new Chart(gradeCtx, {
-        type: 'doughnut',
+      const sortedMonths = Object.keys(monthGroups).sort();
+      return sortedMonths.map(ym => {
+        const mRuns = monthGroups[ym];
+        const fastestRun = [...mRuns].sort((a, b) => a.timeSeconds - b.timeSeconds)[0];
+        const slowestRun = [...mRuns].sort((a, b) => b.timeSeconds - a.timeSeconds)[0];
+        const bestGradeRun = [...mRuns].filter(r => r.ageGrade).sort((a, b) => b.ageGrade - a.ageGrade)[0] || fastestRun;
+
+        return {
+          yearMonth: ym,
+          dateObj: new Date(fastestRun.date.getFullYear(), fastestRun.date.getMonth(), 1),
+          totalRuns: mRuns.length,
+          fastestRun: fastestRun,
+          bestGradeRun: bestGradeRun,
+          spreadSeconds: slowestRun.timeSeconds - fastestRun.timeSeconds
+        };
+      });
+    }
+
+    function renderRollingFormView() {
+      const peakEntries = getMonthlyPeakEntries();
+      renderRollingFormChart(peakEntries);
+
+      const tbody = document.getElementById('monthlyPeakTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      [...peakEntries].reverse().forEach(p => {
+        const monthLabel = p.dateObj.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-bold text-slate-200">${monthLabel}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400">${p.totalRuns}</td>
+          <td class="py-2.5 px-3 font-sans text-slate-100">${p.fastestRun.event} (${p.fastestRun.rawDateStr})</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${p.fastestRun.timeStr}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-sky-400">${p.bestGradeRun.ageGrade ? p.bestGradeRun.ageGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400">${p.totalRuns > 1 ? formatSecondsToTime(p.spreadSeconds) : 'Single run'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderRollingFormChart(peakEntriesOverride) {
+      const mode = document.getElementById('rollingMetricSelect').value;
+      const ctx = document.getElementById('monthlyPeakChart').getContext('2d');
+      const entries = peakEntriesOverride || getMonthlyPeakEntries();
+
+      if (monthlyPeakChartInstance) monthlyPeakChartInstance.destroy();
+
+      if (!entries.length) return;
+
+      const chartData = entries.map(e => ({
+        x: e.dateObj,
+        y: mode === 'time' ? (e.fastestRun.timeSeconds / 60) : e.bestGradeRun.ageGrade,
+        runRef: mode === 'time' ? e.fastestRun : e.bestGradeRun
+      })).filter(p => p.y !== null && !isNaN(p.y));
+
+      monthlyPeakChartInstance = new Chart(ctx, {
+        type: 'line',
         data: {
-          labels: Object.keys(brackets),
           datasets: [{
-            data: Object.values(brackets),
-            backgroundColor: ['#38bdf8', '#10b981', '#f59e0b', '#64748b'],
+            label: mode === 'time' ? 'Monthly Fastest Time' : 'Monthly Peak Age Grade',
+            data: chartData,
+            borderColor: mode === 'time' ? '#f59e0b' : '#38bdf8',
+            backgroundColor: mode === 'time' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(56, 189, 248, 0.1)',
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: mode === 'time' ? '#f59e0b' : '#38bdf8',
             borderWidth: 2,
-            borderColor: '#020617'
+            tension: 0.3,
+            fill: true
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'right', labels: { color: '#cbd5e1' } } }
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'month' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              reverse: mode === 'time',
+              title: { display: true, text: mode === 'time' ? 'Time (Minutes)' : 'Age Grade (%)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: {
+                color: '#94a3b8',
+                callback: function(v) { return mode === 'time' ? formatSecondsToTime(v * 60) : `${v}%`; }
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const r = ctx.raw.runRef;
+                  return `${r.event} (${r.rawDateStr}): ${r.timeStr} | Age Grade: ${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'}`;
+                }
+              }
+            }
+          }
         }
       });
+    }
 
-      // 2. Category Placement Bar Chart
-      const catCtx = document.getElementById('catPlacementChart').getContext('2d');
-      if (catPlacementChartInstance) catPlacementChartInstance.destroy();
+    function renderCategoriesView() {
+      const runs = getFilteredRuns();
+      if (!runs.length) return;
 
-      const placements = { '1st in Cat': 0, '2nd in Cat': 0, '3rd in Cat': 0, '4th–10th': 0, '11th+': 0 };
+      const catGroups = {};
       runs.forEach(r => {
-        if (!r.categoryPosition) return;
-        if (r.categoryPosition === 1) placements['1st in Cat']++;
-        else if (r.categoryPosition === 2) placements['2nd in Cat']++;
-        else if (r.categoryPosition === 3) placements['3rd in Cat']++;
-        else if (r.categoryPosition <= 10) placements['4th–10th']++;
-        else placements['11th+']++;
+        if (!catGroups[r.ageCategory]) catGroups[r.ageCategory] = [];
+        catGroups[r.ageCategory].push(r);
       });
 
-      catPlacementChartInstance = new Chart(catCtx, {
+      const categories = Object.keys(catGroups);
+      const catMetrics = categories.map(cat => {
+        const cRuns = catGroups[cat];
+        const times = cRuns.map(r => r.timeSeconds);
+        const grades = cRuns.map(r => r.ageGrade).filter(g => g !== null && !isNaN(g));
+        const pcts = cRuns.map(r => r.finishPercentile).filter(p => p !== null && !isNaN(p));
+        const dates = cRuns.map(r => r.date).sort((a, b) => a - b);
+
+        const bestTime = Math.min(...times);
+        const bestGrade = grades.length ? Math.max(...grades) : null;
+        const medTime = calculateMedian(times);
+        const medGrade = calculateMedian(grades);
+        const medPct = calculateMedian(pcts);
+
+        return {
+          category: cat,
+          totalRuns: cRuns.length,
+          bestTime: bestTime,
+          bestGrade: bestGrade,
+          medTime: medTime,
+          medGrade: medGrade,
+          medPct: medPct,
+          firstDate: dates[0].toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+          lastDate: dates[dates.length - 1].toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+        };
+      });
+
+      const ctx = document.getElementById('categoryBaselinesChart').getContext('2d');
+      if (categoryChartInstance) categoryChartInstance.destroy();
+
+      categoryChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: Object.keys(placements),
-          datasets: [{
-            data: Object.values(placements),
-            backgroundColor: ['#f59e0b', '#94a3b8', '#d97706', '#818cf8', '#475569'],
-            borderRadius: 4
-          }]
+          labels: catMetrics.map(c => c.category),
+          datasets: [
+            {
+              label: 'Best Age Grade (%)',
+              data: catMetrics.map(c => c.bestGrade),
+              backgroundColor: '#38bdf8',
+              yAxisID: 'yGrade',
+              borderRadius: 4
+            },
+            {
+              label: 'Median Age Grade (%)',
+              data: catMetrics.map(c => c.medGrade),
+              backgroundColor: '#64748b',
+              yAxisID: 'yGrade',
+              borderRadius: 4
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
             x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
-            y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+            yGrade: {
+              title: { display: true, text: 'Age Grade (%)', color: '#38bdf8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
           },
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { position: 'top', labels: { color: '#cbd5e1' } }
+          }
         }
       });
 
-      // 3. Annual Summary Table
-      const annualMap = {};
-      runs.forEach(r => {
-        if (!annualMap[r.year]) annualMap[r.year] = [];
-        annualMap[r.year].push(r);
+      const cardsGrid = document.getElementById('categoryCardsGrid');
+      cardsGrid.innerHTML = '';
+
+      catMetrics.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3';
+        card.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-sm font-black text-sky-400">${c.category}</span>
+            <span class="text-xs text-slate-400 font-mono">${c.totalRuns} events</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div>
+              <span class="text-slate-400 block text-[10px] uppercase">Best Time</span>
+              <span class="text-amber-400 font-bold">${formatSecondsToTime(c.bestTime)}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px] uppercase">Best Grade</span>
+              <span class="text-sky-400 font-bold">${c.bestGrade ? c.bestGrade.toFixed(2) + '%' : '-'}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px] uppercase">Median Time</span>
+              <span class="text-slate-200">${formatSecondsToTime(c.medTime)}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px] uppercase">Median Grade</span>
+              <span class="text-slate-200">${c.medGrade ? c.medGrade.toFixed(2) + '%' : '-'}</span>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-400 border-t border-slate-800/60 pt-2">${c.firstDate} — ${c.lastDate}</p>
+        `;
+        cardsGrid.appendChild(card);
       });
 
-      const annTbody = document.getElementById('annualGradeTableBody');
-      annTbody.innerHTML = '';
+      const tbody = document.getElementById('categoryMatrixTableBody');
+      tbody.innerHTML = '';
 
-      Object.keys(annualMap).sort((a, b) => b - a).forEach(year => {
-        const yRuns = annualMap[year];
-        const yGrades = yRuns.map(r => r.ageGrade).filter(g => g);
-        const yBestGrade = yGrades.length ? Math.max(...yGrades) : 0;
-        const yAvgGrade = yGrades.length ? (yGrades.reduce((a, b) => a + b, 0) / yGrades.length) : 0;
-        const yCatWins = yRuns.filter(r => r.categoryPosition === 1).length;
-        const yGenTop3 = yRuns.filter(r => r.genderPosition && r.genderPosition <= 3).length;
-        const yPcts = yRuns.map(r => r.finishPercentile).filter(p => p !== null);
-        const yAvgPct = yPcts.length ? (yPcts.reduce((a, b) => a + b, 0) / yPcts.length) : 0;
-
+      catMetrics.forEach(c => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-800/40 transition';
         tr.innerHTML = `
-          <td class="py-2.5 px-3 font-sans font-bold text-slate-100">${year}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-slate-200">${yRuns.length}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-sky-400">${yBestGrade ? yBestGrade.toFixed(2) + '%' : '-'}</td>
-          <td class="py-2.5 px-3 text-right text-sky-300">${yAvgGrade ? yAvgGrade.toFixed(2) + '%' : '-'}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-amber-300">${yCatWins}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-purple-300">${yGenTop3}</td>
-          <td class="py-2.5 px-3 text-right text-emerald-300">${yAvgPct ? 'Top ' + yAvgPct.toFixed(1) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 font-sans font-bold text-slate-100">${c.category}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-slate-200">${c.totalRuns}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${formatSecondsToTime(c.bestTime)}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-sky-400">${c.bestGrade ? c.bestGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${formatSecondsToTime(c.medTime)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${c.medGrade ? c.medGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-emerald-300">${c.medPct ? 'Top ' + c.medPct.toFixed(1) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-slate-400 font-sans text-[11px]">${c.firstDate} — ${c.lastDate}</td>
         `;
-        annTbody.appendChild(tr);
+        tbody.appendChild(tr);
       });
+    }
+
+    function renderCourseMatrixView() {
+      const runs = getFilteredRuns();
+      const currentYear = new Date().getFullYear();
+
+      const venueGroups = {};
+      runs.forEach(r => {
+        if (!venueGroups[r.event]) venueGroups[r.event] = [];
+        venueGroups[r.event].push(r);
+      });
+
+      const matrixData = Object.entries(venueGroups).map(([event, vRuns]) => {
+        const sortedTimes = vRuns.map(r => r.timeSeconds).sort((a, b) => a - b);
+        const sortedGrades = vRuns.map(r => r.ageGrade || 0).sort((a, b) => b - a);
+        const lastRun = [...vRuns].sort((a, b) => b.date - a.date)[0];
+
+        const thisYearRuns = vRuns.filter(r => r.year === currentYear);
+        const currentSbTime = thisYearRuns.length ? Math.min(...thisYearRuns.map(r => r.timeSeconds)) : null;
+        const sumTime = sortedTimes.reduce((a, b) => a + b, 0);
+
+        return {
+          event: event,
+          visits: vRuns.length,
+          coursePbTime: sortedTimes[0],
+          coursePbGrade: sortedGrades[0] || null,
+          currentSbTime: currentSbTime,
+          avgTime: sumTime / vRuns.length,
+          lastVisit: lastRun.rawDateStr
+        };
+      });
+
+      matrixData.sort((a, b) => {
+        let valA = a[courseSortCol];
+        let valB = b[courseSortCol];
+
+        if (valA === null || valA === undefined) valA = courseSortAsc ? 999999 : -999999;
+        if (valB === null || valB === undefined) valB = courseSortAsc ? 999999 : -999999;
+
+        if (typeof valA === 'string') {
+          return courseSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return courseSortAsc ? valA - valB : valB - valA;
+      });
+
+      document.getElementById('venueMatrixCount').innerText = `${matrixData.length} courses`;
+      const tbody = document.getElementById('courseMatrixTableBody');
+      tbody.innerHTML = '';
+
+      matrixData.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100">${row.event}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-slate-200">${row.visits}</td>
+          <td class="py-2.5 px-3 text-right text-amber-400 font-bold">${formatSecondsToTime(row.coursePbTime)}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400 font-bold">${row.coursePbGrade ? row.coursePbGrade.toFixed(2) + '%' : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-teal-300 font-bold">${formatSecondsToTime(row.currentSbTime)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${formatSecondsToTime(row.avgTime)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400 font-sans text-[11px]">${row.lastVisit}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (!matrixData.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500 font-sans">No courses logged.</td></tr>`;
+      }
+    }
+
+    // Interactive BI Query Studio Execution Logic
+    function executeBiQuery() {
+      if (!sqlEngineReady || !sqlDb) {
+        document.getElementById('biQueryStatus').innerText = 'WASM Engine loading...';
+        return;
+      }
+
+      const sqlText = document.getElementById('biSqlInput').value.trim();
+      const statusEl = document.getElementById('biQueryStatus');
+      const chartType = document.getElementById('biChartType').value;
+      const thead = document.getElementById('biTableHead');
+      const tbody = document.getElementById('biTableBody');
+      const chartContainer = document.getElementById('biChartContainer');
+
+      try {
+        const tStart = performance.now();
+        const results = sqlDb.exec(sqlText);
+        const tDuration = (performance.now() - tStart).toFixed(2);
+
+        if (!results.length) {
+          thead.innerHTML = '';
+          tbody.innerHTML = `<tr><td class="p-4 text-center text-slate-500 font-sans">Query executed successfully, 0 rows returned. (${tDuration} ms)</td></tr>`;
+          statusEl.innerText = `0 rows returned (${tDuration} ms)`;
+          statusEl.className = 'text-xs font-mono text-emerald-400';
+          if (biDynamicChartInstance) biDynamicChartInstance.destroy();
+          return;
+        }
+
+        const columns = results[0].columns;
+        const values = results[0].values;
+
+        statusEl.innerText = `✔ ${values.length} rows returned in ${tDuration} ms`;
+        statusEl.className = 'text-xs font-mono text-emerald-400';
+
+        // Render Table Headers
+        thead.innerHTML = `<tr>${columns.map(c => `<th class="py-2 px-3">${c}</th>`).join('')}</tr>`;
+
+        // Render Table Rows
+        tbody.innerHTML = values.map(row => `
+          <tr class="hover:bg-slate-800/40 transition">
+            ${row.map(val => {
+              let displayVal = val;
+              if (typeof val === 'number' && val > 300 && val < 6000 && !Number.isInteger(val * 10)) {
+                // If it looks like a time_seconds field
+                displayVal = formatSecondsToTime(val);
+              }
+              return `<td class="py-2 px-3">${displayVal !== null ? displayVal : '-'}</td>`;
+            }).join('')}
+          </tr>
+        `).join('');
+
+        // Render Dynamic Visualization
+        if (chartType === 'none' || columns.length < 2) {
+          chartContainer.classList.add('hidden');
+          if (biDynamicChartInstance) biDynamicChartInstance.destroy();
+          return;
+        }
+
+        chartContainer.classList.remove('hidden');
+        const ctx = document.getElementById('biDynamicChart').getContext('2d');
+        if (biDynamicChartInstance) biDynamicChartInstance.destroy();
+
+        const xLabels = values.map(r => r[0]);
+        const numericColIndex = columns.findIndex((c, i) => i > 0 && typeof values[0][i] === 'number');
+
+        if (numericColIndex === -1) {
+          chartContainer.classList.add('hidden');
+          return;
+        }
+
+        const metricData = values.map(r => r[numericColIndex]);
+        const metricName = columns[numericColIndex];
+
+        biDynamicChartInstance = new Chart(ctx, {
+          type: chartType,
+          data: {
+            labels: xLabels,
+            datasets: [{
+              label: metricName,
+              data: metricData,
+              backgroundColor: chartType === 'bar' ? '#38bdf8' : 'rgba(56, 189, 248, 0.1)',
+              borderColor: '#38bdf8',
+              borderWidth: 2,
+              borderRadius: chartType === 'bar' ? 4 : 0,
+              tension: 0.25,
+              fill: chartType === 'line'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
+              y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: {
+              legend: { labels: { color: '#cbd5e1' } }
+            }
+          }
+        });
+
+      } catch (err) {
+        statusEl.innerText = `SQL Error: ${err.message}`;
+        statusEl.className = 'text-xs font-mono text-rose-400';
+        thead.innerHTML = '';
+        tbody.innerHTML = `<tr><td class="p-4 text-center text-rose-400 font-sans">${err.message}</td></tr>`;
+      }
     }
   </script>
 </body>
