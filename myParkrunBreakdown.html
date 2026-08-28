@@ -14,7 +14,6 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-6 font-sans">
 
-  <!-- STREAMING_CHUNK:Rendering header layout and top Control Center... -->
   <main class="max-w-6xl mx-auto space-y-6">
     
     <header class="border-b border-slate-800 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -219,25 +218,62 @@
         </div>
       </div>
 
+      <!-- User Preferences & Target Configuration Panel -->
       <div class="border-t border-slate-700/50 pt-3">
         <button id="toggleConfigBtn" class="text-xs font-bold uppercase text-slate-400 hover:text-emerald-400 tracking-wider flex items-center gap-1 transition">
-          <span>⚙️ User Preferences & Position Targets</span>
+          <span>⚙️ User Preferences & Personal Targets</span>
           <span id="configToggleIcon">▼</span>
         </button>
 
-        <div id="configPanel" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3 pt-2 border-t border-slate-800">
-          <div>
-            <label for="targetPrimary" class="block text-xs text-slate-400 mb-1">Stretch Target Position (e.g., 1 for P1 Finish)</label>
-            <input type="number" id="targetPrimary" min="1" value="1" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+        <div id="configPanel" class="hidden space-y-4 mt-3 pt-2 border-t border-slate-800">
+          
+          <!-- Target Mode Selector -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+            <div>
+              <span class="text-xs font-bold text-slate-200 block">Personal Target Tracking Mode</span>
+              <p class="text-[11px] text-slate-400">Choose whether to measure your target achievements by finish positions or age grade percentages.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <label for="targetModeSelect" class="text-xs text-slate-400 font-semibold">Mode:</label>
+              <select id="targetModeSelect" class="bg-slate-900 border border-slate-700 text-xs font-bold text-emerald-400 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                <option value="position">Finishing Position (#)</option>
+                <option value="ageGrade">Age Grade Percentage (%)</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label for="targetSecondary" class="block text-xs text-slate-400 mb-1">Secondary Target Position (e.g., 3 for Top 3)</label>
-            <input type="number" id="targetSecondary" min="1" value="3" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+
+          <!-- Position Targets Input Group -->
+          <div id="configGroupPosition" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label for="targetPrimary" class="block text-xs text-slate-400 mb-1">Stretch Target Position (e.g., 1 for P1 Finish)</label>
+              <input type="number" id="targetPrimary" min="1" value="1" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label for="targetSecondary" class="block text-xs text-slate-400 mb-1">Secondary Target Position (e.g., 3 for Top 3)</label>
+              <input type="number" id="targetSecondary" min="1" value="3" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label for="targetBase" class="block text-xs text-slate-400 mb-1">Base Target Position (e.g., 10 for Top 10)</label>
+              <input type="number" id="targetBase" min="1" value="10" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+            </div>
           </div>
-          <div>
-            <label for="targetBase" class="block text-xs text-slate-400 mb-1">Base Target Position (e.g., 10 for Top 10)</label>
-            <input type="number" id="targetBase" min="1" value="10" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+
+          <!-- Age Grade Targets Input Group -->
+          <div id="configGroupAgeGrade" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label for="targetGradePrimary" class="block text-xs text-sky-400 mb-1">Stretch Target Age Grade % (e.g., 75.0%)</label>
+              <input type="number" step="0.5" id="targetGradePrimary" min="20" max="100" value="75.0" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <label for="targetGradeSecondary" class="block text-xs text-emerald-400 mb-1">Secondary Target Age Grade % (e.g., 65.0%)</label>
+              <input type="number" step="0.5" id="targetGradeSecondary" min="20" max="100" value="65.0" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label for="targetGradeBase" class="block text-xs text-amber-400 mb-1">Base Target Age Grade % (e.g., 55.0%)</label>
+              <input type="number" step="0.5" id="targetGradeBase" min="20" max="100" value="55.0" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -253,8 +289,11 @@
         <button id="tabBtnLatest" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
           Latest Run & Course Handicap ⚡
         </button>
+        <button id="tabBtnBreakthroughs" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
+          PB Longevity & Saturday Heatmap 🌟
+        </button>
         <button id="tabBtnPositions" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
-          Finish Position Analysis
+          Performance & Target Analysis
         </button>
         <button id="tabBtnLeaderboards" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
           Hall of Fame (Top 10s)
@@ -588,57 +627,191 @@
 
       </div>
 
-      <!-- STREAMING_CHUNK:Updating Position Analysis Tab with dynamic header IDs... -->
+      <!-- Tab: PB Longevity, Breakthroughs & Saturday Consistency Heatmap -->
+      <div id="tabBreakthroughs" class="tab-content hidden space-y-6">
+        
+        <!-- Saturday Consistency Heatmap Section -->
+        <section class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 shadow-lg space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700/60 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <span>📅</span> Saturday Attendance & Consistency Heatmap
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">52-week activity calendar highlighting your weekend participation, PB breakthroughs, and streaks.</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <label for="heatmapYearSelect" class="text-xs text-slate-400 font-medium">Calendar Year:</label>
+              <select id="heatmapYearSelect" class="bg-slate-900 border border-slate-700 text-xs font-bold text-emerald-400 rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                <!-- Populated via JS -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Heatmap Summary Stats Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Saturdays Attended</span>
+              <span id="hmStatAttended" class="text-2xl font-black text-emerald-400 mt-0.5">-</span>
+              <span id="hmStatRate" class="text-[10px] text-slate-400 block mt-0.5">-</span>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Longest Saturday Streak</span>
+              <span id="hmStatStreak" class="text-2xl font-black text-teal-300 mt-0.5">-</span>
+              <span class="text-[10px] text-slate-400 block mt-0.5">in selected year</span>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">PBs Set in Year</span>
+              <span id="hmStatPbs" class="text-2xl font-black text-amber-400 mt-0.5">-</span>
+              <span class="text-[10px] text-slate-400 block mt-0.5">Speed & Grade records</span>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Distance</span>
+              <span id="hmStatDistance" class="text-2xl font-black text-sky-400 mt-0.5">-</span>
+              <span class="text-[10px] text-slate-400 block mt-0.5">5k events completed</span>
+            </div>
+          </div>
+
+          <!-- Heatmap Grid Container -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+              <span class="font-bold text-slate-300">Annual Saturday Grid:</span>
+              <div class="flex items-center gap-3 text-[11px]">
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-slate-950 border border-slate-800 inline-block"></span> Missed</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-emerald-500/40 border border-emerald-500 inline-block"></span> Run Completed</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500 border border-amber-300 ring-1 ring-amber-400 inline-block"></span> New PB Set 🌟</span>
+              </div>
+            </div>
+            <div id="saturdayHeatmapGrid" class="grid grid-cols-6 sm:grid-cols-13 lg:grid-cols-26 gap-2 p-3 bg-slate-950/60 border border-slate-800/80 rounded-2xl overflow-x-auto">
+              <!-- 52 Saturday tiles injected via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Speed PB Longevity Timeline -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span>⏱️</span> Speed PB Longevity & Evolution
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Chronological record of every all-time speed PB, tracking how many days and runs each record lasted.</p>
+            </div>
+            <div class="text-right">
+              <span id="pbTotalSpeedCount" class="text-xl font-black text-amber-400">0 PBs</span>
+              <p class="text-[10px] text-slate-400 uppercase font-bold">Lifetime Breakthroughs</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-700/60 font-sans">
+                <tr>
+                  <th class="py-3 px-3">#</th>
+                  <th class="py-3 px-3">Date</th>
+                  <th class="py-3 px-3">Venue</th>
+                  <th class="py-3 px-3 text-right">New PB Time</th>
+                  <th class="py-3 px-3 text-right">Improvement</th>
+                  <th class="py-3 px-3 text-right">Reign (Days)</th>
+                  <th class="py-3 px-3 text-right">Reign (parkruns)</th>
+                  <th class="py-3 px-3">Key Breakthrough</th>
+                </tr>
+              </thead>
+              <tbody id="speedPbTableBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Age Grade PB Longevity Timeline -->
+        <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-3">
+            <div>
+              <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span>📈</span> Age Grade PB Longevity & Evolution
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Chronological record of every all-time age grade PB and performance milestone.</p>
+            </div>
+            <div class="text-right">
+              <span id="pbTotalGradeCount" class="text-xl font-black text-sky-400">0 PBs</span>
+              <p class="text-[10px] text-slate-400 uppercase font-bold">Lifetime Breakthroughs</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-700/60 font-sans">
+                <tr>
+                  <th class="py-3 px-3">#</th>
+                  <th class="py-3 px-3">Date</th>
+                  <th class="py-3 px-3">Venue</th>
+                  <th class="py-3 px-3 text-right">New Age Grade</th>
+                  <th class="py-3 px-3 text-right">Improvement</th>
+                  <th class="py-3 px-3 text-right">Reign (Days)</th>
+                  <th class="py-3 px-3 text-right">Reign (parkruns)</th>
+                  <th class="py-3 px-3">Key Breakthrough</th>
+                </tr>
+              </thead>
+              <tbody id="gradePbTableBody" class="divide-y divide-slate-800 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
       <div id="tabPositions" class="tab-content hidden space-y-6">
         
         <!-- Target Milestone Progress Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-slate-800/40 border border-amber-500/30 rounded-xl p-4">
-            <p id="posLabelStretch" class="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Stretch Target (P1 Finishes)</p>
+            <p id="posLabelStretch" class="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Stretch Target</p>
             <p id="posCountStretch" class="text-3xl font-black text-amber-400 mt-1">-</p>
             <p id="posPctStretch" class="text-xs text-slate-400 mt-1">-</p>
           </div>
           <div class="bg-slate-800/40 border border-emerald-500/30 rounded-xl p-4">
-            <p id="posLabelSecondary" class="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Secondary Target (Top 3)</p>
+            <p id="posLabelSecondary" class="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Secondary Target</p>
             <p id="posCountSecondary" class="text-3xl font-black text-emerald-400 mt-1">-</p>
             <p id="posPctSecondary" class="text-xs text-slate-400 mt-1">-</p>
           </div>
           <div class="bg-slate-800/40 border border-sky-500/30 rounded-xl p-4">
-            <p id="posLabelBase" class="text-xs uppercase font-extrabold text-sky-400 tracking-wider">Base Target (Top 10)</p>
+            <p id="posLabelBase" class="text-xs uppercase font-extrabold text-sky-400 tracking-wider">Base Target</p>
             <p id="posCountBase" class="text-3xl font-black text-sky-400 mt-1">-</p>
             <p id="posPctBase" class="text-xs text-slate-400 mt-1">-</p>
           </div>
           <div class="bg-slate-800/40 border border-purple-500/30 rounded-xl p-4">
-            <p class="text-xs uppercase font-bold text-purple-400 tracking-wider">Highest Finish Position</p>
+            <p id="posBestOverallLabel" class="text-xs uppercase font-bold text-purple-400 tracking-wider">Highest Achievement</p>
             <p id="posBestOverall" class="text-3xl font-black text-purple-300 mt-1">-</p>
             <p id="posBestSub" class="text-xs text-slate-400 mt-1 truncate">-</p>
           </div>
         </div>
 
-        <!-- Position Quality Bar Chart -->
+        <!-- Quality Distribution Bar Chart -->
         <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
           <div>
-            <h2 class="text-lg font-bold text-slate-200">Year-over-Year Position Quality Distribution</h2>
-            <p class="text-xs text-slate-400 mt-0.5">Tracks competitive consistency without being skewed by casual or recovery runs.</p>
+            <h2 id="posChartTitle" class="text-lg font-bold text-slate-200">Year-over-Year Target Quality Distribution</h2>
+            <p id="posChartSub" class="text-xs text-slate-400 mt-0.5">Tracks your competitive and performance consistency over time.</p>
           </div>
           <div class="h-72 w-full">
             <canvas id="positionTrendChart"></canvas>
           </div>
         </section>
 
-        <!-- Position Tables Grid -->
+        <!-- Position & Target Tables Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          <!-- Exact Rank Frequency Table -->
+          <!-- Left Breakdown Table (Position Freq or Grade Bracket Freq) -->
           <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
             <div class="flex items-center justify-between">
               <div>
-                <h2 class="text-md font-bold text-slate-200">Position Frequency Matrix</h2>
-                <p class="text-xs text-slate-400 mt-0.5">Frequency breakdown of every specific finishing rank achieved.</p>
+                <h2 id="posFreqTableTitle" class="text-md font-bold text-slate-200">Performance Frequency Matrix</h2>
+                <p id="posFreqTableSub" class="text-xs text-slate-400 mt-0.5">Frequency breakdown of achieved performance tiers.</p>
               </div>
               <select id="posFreqSort" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded px-2.5 py-1">
                 <option value="times">Sort by Times Achieved</option>
-                <option value="pos">Sort by Finishing Position</option>
+                <option value="pos">Sort by Rank / Bracket</option>
               </select>
             </div>
 
@@ -647,7 +820,7 @@
                 <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-700/60">
                   <tr>
                     <th class="py-2.5 px-3">Rank</th>
-                    <th class="py-2.5 px-3">Finishing Position</th>
+                    <th id="thFreqBracket" class="py-2.5 px-3">Performance Bracket</th>
                     <th class="py-2.5 px-3 text-right">Times Achieved</th>
                     <th class="py-2.5 px-3 text-right">% of Runs</th>
                   </tr>
@@ -659,11 +832,11 @@
             </div>
           </section>
 
-          <!-- Annual Quality Progression Matrix -->
+          <!-- Annual Progression Matrix Table -->
           <section class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 space-y-4">
             <div>
               <h2 class="text-md font-bold text-slate-200">Annual Competitive Progression</h2>
-              <p class="text-xs text-slate-400 mt-0.5">Includes Median Position to ignore walk/tail-walk outliers.</p>
+              <p class="text-xs text-slate-400 mt-0.5">Includes Median metrics to ignore walk/tail-walk outliers.</p>
             </div>
 
             <div class="overflow-x-auto">
@@ -672,11 +845,11 @@
                   <tr>
                     <th class="py-2.5 px-3">Year</th>
                     <th class="py-2.5 px-3 text-right">Total Runs</th>
-                    <th id="posAnnThPrimary" class="py-2.5 px-3 text-right text-amber-400">P1 Finishes (#1)</th>
-                    <th id="posAnnThSecondary" class="py-2.5 px-3 text-right text-emerald-400">Top 3</th>
-                    <th id="posAnnThBase" class="py-2.5 px-3 text-right text-sky-400">Top 10</th>
-                    <th class="py-2.5 px-3 text-right text-purple-300">Best Pos</th>
-                    <th class="py-2.5 px-3 text-right text-indigo-300">Median Pos</th>
+                    <th id="posAnnThPrimary" class="py-2.5 px-3 text-right text-amber-400">Stretch</th>
+                    <th id="posAnnThSecondary" class="py-2.5 px-3 text-right text-emerald-400">Secondary</th>
+                    <th id="posAnnThBase" class="py-2.5 px-3 text-right text-sky-400">Base</th>
+                    <th id="posAnnThBest" class="py-2.5 px-3 text-right text-purple-300">Best</th>
+                    <th id="posAnnThMedian" class="py-2.5 px-3 text-right text-indigo-300">Median</th>
                   </tr>
                 </thead>
                 <tbody id="posAnnualTableBody" class="divide-y divide-slate-800 font-mono">
@@ -1138,7 +1311,6 @@
 
   </main>
 
-  <!-- STREAMING_CHUNK:Writing application state, parsers, and event handlers... -->
   <script>
     let globalRuns = [];
     
@@ -1203,9 +1375,13 @@
     const STORAGE_KEY_URL = 'parkrun_sheet_url';
     const STORAGE_KEY_JSON = 'parkrun_json_data';
     const STORAGE_KEY_PARKRUN_ID = 'parkrun_runner_id';
+    const STORAGE_KEY_TARGET_MODE = 'parkrun_target_mode';
     const STORAGE_KEY_TARGET_PRIMARY = 'parkrun_target_primary';
     const STORAGE_KEY_TARGET_SECONDARY = 'parkrun_target_secondary';
     const STORAGE_KEY_TARGET_BASE = 'parkrun_target_base';
+    const STORAGE_KEY_TARGET_GRADE_PRIMARY = 'parkrun_target_grade_primary';
+    const STORAGE_KEY_TARGET_GRADE_SECONDARY = 'parkrun_target_grade_secondary';
+    const STORAGE_KEY_TARGET_GRADE_BASE = 'parkrun_target_grade_base';
     const STORAGE_KEY_VOLUNTEER_DATA = 'parkrun_volunteer_data';
     const STORAGE_KEY_COURSE_HANDICAPS = 'parkrun_course_handicaps';
 
@@ -1222,13 +1398,26 @@
       const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
       const savedJson = localStorage.getItem(STORAGE_KEY_JSON);
       const savedParkrunId = localStorage.getItem(STORAGE_KEY_PARKRUN_ID);
+      
+      const savedTargetMode = localStorage.getItem(STORAGE_KEY_TARGET_MODE) || 'position';
       const savedPrimary = localStorage.getItem(STORAGE_KEY_TARGET_PRIMARY) || '1';
       const savedSecondary = localStorage.getItem(STORAGE_KEY_TARGET_SECONDARY) || '3';
       const savedBase = localStorage.getItem(STORAGE_KEY_TARGET_BASE) || '10';
 
+      const savedGradePrimary = localStorage.getItem(STORAGE_KEY_TARGET_GRADE_PRIMARY) || '75.0';
+      const savedGradeSecondary = localStorage.getItem(STORAGE_KEY_TARGET_GRADE_SECONDARY) || '65.0';
+      const savedGradeBase = localStorage.getItem(STORAGE_KEY_TARGET_GRADE_BASE) || '55.0';
+
+      document.getElementById('targetModeSelect').value = savedTargetMode;
       document.getElementById('targetPrimary').value = savedPrimary;
       document.getElementById('targetSecondary').value = savedSecondary;
       document.getElementById('targetBase').value = savedBase;
+
+      document.getElementById('targetGradePrimary').value = savedGradePrimary;
+      document.getElementById('targetGradeSecondary').value = savedGradeSecondary;
+      document.getElementById('targetGradeBase').value = savedGradeBase;
+
+      updateTargetModeUI(savedTargetMode);
 
       if (savedParkrunId) {
         document.getElementById('parkrunIdInput').value = savedParkrunId;
@@ -1250,6 +1439,35 @@
       } else if (savedMode === 'url' && savedUrl) {
         fetchAndParseData(savedUrl);
       }
+    });
+
+    function updateTargetModeUI(mode) {
+      const posGroup = document.getElementById('configGroupPosition');
+      const gradeGroup = document.getElementById('configGroupAgeGrade');
+
+      if (mode === 'ageGrade') {
+        posGroup.classList.add('hidden');
+        gradeGroup.classList.remove('hidden');
+      } else {
+        posGroup.classList.remove('hidden');
+        gradeGroup.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('targetModeSelect').addEventListener('change', (e) => {
+      const mode = e.target.value;
+      localStorage.setItem(STORAGE_KEY_TARGET_MODE, mode);
+      updateTargetModeUI(mode);
+      if (globalRuns.length > 0) updateAllViews();
+    });
+
+    ['targetGradePrimary', 'targetGradeSecondary', 'targetGradeBase'].forEach(id => {
+      document.getElementById(id).addEventListener('change', (e) => {
+        if (id === 'targetGradePrimary') localStorage.setItem(STORAGE_KEY_TARGET_GRADE_PRIMARY, e.target.value);
+        if (id === 'targetGradeSecondary') localStorage.setItem(STORAGE_KEY_TARGET_GRADE_SECONDARY, e.target.value);
+        if (id === 'targetGradeBase') localStorage.setItem(STORAGE_KEY_TARGET_GRADE_BASE, e.target.value);
+        if (globalRuns.length > 0) updateAllViews();
+      });
     });
 
     function loadCourseHandicapsFromStorage() {
@@ -1438,7 +1656,6 @@
       }
     }
 
-    // Copy bookmarklet buttons
     document.getElementById('copyBookmarkletBtn').addEventListener('click', () => {
       const textarea = document.getElementById('bookmarkletCode');
       textarea.select();
@@ -1587,6 +1804,7 @@
     // Navigation Switcher
     document.getElementById('tabBtnOverview').addEventListener('click', () => switchTab('overview'));
     document.getElementById('tabBtnLatest').addEventListener('click', () => switchTab('latest'));
+    document.getElementById('tabBtnBreakthroughs').addEventListener('click', () => switchTab('breakthroughs'));
     document.getElementById('tabBtnPositions').addEventListener('click', () => switchTab('positions'));
     document.getElementById('tabBtnLeaderboards').addEventListener('click', () => switchTab('leaderboards'));
     document.getElementById('tabBtnTrends').addEventListener('click', () => switchTab('trends'));
@@ -1597,6 +1815,7 @@
       const tabs = {
         overview: document.getElementById('tabOverview'),
         latest: document.getElementById('tabLatest'),
+        breakthroughs: document.getElementById('tabBreakthroughs'),
         positions: document.getElementById('tabPositions'),
         leaderboards: document.getElementById('tabLeaderboards'),
         trends: document.getElementById('tabTrends'),
@@ -1607,6 +1826,7 @@
       const btns = {
         overview: document.getElementById('tabBtnOverview'),
         latest: document.getElementById('tabBtnLatest'),
+        breakthroughs: document.getElementById('tabBtnBreakthroughs'),
         positions: document.getElementById('tabBtnPositions'),
         leaderboards: document.getElementById('tabBtnLeaderboards'),
         trends: document.getElementById('tabBtnTrends'),
@@ -1625,6 +1845,7 @@
       });
 
       if (tabName === 'latest') renderLatestRunDeepDive();
+      if (tabName === 'breakthroughs') renderBreakthroughsAndHeatmap();
       if (tabName === 'positions') renderPositionAnalytics();
       if (tabName === 'leaderboards') renderLeaderboardHub();
       if (tabName === 'trends') renderTrendsAndSeasonality();
@@ -1759,6 +1980,7 @@
       document.getElementById('leadMonthSelect').addEventListener('change', renderLeaderboardHub);
       document.getElementById('trendAggFilter').addEventListener('change', renderTrendsAndSeasonality);
       document.getElementById('resetHandicapsBtn').addEventListener('click', resetCourseHandicaps);
+      document.getElementById('heatmapYearSelect').addEventListener('change', renderSaturdayHeatmap);
 
       // Modal close listeners
       document.getElementById('bingoModalClose').addEventListener('click', closeBingoModal);
@@ -1773,6 +1995,7 @@
       const yearSelect = document.getElementById('filterYear');
       const venueSelect = document.getElementById('filterVenue');
       const venueDeepSelect = document.getElementById('venueDeepSelect');
+      const hmYearSelect = document.getElementById('heatmapYearSelect');
 
       const years = [...new Set(globalRuns.map(r => r.year))].sort((a, b) => b - a);
       const venues = [...new Set(globalRuns.map(r => r.venue))].sort();
@@ -1784,6 +2007,9 @@
         venues.map(v => `<option value="${v}">${v}</option>`).join('');
 
       venueDeepSelect.innerHTML = venues.map(v => `<option value="${v}">${v}</option>`).join('');
+      if (hmYearSelect) {
+        hmYearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+      }
 
       yearSelect.addEventListener('change', updateAllViews);
       venueSelect.addEventListener('change', updateAllViews);
@@ -1795,38 +2021,308 @@
       renderOverviewScatterChart();
       renderVenueMatrix();
       renderLatestRunDeepDive();
+      renderBreakthroughsAndHeatmap();
       renderPositionAnalytics();
       renderLeaderboardHub();
       renderTrendsAndSeasonality();
       renderVolunteeringAnalytics();
     }
 
-    // PILLAR 3: LATEST RUN DEEP-DIVE & COURSE HANDICAP ENGINE
+    function renderBreakthroughsAndHeatmap() {
+      renderPbLongevityTimelines();
+      renderSaturdayHeatmap();
+    }
+
+    function renderPbLongevityTimelines() {
+      if (globalRuns.length === 0) return;
+
+      const chronologicalRuns = [...globalRuns].sort((a, b) => a.date - b.date);
+      const totalRuns = chronologicalRuns.length;
+      const latestRunDate = chronologicalRuns[totalRuns - 1].date;
+
+      // 1. SPEED PB LONGEVITY
+      const speedPbs = [];
+      let currentBestTime = 999999;
+
+      const timeBarriersCrossed = new Set();
+      const TIME_BARRIERS = [
+        { secs: 3600, label: 'Sub-60 Breakthrough' },
+        { secs: 3000, label: 'Sub-50 Breakthrough' },
+        { secs: 2700, label: 'Sub-45 Breakthrough' },
+        { secs: 2400, label: 'Sub-40 Breakthrough' },
+        { secs: 2100, label: 'Sub-35 Breakthrough' },
+        { secs: 1800, label: 'Sub-30 Barrier Broken 💥' },
+        { secs: 1500, label: 'Sub-25 Barrier Broken 🚀' },
+        { secs: 1320, label: 'Sub-22 Breakthrough' },
+        { secs: 1200, label: 'Sub-20 Barrier Broken 🔥' },
+        { secs: 1140, label: 'Sub-19 Barrier Broken' },
+        { secs: 1080, label: 'Sub-18 Barrier Broken ⚡' },
+        { secs: 1020, label: 'Sub-17 Elite Barrier 🏆' },
+        { secs: 960, label: 'Sub-16 Master Barrier' }
+      ];
+
+      chronologicalRuns.forEach((run, idx) => {
+        if (run.timeSeconds < currentBestTime) {
+          const isDebut = (currentBestTime === 999999);
+          const diffSecs = isDebut ? 0 : currentBestTime - run.timeSeconds;
+
+          if (speedPbs.length > 0) {
+            const prev = speedPbs[speedPbs.length - 1];
+            prev.daysStood = Math.max(0, Math.round((run.date - prev.date) / (1000 * 3600 * 24)));
+            prev.runsStood = idx - prev.runIndex;
+          }
+
+          const newlyCrossed = [];
+          TIME_BARRIERS.forEach(tb => {
+            if (run.timeSeconds < tb.secs && !timeBarriersCrossed.has(tb.secs)) {
+              timeBarriersCrossed.add(tb.secs);
+              newlyCrossed.push(tb.label);
+            }
+          });
+
+          speedPbs.push({
+            runIndex: idx,
+            date: run.date,
+            rawDateStr: run.rawDateStr,
+            venue: run.venue,
+            timeStr: run.timeStr,
+            timeSeconds: run.timeSeconds,
+            improvement: isDebut ? 'Inaugural Debut' : `-${formatSecondsToTime(diffSecs)} faster`,
+            daysStood: null,
+            runsStood: null,
+            breakthrough: newlyCrossed.join(', ') || (isDebut ? 'parkrun Career Debut' : 'Speed PB')
+          });
+
+          currentBestTime = run.timeSeconds;
+        }
+      });
+
+      if (speedPbs.length > 0) {
+        const activePb = speedPbs[speedPbs.length - 1];
+        activePb.daysStood = Math.max(0, Math.round((latestRunDate - activePb.date) / (1000 * 3600 * 24)));
+        activePb.runsStood = totalRuns - 1 - activePb.runIndex;
+        activePb.isActive = true;
+      }
+
+      document.getElementById('pbTotalSpeedCount').innerText = `${speedPbs.length} PBs`;
+      const speedTbody = document.getElementById('speedPbTableBody');
+      speedTbody.innerHTML = '';
+
+      [...speedPbs].reverse().forEach((pb, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = pb.isActive ? 'bg-amber-500/10 hover:bg-amber-500/20 font-bold transition' : 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans text-slate-400 font-bold">${speedPbs.length - idx}</td>
+          <td class="py-2.5 px-3 text-slate-200">${pb.rawDateStr}</td>
+          <td class="py-2.5 px-3 font-sans text-slate-100">${pb.venue}</td>
+          <td class="py-2.5 px-3 text-right text-amber-400 font-black">${pb.timeStr}</td>
+          <td class="py-2.5 px-3 text-right text-emerald-400">${pb.improvement}</td>
+          <td class="py-2.5 px-3 text-right text-slate-200">${pb.daysStood} days ${pb.isActive ? '<span class="text-amber-300 font-bold">(Current PB 👑)</span>' : ''}</td>
+          <td class="py-2.5 px-3 text-right text-indigo-300">${pb.runsStood} ${pb.runsStood === 1 ? 'run' : 'runs'}</td>
+          <td class="py-2.5 px-3 font-sans text-emerald-300 font-semibold text-[11px]">${pb.breakthrough}</td>
+        `;
+        speedTbody.appendChild(tr);
+      });
+
+      // 2. AGE GRADE PB LONGEVITY
+      const gradePbs = [];
+      let currentBestGrade = 0;
+
+      const gradeBarriersCrossed = new Set();
+      const GRADE_BARRIERS = [
+        { pct: 40, label: '40% Grade Surpassed' },
+        { pct: 50, label: '50% Grade Surpassed 🎯' },
+        { pct: 60, label: '60% Grade Surpassed 🚀' },
+        { pct: 65, label: '65% Grade Surpassed' },
+        { pct: 70, label: '70% Grade Surpassed 🔥' },
+        { pct: 75, label: '75% Grade Surpassed ⚡' },
+        { pct: 80, label: '80% Grade Surpassed 🏆' },
+        { pct: 85, label: '85% Grade Surpassed 🌟' },
+        { pct: 90, label: '90% Elite Grade 👑' }
+      ];
+
+      chronologicalRuns.forEach((run, idx) => {
+        if (run.ageGrade && run.ageGrade > currentBestGrade) {
+          const isDebut = (currentBestGrade === 0);
+          const diffGrade = isDebut ? 0 : run.ageGrade - currentBestGrade;
+
+          if (gradePbs.length > 0) {
+            const prev = gradePbs[gradePbs.length - 1];
+            prev.daysStood = Math.max(0, Math.round((run.date - prev.date) / (1000 * 3600 * 24)));
+            prev.runsStood = idx - prev.runIndex;
+          }
+
+          const newlyCrossed = [];
+          GRADE_BARRIERS.forEach(gb => {
+            if (run.ageGrade >= gb.pct && !gradeBarriersCrossed.has(gb.pct)) {
+              gradeBarriersCrossed.add(gb.pct);
+              newlyCrossed.push(gb.label);
+            }
+          });
+
+          gradePbs.push({
+            runIndex: idx,
+            date: run.date,
+            rawDateStr: run.rawDateStr,
+            venue: run.venue,
+            ageGrade: run.ageGrade,
+            improvement: isDebut ? 'Inaugural Debut' : `+${diffGrade.toFixed(2)}% gain`,
+            daysStood: null,
+            runsStood: null,
+            breakthrough: newlyCrossed.join(', ') || (isDebut ? 'Initial Grade Debut' : 'Age Grade PB')
+          });
+
+          currentBestGrade = run.ageGrade;
+        }
+      });
+
+      if (gradePbs.length > 0) {
+        const activeGradePb = gradePbs[gradePbs.length - 1];
+        activeGradePb.daysStood = Math.max(0, Math.round((latestRunDate - activeGradePb.date) / (1000 * 3600 * 24)));
+        activeGradePb.runsStood = totalRuns - 1 - activeGradePb.runIndex;
+        activeGradePb.isActive = true;
+      }
+
+      document.getElementById('pbTotalGradeCount').innerText = `${gradePbs.length} PBs`;
+      const gradeTbody = document.getElementById('gradePbTableBody');
+      gradeTbody.innerHTML = '';
+
+      [...gradePbs].reverse().forEach((pb, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = pb.isActive ? 'bg-sky-500/10 hover:bg-sky-500/20 font-bold transition' : 'hover:bg-slate-800/60 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-sans text-slate-400 font-bold">${gradePbs.length - idx}</td>
+          <td class="py-2.5 px-3 text-slate-200">${pb.rawDateStr}</td>
+          <td class="py-2.5 px-3 font-sans text-slate-100">${pb.venue}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400 font-black">${pb.ageGrade.toFixed(2)}%</td>
+          <td class="py-2.5 px-3 text-right text-emerald-400">${pb.improvement}</td>
+          <td class="py-2.5 px-3 text-right text-slate-200">${pb.daysStood} days ${pb.isActive ? '<span class="text-sky-300 font-bold">(Current PB 👑)</span>' : ''}</td>
+          <td class="py-2.5 px-3 text-right text-indigo-300">${pb.runsStood} ${pb.runsStood === 1 ? 'run' : 'runs'}</td>
+          <td class="py-2.5 px-3 font-sans text-teal-300 font-semibold text-[11px]">${pb.breakthrough}</td>
+        `;
+        gradeTbody.appendChild(tr);
+      });
+    }
+
+    function renderSaturdayHeatmap() {
+      if (globalRuns.length === 0) return;
+
+      const yearSelect = document.getElementById('heatmapYearSelect');
+      const selectedYear = parseInt(yearSelect.value, 10) || globalRuns[globalRuns.length - 1].year;
+
+      const yearRuns = globalRuns.filter(r => r.year === selectedYear);
+      const grid = document.getElementById('saturdayHeatmapGrid');
+      grid.innerHTML = '';
+
+      const saturdays = [];
+      const d = new Date(selectedYear, 0, 1);
+      while (d.getDay() !== 6) {
+        d.setDate(d.getDate() + 1);
+      }
+      while (d.getFullYear() === selectedYear) {
+        saturdays.push(new Date(d));
+        d.setDate(d.getDate() + 7);
+      }
+
+      let runningBestTime = 999999;
+      let runningBestGrade = 0;
+      const pbDatesSet = new Set();
+
+      const chronologicalAll = [...globalRuns].sort((a, b) => a.date - b.date);
+      chronologicalAll.forEach(r => {
+        let isPb = false;
+        if (r.timeSeconds < runningBestTime) {
+          if (runningBestTime < 999999) isPb = true;
+          runningBestTime = r.timeSeconds;
+        }
+        if (r.ageGrade && r.ageGrade > runningBestGrade) {
+          if (runningBestGrade > 0) isPb = true;
+          runningBestGrade = r.ageGrade;
+        }
+        if (isPb && r.year === selectedYear) {
+          pbDatesSet.add(r.rawDateStr);
+        }
+      });
+
+      let attendedCount = 0;
+      let pbsInYearCount = 0;
+      let longestStreakInYear = 0;
+      let currentStreak = 0;
+
+      saturdays.forEach((satDate, idx) => {
+        const satTime = satDate.getTime();
+        
+        const matchRun = yearRuns.find(r => {
+          const diffDays = Math.abs((r.date.getTime() - satTime) / (1000 * 3600 * 24));
+          return diffDays < 1.5;
+        });
+
+        const isPb = matchRun && pbDatesSet.has(matchRun.rawDateStr);
+        if (isPb) pbsInYearCount++;
+
+        const cell = document.createElement('div');
+        const formattedDate = satDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+        if (matchRun) {
+          attendedCount++;
+          currentStreak++;
+          if (currentStreak > longestStreakInYear) longestStreakInYear = currentStreak;
+
+          if (isPb) {
+            cell.className = 'bg-amber-500 border border-amber-300 ring-2 ring-amber-400 text-slate-950 rounded-lg p-2 text-center transition hover:scale-110 cursor-pointer shadow-lg';
+            cell.title = `🌟 PB Set on ${matchRun.rawDateStr} at ${matchRun.venue}: ${matchRun.timeStr} (Pos #${matchRun.position || '-'})`;
+          } else {
+            cell.className = 'bg-emerald-500/30 border border-emerald-500 text-emerald-300 rounded-lg p-2 text-center transition hover:bg-emerald-500/50 hover:scale-105 cursor-pointer';
+            cell.title = `✔ Completed on ${matchRun.rawDateStr} at ${matchRun.venue}: ${matchRun.timeStr} (Pos #${matchRun.position || '-'})`;
+          }
+
+          cell.innerHTML = `
+            <span class="text-[9px] font-bold block opacity-75">Wk ${idx + 1}</span>
+            <span class="text-[10px] font-black block">${formattedDate}</span>
+            <span class="text-[9px] font-mono block truncate">${matchRun.timeStr}</span>
+          `;
+        } else {
+          currentStreak = 0;
+          cell.className = 'bg-slate-950/80 border border-slate-800 text-slate-600 rounded-lg p-2 text-center opacity-40 select-none';
+          cell.title = `No parkrun recorded on Saturday ${formattedDate} ${selectedYear}`;
+          cell.innerHTML = `
+            <span class="text-[9px] font-semibold block">Wk ${idx + 1}</span>
+            <span class="text-[10px] font-mono block">${formattedDate}</span>
+            <span class="text-[9px] block">-</span>
+          `;
+        }
+
+        grid.appendChild(cell);
+      });
+
+      const attendancePct = saturdays.length > 0 ? ((attendedCount / saturdays.length) * 100).toFixed(1) : '0.0';
+      document.getElementById('hmStatAttended').innerText = `${attendedCount} / ${saturdays.length}`;
+      document.getElementById('hmStatRate').innerText = `${attendancePct}% attendance rate`;
+      document.getElementById('hmStatStreak').innerText = `${longestStreakInYear} wks`;
+      document.getElementById('hmStatPbs').innerText = `${pbsInYearCount}`;
+      document.getElementById('hmStatDistance').innerText = `${attendedCount * 5} km`;
+    }
+
     function renderLatestRunDeepDive() {
       if (globalRuns.length === 0) return;
 
       const latestRun = globalRuns[globalRuns.length - 1];
       const totalRuns = globalRuns.length;
 
-      // 1. Hero Summary Details
       document.getElementById('latestVenueName').innerText = latestRun.venue;
       document.getElementById('latestRunDate').innerText = `Completed on ${latestRun.rawDateStr} (Run #${totalRuns} in your career)`;
       document.getElementById('latestFinishTime').innerText = latestRun.timeStr;
       document.getElementById('latestAgeGrade').innerText = latestRun.ageGrade ? `${latestRun.ageGrade.toFixed(2)}%` : '-';
       document.getElementById('latestFinishPosition').innerText = latestRun.position ? `#${latestRun.position}` : '-';
 
-      // Course Visit Count
       const venueRuns = globalRuns.filter(r => r.venue === latestRun.venue);
       const visitIndex = venueRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
       document.getElementById('latestVisitNumber').innerText = `Visit ${visitIndex}`;
 
-      // Position Frequency Calculation
-      let posFreqIndex = 0;
-      let posFreqTotal = 0;
       if (latestRun.position) {
         const samePosRuns = globalRuns.filter(r => r.position === latestRun.position);
-        posFreqTotal = samePosRuns.length;
-        posFreqIndex = samePosRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
+        const posFreqTotal = samePosRuns.length;
+        const posFreqIndex = samePosRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
 
         document.getElementById('latestPosFreqSub').innerText = `${getOrdinal(posFreqIndex)} time finishing in #${latestRun.position} (${posFreqTotal}x total)`;
         document.getElementById('latestPosFreqCard').innerText = `${getOrdinal(posFreqIndex)}`;
@@ -1837,20 +2333,17 @@
         document.getElementById('latestPosFreqCardSub').innerText = 'No position logged';
       }
 
-      // Annual Sequence Milestone
       const yearRuns = globalRuns.filter(r => r.year === latestRun.year);
       const yearSeqIndex = yearRuns.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
       document.getElementById('latestYearSeq').innerText = getOrdinal(yearSeqIndex);
       document.getElementById('latestYearSeqSub').innerText = `${yearSeqIndex} of ${yearRuns.length} runs in ${latestRun.year}`;
 
-      // Historical Monthly Sequence Milestone
       const monthRunsAllYears = globalRuns.filter(r => r.month === latestRun.month);
       const monthSeqIndex = monthRunsAllYears.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
       const monthNameStr = new Date(2000, latestRun.month, 1).toLocaleString('en-GB', { month: 'long' });
       document.getElementById('latestMonthSeq').innerText = getOrdinal(monthSeqIndex);
       document.getElementById('latestMonthSeqSub').innerText = `${monthSeqIndex} run ever in ${monthNameStr} (${monthRunsAllYears.length} total)`;
 
-      // Calculate Achievement Badges
       const badgesContainer = document.getElementById('latestBadgesContainer');
       badgesContainer.innerHTML = '';
 
@@ -1872,7 +2365,6 @@
         badgesContainer.innerHTML += `<span class="bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold px-3 py-1 rounded-lg text-xs">🥇 P1 Finish</span>`;
       }
 
-      // 2. Contextual Performance Ranking
       const sortedAllTimes = [...globalRuns].sort((a, b) => a.timeSeconds - b.timeSeconds);
       const allTimeRank = sortedAllTimes.findIndex(r => r.date.getTime() === latestRun.date.getTime()) + 1;
       document.getElementById('latestAllTimeRank').innerText = `#${allTimeRank}`;
@@ -1883,7 +2375,6 @@
       document.getElementById('latestVenueRank').innerText = `#${venueRank}`;
       document.getElementById('latestVenueRankSub').innerText = `${venueRank === 1 ? 'Course PB!' : venueRank + 'th fastest out of ' + venueRuns.length + ' visits'}`;
 
-      // 3. Course Difficulty & Handicap Engine
       const handicapSecs = parseInt(courseHandicaps[latestRun.venue], 10) || 0;
       const normalizedSeconds = Math.max(1, latestRun.timeSeconds - handicapSecs);
       const normalizedTimeStr = formatSecondsToTime(normalizedSeconds);
@@ -2634,13 +3125,25 @@
       const selectedVenue = document.getElementById('filterVenue').value;
       const minVisits = parseInt(document.getElementById('filterMinVisits').value, 10);
 
+      const targetMode = document.getElementById('targetModeSelect').value || 'position';
+      
       const tPrimary = parseInt(document.getElementById('targetPrimary').value, 10) || 1;
       const tSecondary = parseInt(document.getElementById('targetSecondary').value, 10) || 3;
       const tBase = parseInt(document.getElementById('targetBase').value, 10) || 10;
 
-      document.getElementById('thPrimary').childNodes[0].nodeValue = `${tPrimary === 1 ? 'P1 Finishes' : 'Top ' + tPrimary} `;
-      document.getElementById('thSecondary').childNodes[0].nodeValue = `Top ${tSecondary} `;
-      document.getElementById('thBase').childNodes[0].nodeValue = `Top ${tBase} `;
+      const tGradePrimary = parseFloat(document.getElementById('targetGradePrimary').value) || 75.0;
+      const tGradeSecondary = parseFloat(document.getElementById('targetGradeSecondary').value) || 65.0;
+      const tGradeBase = parseFloat(document.getElementById('targetGradeBase').value) || 55.0;
+
+      if (targetMode === 'ageGrade') {
+        document.getElementById('thPrimary').childNodes[0].nodeValue = `≥ ${tGradePrimary}% `;
+        document.getElementById('thSecondary').childNodes[0].nodeValue = `≥ ${tGradeSecondary}% `;
+        document.getElementById('thBase').childNodes[0].nodeValue = `≥ ${tGradeBase}% `;
+      } else {
+        document.getElementById('thPrimary').childNodes[0].nodeValue = `${tPrimary === 1 ? 'P1 Finishes' : 'Top ' + tPrimary} `;
+        document.getElementById('thSecondary').childNodes[0].nodeValue = `Top ${tSecondary} `;
+        document.getElementById('thBase').childNodes[0].nodeValue = `Top ${tBase} `;
+      }
 
       const filteredRuns = globalRuns.filter(r => {
         const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
@@ -2692,11 +3195,20 @@
         let pbCount = 0;
         let currentBest = 999999;
         runs.forEach(r => {
-          if (r.position) {
-            if (r.position <= tPrimary) primaryCount++;
-            if (r.position <= tSecondary) secondaryCount++;
-            if (r.position <= tBase) baseCount++;
+          if (targetMode === 'ageGrade') {
+            if (r.ageGrade !== null && !isNaN(r.ageGrade)) {
+              if (r.ageGrade >= tGradePrimary) primaryCount++;
+              if (r.ageGrade >= tGradeSecondary) secondaryCount++;
+              if (r.ageGrade >= tGradeBase) baseCount++;
+            }
+          } else {
+            if (r.position) {
+              if (r.position <= tPrimary) primaryCount++;
+              if (r.position <= tSecondary) secondaryCount++;
+              if (r.position <= tBase) baseCount++;
+            }
           }
+
           if (r.timeSeconds < currentBest) {
             if (currentBest < 999999) pbCount++;
             currentBest = r.timeSeconds;
@@ -2768,9 +3280,15 @@
       const selectedYear = document.getElementById('filterYear').value;
       const selectedVenue = document.getElementById('filterVenue').value;
 
+      const targetMode = document.getElementById('targetModeSelect').value || 'position';
+
       const tPrimary = parseInt(document.getElementById('targetPrimary').value, 10) || 1;
       const tSecondary = parseInt(document.getElementById('targetSecondary').value, 10) || 3;
       const tBase = parseInt(document.getElementById('targetBase').value, 10) || 10;
+
+      const tGradePrimary = parseFloat(document.getElementById('targetGradePrimary').value) || 75.0;
+      const tGradeSecondary = parseFloat(document.getElementById('targetGradeSecondary').value) || 65.0;
+      const tGradeBase = parseFloat(document.getElementById('targetGradeBase').value) || 55.0;
 
       const filtered = globalRuns.filter(r => {
         const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
@@ -2780,35 +3298,91 @@
 
       const totalRuns = filtered.length;
 
-      document.getElementById('posLabelStretch').innerText = tPrimary === 1 ? 'Stretch Target (P1 Finishes)' : `Stretch Target (Top ${tPrimary})`;
-      document.getElementById('posLabelSecondary').innerText = `Secondary Target (Top ${tSecondary})`;
-      document.getElementById('posLabelBase').innerText = `Base Target (Top ${tBase})`;
-
-      // Dynamic Table Headers for Annual Competitive Progression Table
       const annThPrimary = document.getElementById('posAnnThPrimary');
       const annThSecondary = document.getElementById('posAnnThSecondary');
       const annThBase = document.getElementById('posAnnThBase');
-
-      if (annThPrimary) annThPrimary.innerText = tPrimary === 1 ? 'P1 Finishes (#1)' : `Top ${tPrimary}`;
-      if (annThSecondary) annThSecondary.innerText = `Top ${tSecondary}`;
-      if (annThBase) annThBase.innerText = `Top ${tBase}`;
+      const annThBest = document.getElementById('posAnnThBest');
+      const annThMedian = document.getElementById('posAnnThMedian');
 
       let countPrimary = 0;
       let countSecondary = 0;
       let countBase = 0;
-      let bestPosRun = null;
+      let bestAchieveRun = null;
 
-      filtered.forEach(r => {
-        if (r.position !== null) {
-          if (r.position <= tPrimary) countPrimary++;
-          if (r.position <= tSecondary) countSecondary++;
-          if (r.position <= tBase) countBase++;
+      if (targetMode === 'ageGrade') {
+        document.getElementById('posLabelStretch').innerText = `Stretch Target (≥ ${tGradePrimary.toFixed(1)}%)`;
+        document.getElementById('posLabelSecondary').innerText = `Secondary Target (≥ ${tGradeSecondary.toFixed(1)}%)`;
+        document.getElementById('posLabelBase').innerText = `Base Target (≥ ${tGradeBase.toFixed(1)}%)`;
+        document.getElementById('posBestOverallLabel').innerText = 'Highest Age Grade';
+        document.getElementById('posChartTitle').innerText = 'Year-over-Year Age Grade Quality Distribution';
+        document.getElementById('posChartSub').innerText = 'Tracks the percentage of annual runs meeting your custom age grading tiers.';
+        document.getElementById('posFreqTableTitle').innerText = 'Age Grade 5% Bucket Matrix';
+        document.getElementById('posFreqTableSub').innerText = 'Frequency breakdown across 5% age grade performance brackets.';
+        document.getElementById('thFreqBracket').innerText = 'Age Grade Bracket';
 
-          if (!bestPosRun || r.position < bestPosRun.position) {
-            bestPosRun = r;
+        if (annThPrimary) annThPrimary.innerText = `≥ ${tGradePrimary.toFixed(1)}%`;
+        if (annThSecondary) annThSecondary.innerText = `≥ ${tGradeSecondary.toFixed(1)}%`;
+        if (annThBase) annThBase.innerText = `≥ ${tGradeBase.toFixed(1)}%`;
+        if (annThBest) annThBest.innerText = 'Best Grade';
+        if (annThMedian) annThMedian.innerText = 'Median Grade';
+
+        filtered.forEach(r => {
+          if (r.ageGrade !== null && !isNaN(r.ageGrade)) {
+            if (r.ageGrade >= tGradePrimary) countPrimary++;
+            if (r.ageGrade >= tGradeSecondary) countSecondary++;
+            if (r.ageGrade >= tGradeBase) countBase++;
+
+            if (!bestAchieveRun || r.ageGrade > (bestAchieveRun.ageGrade || 0)) {
+              bestAchieveRun = r;
+            }
           }
+        });
+
+        if (bestAchieveRun && bestAchieveRun.ageGrade) {
+          document.getElementById('posBestOverall').innerText = `${bestAchieveRun.ageGrade.toFixed(2)}%`;
+          document.getElementById('posBestSub').innerText = `${bestAchieveRun.venue} (${bestAchieveRun.rawDateStr})`;
+        } else {
+          document.getElementById('posBestOverall').innerText = '-';
+          document.getElementById('posBestSub').innerText = 'No grade data available';
         }
-      });
+
+      } else {
+        document.getElementById('posLabelStretch').innerText = tPrimary === 1 ? 'Stretch Target (P1 Finishes)' : `Stretch Target (Top ${tPrimary})`;
+        document.getElementById('posLabelSecondary').innerText = `Secondary Target (Top ${tSecondary})`;
+        document.getElementById('posLabelBase').innerText = `Base Target (Top ${tBase})`;
+        document.getElementById('posBestOverallLabel').innerText = 'Highest Finish Position';
+        document.getElementById('posChartTitle').innerText = 'Year-over-Year Position Quality Distribution';
+        document.getElementById('posChartSub').innerText = 'Tracks competitive consistency without being skewed by casual or recovery runs.';
+        document.getElementById('posFreqTableTitle').innerText = 'Position Frequency Matrix';
+        document.getElementById('posFreqTableSub').innerText = 'Frequency breakdown of every specific finishing rank achieved.';
+        document.getElementById('thFreqBracket').innerText = 'Finishing Position';
+
+        if (annThPrimary) annThPrimary.innerText = tPrimary === 1 ? 'P1 Finishes (#1)' : `Top ${tPrimary}`;
+        if (annThSecondary) annThSecondary.innerText = `Top ${tSecondary}`;
+        if (annThBase) annThBase.innerText = `Top ${tBase}`;
+        if (annThBest) annThBest.innerText = 'Best Pos';
+        if (annThMedian) annThMedian.innerText = 'Median Pos';
+
+        filtered.forEach(r => {
+          if (r.position !== null) {
+            if (r.position <= tPrimary) countPrimary++;
+            if (r.position <= tSecondary) countSecondary++;
+            if (r.position <= tBase) countBase++;
+
+            if (!bestAchieveRun || r.position < bestAchieveRun.position) {
+              bestAchieveRun = r;
+            }
+          }
+        });
+
+        if (bestAchieveRun && bestAchieveRun.position) {
+          document.getElementById('posBestOverall').innerText = `#${bestAchieveRun.position}`;
+          document.getElementById('posBestSub').innerText = `${bestAchieveRun.venue} (${bestAchieveRun.rawDateStr})`;
+        } else {
+          document.getElementById('posBestOverall').innerText = '-';
+          document.getElementById('posBestSub').innerText = 'No position data available';
+        }
+      }
 
       const pctPrimary = totalRuns > 0 ? ((countPrimary / totalRuns) * 100).toFixed(1) : '0';
       const pctSecondary = totalRuns > 0 ? ((countSecondary / totalRuns) * 100).toFixed(1) : '0';
@@ -2823,20 +3397,12 @@
       document.getElementById('posCountBase').innerText = countBase;
       document.getElementById('posPctBase').innerText = `${pctBase}% of selected runs`;
 
-      if (bestPosRun) {
-        document.getElementById('posBestOverall').innerText = `#${bestPosRun.position}`;
-        document.getElementById('posBestSub').innerText = `${bestPosRun.venue} (${bestPosRun.rawDateStr})`;
-      } else {
-        document.getElementById('posBestOverall').innerText = '-';
-        document.getElementById('posBestSub').innerText = 'No position data available';
-      }
-
-      renderPositionTrendChart(filtered, tPrimary, tSecondary, tBase);
+      renderPositionTrendChart(filtered, targetMode, tPrimary, tSecondary, tBase, tGradePrimary, tGradeSecondary, tGradeBase);
       renderPositionFrequencyTable();
-      renderAnnualPositionTable(filtered, tPrimary, tSecondary, tBase);
+      renderAnnualPositionTable(filtered, targetMode, tPrimary, tSecondary, tBase, tGradePrimary, tGradeSecondary, tGradeBase);
     }
 
-    function renderPositionTrendChart(filteredRuns, tPrimary, tSecondary, tBase) {
+    function renderPositionTrendChart(filteredRuns, targetMode, tPrimary, tSecondary, tBase, tGradePrimary, tGradeSecondary, tGradeBase) {
       const ctx = document.getElementById('positionTrendChart').getContext('2d');
 
       if (positionTrendChartInstance) {
@@ -2848,13 +3414,25 @@
         if (!yearMap[r.year]) {
           yearMap[r.year] = { primary: 0, secondary: 0, base: 0, rest: 0 };
         }
-        if (r.position !== null) {
-          if (r.position <= tPrimary) yearMap[r.year].primary++;
-          else if (r.position <= tSecondary) yearMap[r.year].secondary++;
-          else if (r.position <= tBase) yearMap[r.year].base++;
-          else yearMap[r.year].rest++;
+
+        if (targetMode === 'ageGrade') {
+          if (r.ageGrade !== null && !isNaN(r.ageGrade)) {
+            if (r.ageGrade >= tGradePrimary) yearMap[r.year].primary++;
+            else if (r.ageGrade >= tGradeSecondary) yearMap[r.year].secondary++;
+            else if (r.ageGrade >= tGradeBase) yearMap[r.year].base++;
+            else yearMap[r.year].rest++;
+          } else {
+            yearMap[r.year].rest++;
+          }
         } else {
-          yearMap[r.year].rest++;
+          if (r.position !== null) {
+            if (r.position <= tPrimary) yearMap[r.year].primary++;
+            else if (r.position <= tSecondary) yearMap[r.year].secondary++;
+            else if (r.position <= tBase) yearMap[r.year].base++;
+            else yearMap[r.year].rest++;
+          } else {
+            yearMap[r.year].rest++;
+          }
         }
       });
 
@@ -2864,28 +3442,40 @@
       const dataBase = years.map(y => yearMap[y].base);
       const dataRest = years.map(y => yearMap[y].rest);
 
+      const labels = targetMode === 'ageGrade' ? {
+        primary: `≥ ${tGradePrimary}% Grade`,
+        secondary: `${tGradeSecondary}% - ${(tGradePrimary - 0.1).toFixed(1)}% Grade`,
+        base: `${tGradeBase}% - ${(tGradeSecondary - 0.1).toFixed(1)}% Grade`,
+        rest: `< ${tGradeBase}% Grade`
+      } : {
+        primary: tPrimary === 1 ? 'P1 Finishes (#1)' : `Top ${tPrimary}`,
+        secondary: `Top ${tSecondary}`,
+        base: `Top ${tBase}`,
+        rest: 'Other Finishes'
+      };
+
       positionTrendChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
           labels: years,
           datasets: [
             {
-              label: tPrimary === 1 ? 'P1 Finishes (#1)' : `Top ${tPrimary}`,
+              label: labels.primary,
               data: dataPrimary,
               backgroundColor: '#f59e0b'
             },
             {
-              label: `Top ${tSecondary}`,
+              label: labels.secondary,
               data: dataSecondary,
               backgroundColor: '#10b981'
             },
             {
-              label: `Top ${tBase}`,
+              label: labels.base,
               data: dataBase,
               backgroundColor: '#38bdf8'
             },
             {
-              label: 'Other Finishes',
+              label: labels.rest,
               data: dataRest,
               backgroundColor: '#475569'
             }
@@ -2920,6 +3510,7 @@
       const selectedYear = document.getElementById('filterYear').value;
       const selectedVenue = document.getElementById('filterVenue').value;
       const sortMode = document.getElementById('posFreqSort').value;
+      const targetMode = document.getElementById('targetModeSelect').value || 'position';
 
       const filtered = globalRuns.filter(r => {
         const matchYear = (selectedYear === 'ALL' || r.year.toString() === selectedYear);
@@ -2928,59 +3519,137 @@
       });
 
       const totalRuns = filtered.length;
-      const posCounts = {};
-
-      filtered.forEach(r => {
-        if (r.position !== null) {
-          posCounts[r.position] = (posCounts[r.position] || 0) + 1;
-        }
-      });
-
-      let freqList = Object.entries(posCounts).map(([pos, count]) => ({
-        pos: parseInt(pos, 10),
-        count: count,
-        pct: totalRuns > 0 ? ((count / totalRuns) * 100).toFixed(1) : '0'
-      }));
-
-      if (sortMode === 'pos') {
-        freqList.sort((a, b) => a.pos - b.pos);
-      } else {
-        freqList.sort((a, b) => b.count - a.count || a.pos - b.pos);
-      }
-
       const tbody = document.getElementById('posFreqTableBody');
       tbody.innerHTML = '';
 
-      freqList.forEach((item, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-800/60 transition';
-        tr.innerHTML = `
-          <td class="py-2.5 px-3 text-slate-400 font-sans font-semibold">${idx + 1}</td>
-          <td class="py-2.5 px-3 font-bold text-amber-400">Position #${item.pos}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-slate-100">${item.count}</td>
-          <td class="py-2.5 px-3 text-right text-emerald-400">${item.pct}%</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      if (targetMode === 'ageGrade') {
+        const gradeBrackets = {
+          '≥ 90.0%': 0,
+          '85.0% – 89.9%': 0,
+          '80.0% – 84.9%': 0,
+          '75.0% – 79.9%': 0,
+          '70.0% – 74.9%': 0,
+          '65.0% – 69.9%': 0,
+          '60.0% – 64.9%': 0,
+          '55.0% – 59.9%': 0,
+          '50.0% – 54.9%': 0,
+          '45.0% – 49.9%': 0,
+          '40.0% – 44.9%': 0,
+          '35.0% – 39.9%': 0,
+          '30.0% – 34.9%': 0,
+          '< 30.0%': 0
+        };
 
-      if (freqList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500 font-sans">No position data available.</td></tr>`;
+        filtered.forEach(r => {
+          if (r.ageGrade !== null && !isNaN(r.ageGrade)) {
+            const g = r.ageGrade;
+            if (g >= 90.0) gradeBrackets['≥ 90.0%']++;
+            else if (g >= 85.0) gradeBrackets['85.0% – 89.9%']++;
+            else if (g >= 80.0) gradeBrackets['80.0% – 84.9%']++;
+            else if (g >= 75.0) gradeBrackets['75.0% – 79.9%']++;
+            else if (g >= 70.0) gradeBrackets['70.0% – 74.9%']++;
+            else if (g >= 65.0) gradeBrackets['65.0% – 69.9%']++;
+            else if (g >= 60.0) gradeBrackets['60.0% – 64.9%']++;
+            else if (g >= 55.0) gradeBrackets['55.0% – 59.9%']++;
+            else if (g >= 50.0) gradeBrackets['50.0% – 54.9%']++;
+            else if (g >= 45.0) gradeBrackets['45.0% – 49.9%']++;
+            else if (g >= 40.0) gradeBrackets['40.0% – 44.9%']++;
+            else if (g >= 35.0) gradeBrackets['35.0% – 39.9%']++;
+            else if (g >= 30.0) gradeBrackets['30.0% – 34.9%']++;
+            else gradeBrackets['< 30.0%']++;
+          }
+        });
+
+        let list = Object.entries(gradeBrackets)
+          .map(([bracket, count]) => ({
+            bracket: bracket,
+            count: count,
+            pct: totalRuns > 0 ? ((count / totalRuns) * 100).toFixed(1) : '0'
+          }))
+          .filter(item => item.count > 0);
+
+        if (sortMode === 'times') {
+          list.sort((a, b) => b.count - a.count);
+        }
+
+        list.forEach((item, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/60 transition';
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 text-slate-400 font-sans font-semibold">${idx + 1}</td>
+            <td class="py-2.5 px-3 font-bold text-sky-400">${item.bracket}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-slate-100">${item.count}</td>
+            <td class="py-2.5 px-3 text-right text-emerald-400">${item.pct}%</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500 font-sans">No age grade data available.</td></tr>`;
+        }
+
+      } else {
+        const posCounts = {};
+
+        filtered.forEach(r => {
+          if (r.position !== null) {
+            posCounts[r.position] = (posCounts[r.position] || 0) + 1;
+          }
+        });
+
+        let freqList = Object.entries(posCounts).map(([pos, count]) => ({
+          pos: parseInt(pos, 10),
+          count: count,
+          pct: totalRuns > 0 ? ((count / totalRuns) * 100).toFixed(1) : '0'
+        }));
+
+        if (sortMode === 'pos') {
+          freqList.sort((a, b) => a.pos - b.pos);
+        } else {
+          freqList.sort((a, b) => b.count - a.count || a.pos - b.pos);
+        }
+
+        freqList.forEach((item, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/60 transition';
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 text-slate-400 font-sans font-semibold">${idx + 1}</td>
+            <td class="py-2.5 px-3 font-bold text-amber-400">Position #${item.pos}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-slate-100">${item.count}</td>
+            <td class="py-2.5 px-3 text-right text-emerald-400">${item.pct}%</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        if (freqList.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500 font-sans">No position data available.</td></tr>`;
+        }
       }
     }
 
-    function renderAnnualPositionTable(filteredRuns, tPrimary, tSecondary, tBase) {
+    function renderAnnualPositionTable(filteredRuns, targetMode, tPrimary, tSecondary, tBase, tGradePrimary, tGradeSecondary, tGradeBase) {
       const yearMap = {};
 
       filteredRuns.forEach(r => {
         if (!yearMap[r.year]) {
-          yearMap[r.year] = { runs: [], positions: [], p1: 0, top3: 0, top10: 0 };
+          yearMap[r.year] = { runs: [], positions: [], grades: [], primary: 0, secondary: 0, base: 0 };
         }
         yearMap[r.year].runs.push(r);
-        if (r.position !== null) {
-          yearMap[r.year].positions.push(r.position);
-          if (r.position <= tPrimary) yearMap[r.year].p1++;
-          if (r.position <= tSecondary) yearMap[r.year].top3++;
-          if (r.position <= tBase) yearMap[r.year].top10++;
+        
+        if (targetMode === 'ageGrade') {
+          if (r.ageGrade !== null && !isNaN(r.ageGrade)) {
+            yearMap[r.year].grades.push(r.ageGrade);
+            if (r.ageGrade >= tGradePrimary) yearMap[r.year].primary++;
+            if (r.ageGrade >= tGradeSecondary) yearMap[r.year].secondary++;
+            if (r.ageGrade >= tGradeBase) yearMap[r.year].base++;
+          }
+        } else {
+          if (r.position !== null) {
+            yearMap[r.year].positions.push(r.position);
+            if (r.position <= tPrimary) yearMap[r.year].primary++;
+            if (r.position <= tSecondary) yearMap[r.year].secondary++;
+            if (r.position <= tBase) yearMap[r.year].base++;
+          }
         }
       });
 
@@ -2991,19 +3660,36 @@
       yearsDescending.forEach(year => {
         const data = yearMap[year];
         const totalYearRuns = data.runs.length;
-        const bestPos = data.positions.length > 0 ? Math.min(...data.positions) : '-';
-        const medianPos = calculateMedian(data.positions);
+
+        let bestValStr = '-';
+        let medianValStr = '-';
+
+        if (targetMode === 'ageGrade') {
+          if (data.grades.length > 0) {
+            const bestG = Math.max(...data.grades);
+            bestValStr = `${bestG.toFixed(2)}%`;
+            const medG = calculateMedian(data.grades);
+            medianValStr = typeof medG === 'number' ? `${medG.toFixed(2)}%` : medG;
+          }
+        } else {
+          if (data.positions.length > 0) {
+            const bestP = Math.min(...data.positions);
+            bestValStr = `#${bestP}`;
+            const medP = calculateMedian(data.positions);
+            medianValStr = typeof medP === 'number' ? `#${medP}` : medP;
+          }
+        }
 
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-800/60 transition';
         tr.innerHTML = `
           <td class="py-2.5 px-3 font-sans font-bold text-slate-200">${year}</td>
           <td class="py-2.5 px-3 text-right font-bold text-slate-100">${totalYearRuns}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${data.p1}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-emerald-400">${data.top3}</td>
-          <td class="py-2.5 px-3 text-right text-sky-400">${data.top10}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-purple-300">${bestPos !== '-' ? '#' + bestPos : '-'}</td>
-          <td class="py-2.5 px-3 text-right font-bold text-indigo-300">${medianPos !== '-' ? '#' + medianPos : '-'}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">${data.primary}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-emerald-400">${data.secondary}</td>
+          <td class="py-2.5 px-3 text-right text-sky-400">${data.base}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-purple-300">${bestValStr}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-indigo-300">${medianValStr}</td>
         `;
         tbody.appendChild(tr);
       });

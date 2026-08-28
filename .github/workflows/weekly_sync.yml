@@ -1,0 +1,41 @@
+name: Weekly parkrun BAU Sync
+
+on:
+  schedule:
+    - cron: '0 11 * * 6'   # 11:00 AM UTC every Saturday
+    - cron: '0 13 * * 6'   # 1:00 PM UTC every Saturday
+    - cron: '0 15 * * 6'   # 1:00 PM UTC every Saturday
+    - cron: '0 18 * * 6'   # 6:00 PM UTC retry/backup sync
+    - cron: '0 18 * * 7'   # backup sync
+
+  workflow_dispatch:
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Delta Sync
+        run: |
+          python sync_parkrun.py
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated parkrun data sync [skip ci]"
+          file_pattern: 'data/parkrun_data.json'

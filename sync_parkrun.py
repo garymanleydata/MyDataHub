@@ -1,0 +1,306 @@
+import argparse
+import json
+import logging
+import re
+import sys
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+from bs4 import BeautifulSoup
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+
+# --- ATHLETE CONFIGURATION ---
+ATHLETES = [
+    {"name": "Gary Manley", "id": "500760"},
+    {"name": "Alf Oseni", "id": "995019"},
+    {"name": "Katie Manley", "id": "350599"},
+]
+
+DEFAULT_DELAY = 10       # Seconds between HTTP requests
+DATA_DIR = Path("./data")
+OUTPUT_FILE = DATA_DIR / "parkrun_data.json"
+# -----------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
+
+
+def get_resilient_session(
+    retries: int = 4,
+    backoff_factor: float = 1.5,
+    status_forcelist: tuple = (429, 500, 502, 503, 504),
+) -> requests.Session:
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+        allowed_methods=["GET", "POST"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    session.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Referer": "https://www.parkrun.org.uk/",
+    })
+    return session
+
+
+def load_existing_dataset() -> Dict[str, Dict[str, Any]]:
+    """Loads existing master JSON into a dictionary keyed by 'athleteId_event_runNumber'."""
+    if not OUTPUT_FILE.exists():
+        return {}
+    try:
+        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            runs_list = json.load(f)
+            # Create a lookup key: e.g. "500760_Abbot’s Wood_16"
+            return {f"{r.get('athleteId')}_{r.get('event')}_{r.get('runNumber')}": r for r in runs_list}
+    except Exception as exc:
+        logger.warning("Could not read %s (starting fresh): %s", OUTPUT_FILE, exc)
+        return {}
+
+
+def fetch_athlete_summary_runs(
+    session: requests.Session, athlete_id: str, athlete_name: str
+) -> List[Dict[str, Any]]:
+    url = f"https://www.parkrun.org.uk/parkrunner/{athlete_id}/all/"
+    logger.info("Fetching profile summary for %s (%s)...", athlete_name, athlete_id)
+
+    response = session.get(url, timeout=15)
+    if response.status_code != 200:
+        logger.error("Failed to load profile for %s (HTTP %s)", athlete_name, response.status_code)
+        return []
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    target_table = None
+    for tbl in soup.find_all("table"):
+        caption = tbl.find("caption")
+        if caption and "all results" in caption.get_text(strip=True).lower():
+            target_table = tbl
+            break
+
+    if not target_table:
+        for tbl in soup.find_all("table"):
+            headers = [th.get_text(strip=True).lower() for th in tbl.find_all("th")]
+            if "event" in headers and "run date" in headers and "pos" in headers:
+                target_table = tbl
+                break
+
+    if not target_table:
+        logger.error("Could not locate 'All Results' table for %s", athlete_name)
+        return []
+
+    runs = []
+    tbody = target_table.find("tbody")
+    rows = tbody.find_all("tr") if tbody else target_table.find_all("tr")
+
+    for row in rows:
+        cells = row.find_all("td")
+        if len(cells) < 6:
+            continue
+
+        event_name = cells[0].get_text(strip=True)
+        date_str = cells[1].get_text(strip=True)
+        run_num_str = cells[2].get_text(strip=True)
+        pos_str = cells[3].get_text(strip=True)
+        time_str = cells[4].get_text(strip=True)
+        age_grade = cells[5].get_text(strip=True)
+
+        try:
+            run_number = int(run_num_str)
+            position = int(pos_str)
+        except ValueError:
+            continue
+
+        run_link = cells[2].find("a") or cells[1].find("a")
+        event_link = cells[0].find("a")
+
+        if run_link and run_link.get("href"):
+            event_url = run_link["href"]
+        elif event_link and event_link.get("href"):
+            base_url = event_link["href"].rstrip("/")
+            event_url = f"{base_url}/{run_number}/"
+        else:
+            event_url = ""
+
+        runs.append({
+            "athleteId": athlete_id,
+            "athleteName": athlete_name,
+            "event": event_name,
+            "eventUrl": event_url,
+            "date": date_str,
+            "runNumber": run_number,
+            "position": position,
+            "time": time_str,
+            "ageGrade": age_grade,
+            "enriched": None,
+        })
+
+    return runs
+
+
+def enrich_event_result(
+    session: requests.Session, run: Dict[str, Any], athlete_id: str
+) -> Optional[Dict[str, Any]]:
+    url = run.get("eventUrl")
+    if not url:
+        return None
+
+    try:
+        response = session.get(url, timeout=15)
+        if response.status_code != 200:
+            logger.warning("HTTP %s on %s", response.status_code, url)
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        result_rows = [
+            r for r in soup.select(".Results-table-row, tr[data-name], tbody tr")
+            if r.find("a", href=re.compile(r"/parkrunner/"))
+        ]
+
+        total_finishers = len(result_rows)
+        user_row = next(
+            (r for r in result_rows if r.find("a", href=re.compile(rf"/parkrunner/{athlete_id}(?:/|$)"))),
+            None,
+        )
+
+        if not user_row:
+            return {"totalFinishers": total_finishers}
+
+        age_group = user_row.get("data-agegroup") or ""
+        gender = user_row.get("data-gender") or ""
+
+        if not age_group:
+            ag_cell = user_row.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)")
+            age_group = ag_cell.get_text(strip=True) if ag_cell else ""
+
+        if not gender:
+            g_cell = user_row.select_one(".Results-table-td--gender, td:nth-of-type(3)")
+            gender = g_cell.get_text(strip=True) if g_cell else ""
+
+        cat_rows = [
+            r for r in result_rows
+            if (r.get("data-agegroup") == age_group)
+            or (
+                r.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)")
+                and r.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)").get_text(strip=True) == age_group
+            )
+        ] if age_group else []
+
+        cat_pos = cat_rows.index(user_row) + 1 if user_row in cat_rows else None
+
+        gen_rows = [
+            r for r in result_rows
+            if (r.get("data-gender") == gender)
+            or (
+                r.select_one(".Results-table-td--gender, td:nth-of-type(3)")
+                and r.select_one(".Results-table-td--gender, td:nth-of-type(3)").get_text(strip=True) == gender
+            )
+        ] if gender else []
+
+        gen_pos = gen_rows.index(user_row) + 1 if user_row in gen_rows else None
+        position = run.get("position", 0)
+
+        return {
+            "totalFinishers": total_finishers,
+            "finishPercentile": round((1 - (position / total_finishers)) * 100, 1) if total_finishers > 0 else None,
+            "ageCategory": age_group,
+            "categoryPosition": cat_pos,
+            "categoryTotal": len(cat_rows),
+            "gender": gender,
+            "genderPosition": gen_pos,
+            "genderTotal": len(gen_rows),
+        }
+
+    except Exception as exc:
+        logger.error("Error enriching %s: %s", url, exc)
+        return None
+
+
+def sync_all_athletes(batch_enrich_limit: Optional[int] = None, delay: float = DEFAULT_DELAY) -> None:
+    session = get_resilient_session()
+    master_store = load_existing_dataset()
+    logger.info("Loaded %d existing run records from store.", len(master_store))
+
+    total_enriched_this_run = 0
+
+    for athlete in ATHLETES:
+        clean_id = re.sub(r"^[Aa]", "", str(athlete["id"]).strip())
+        name = athlete["name"]
+        
+        runs = fetch_athlete_summary_runs(session, clean_id, name)
+        time.sleep(delay)
+
+        for run in runs:
+            key = f"{clean_id}_{run['event']}_{run['runNumber']}"
+            
+            # If already exists in master store and has enriched data, preserve it
+            if key in master_store and master_store[key].get("enriched"):
+                continue
+
+            # Check if we reached our batch enrichment limit (useful for backlog chunks)
+            if batch_enrich_limit is not None and total_enriched_this_run >= batch_enrich_limit:
+                # Save base record without enriched data for now
+                if key not in master_store:
+                    master_store[key] = run
+                continue
+
+            logger.info("Enriching [%s] %s #%s...", name, run["event"], run["runNumber"])
+            run["enriched"] = enrich_event_result(session, run, clean_id)
+            master_store[key] = run
+            total_enriched_this_run += 1
+            time.sleep(delay)
+
+    # Save sorted output (newest runs first)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    all_runs_list = list(master_store.values())
+    
+    # Sort by date descending where possible
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(all_runs_list, f, indent=2, ensure_ascii=False)
+
+    unenriched_count = sum(1 for r in all_runs_list if not r.get("enriched"))
+    logger.info(
+        "Sync Complete! Total stored: %d | Newly enriched: %d | Remaining backlog unenriched: %d",
+        len(all_runs_list),
+        total_enriched_this_run,
+        unenriched_count,
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Multi-Athlete parkrun Sync Pipeline")
+    parser.add_argument(
+        "--batch-limit",
+        type=int,
+        default=None,
+        help="Max number of event pages to enrich in this run (leave empty for all pending)",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=DEFAULT_DELAY,
+        help="Seconds delay between web calls (default: 1.5s)",
+    )
+
+    args = parser.parse_args()
+    sync_all_athletes(batch_enrich_limit=args.batch_limit, delay=args.delay)
+
+
+if __name__ == "__main__":
+    main()
