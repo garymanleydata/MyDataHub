@@ -37,7 +37,11 @@ def fetch_via_proxy(session: requests.Session, target_url: str) -> Optional[requ
     """Wraps requests to route through the Cloudflare proxy."""
     encoded_url = urllib.parse.quote(target_url, safe="")
     proxy_url = f"{PROXY_WORKER_URL}?url={encoded_url}"
-    return session.get(proxy_url, timeout=20)
+    try:
+        return session.get(proxy_url, timeout=25)
+    except Exception as exc:
+        logger.error("Request error connecting to proxy: %s", exc)
+        return None
 
 
 def load_existing_dataset() -> Dict[str, Dict[str, Any]]:
@@ -59,11 +63,17 @@ def fetch_athlete_summary_runs(
     logger.info("Fetching profile summary for %s (%s)...", athlete_name, athlete_id)
 
     response = fetch_via_proxy(session, url)
-    if not response or response.status_code != 200:
+
+    if response is None:
+        logger.error("Failed to load profile for %s (No connection to proxy)", athlete_name)
+        return []
+
+    if response.status_code != 200:
         logger.error(
-            "Failed to load profile for %s (HTTP %s)",
+            "Failed to load profile for %s (HTTP %s): %s...",
             athlete_name,
-            response.status_code if response else "No Response",
+            response.status_code,
+            response.text[:150].replace("\n", " ")
         )
         return []
 
@@ -145,11 +155,13 @@ def enrich_event_result(
 
     try:
         response = fetch_via_proxy(session, url)
-        if not response or response.status_code != 200:
+
+        if response is None or response.status_code != 200:
             logger.warning(
-                "HTTP %s on %s",
-                response.status_code if response else "No Response",
+                "HTTP %s on %s. Response: %s",
+                response.status_code if response is not None else "No connection",
                 url,
+                response.text[:100].replace("\n", " ") if response is not None else ""
             )
             return None
 
@@ -165,9 +177,7 @@ def enrich_event_result(
             (
                 r
                 for r in result_rows
-                if r.find(
-                    "a", href=re.compile(rf"/parkrunner/{athlete_id}(?:/|$)")
-                )
+                if r.find("a", href=re.compile(rf"/parkrunner/{athlete_id}(?:/|$)"))
             ),
             None,
         )
@@ -178,17 +188,13 @@ def enrich_event_result(
         # 1. Age group extraction
         age_group = user_row.get("data-agegroup") or ""
         if not age_group:
-            age_cell = user_row.select_one(
-                ".Results-table-td--ageGroup, td:nth-of-type(4)"
-            )
+            age_cell = user_row.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)")
             age_group = age_cell.get_text(strip=True) if age_cell else ""
 
         # 2. Gender extraction
         gender = user_row.get("data-gender") or ""
         if not gender:
-            gender_cell = user_row.select_one(
-                ".Results-table-td--gender, td:nth-of-type(3)"
-            )
+            gender_cell = user_row.select_one(".Results-table-td--gender, td:nth-of-type(3)")
             gender = gender_cell.get_text(strip=True) if gender_cell else ""
 
         # 3. Category ranking calculation
@@ -198,21 +204,14 @@ def enrich_event_result(
                 for r in result_rows
                 if (r.get("data-agegroup") == age_group)
                 or (
-                    r.select_one(
-                        ".Results-table-td--ageGroup, td:nth-of-type(4)"
-                    )
-                    and r.select_one(
-                        ".Results-table-td--ageGroup, td:nth-of-type(4)"
-                    ).get_text(strip=True)
-                    == age_group
+                    r.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)")
+                    and r.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)").get_text(strip=True) == age_group
                 )
             ]
             if age_group
             else []
         )
-        cat_pos = (
-            cat_rows.index(user_row) + 1 if user_row in cat_rows else None
-        )
+        cat_pos = cat_rows.index(user_row) + 1 if user_row in cat_rows else None
 
         # 4. Gender ranking calculation
         gen_rows = (
@@ -222,20 +221,15 @@ def enrich_event_result(
                 if (r.get("data-gender") == gender)
                 or (
                     r.select_one(".Results-table-td--gender, td:nth-of-type(3)")
-                    and r.select_one(
-                        ".Results-table-td--gender, td:nth-of-type(3)"
-                    ).get_text(strip=True)
-                    == gender
+                    and r.select_one(".Results-table-td--gender, td:nth-of-type(3)").get_text(strip=True) == gender
                 )
             ]
             if gender
             else []
         )
-        gen_pos = (
-            gen_rows.index(user_row) + 1 if user_row in gen_rows else None
-        )
-
+        gen_pos = gen_rows.index(user_row) + 1 if user_row in gen_rows else None
         position = run.get("position", 0)
+
         finish_pct = (
             round((1 - (position / total_finishers)) * 100, 1)
             if total_finishers > 0
