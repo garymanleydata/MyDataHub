@@ -7,18 +7,16 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from bs4 import BeautifulSoup
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
+from curl_cffi import requests
 
 # --- ATHLETE CONFIGURATION ---
 ATHLETES = [
     {"name": "Gary Manley", "id": "500760"},
-    {"name": "Alf Oseni", "id": "995019"},
-    {"name": "Katie Manley", "id": "350599"},
+    # {"name": "Friend 1", "id": "1234567"},
+    # {"name": "Friend 2", "id": "7654321"},
 ]
 
-DEFAULT_DELAY = 10       # Seconds between HTTP requests
+DEFAULT_DELAY = 2.0       # Polite pause between requests
 DATA_DIR = Path("./data")
 OUTPUT_FILE = DATA_DIR / "parkrun_data.json"
 # -----------------------------
@@ -31,46 +29,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_resilient_session(
-    retries: int = 4,
-    backoff_factor: float = 1.5,
-    status_forcelist: tuple = (429, 500, 502, 503, 504),
-) -> requests.Session:
-    session = requests.Session()
-    retry_strategy = Retry(
-        total=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=status_forcelist,
-        allowed_methods=["GET", "POST"],
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
+def get_resilient_session() -> requests.Session:
+    """Creates a curl_cffi session impersonating modern Chrome with standard UK headers."""
+    session = requests.Session(impersonate="chrome124")
     session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-GB,en;q=0.9",
         "Referer": "https://www.parkrun.org.uk/",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
     })
     return session
 
 
 def load_existing_dataset() -> Dict[str, Dict[str, Any]]:
-    """Loads existing master JSON into a dictionary keyed by 'athleteId_event_runNumber'."""
     if not OUTPUT_FILE.exists():
         return {}
     try:
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
             runs_list = json.load(f)
-            # Create a lookup key: e.g. "500760_Abbot’s Wood_16"
             return {f"{r.get('athleteId')}_{r.get('event')}_{r.get('runNumber')}": r for r in runs_list}
     except Exception as exc:
-        logger.warning("Could not read %s (starting fresh): %s", OUTPUT_FILE, exc)
+        logger.warning("Could not read %s: %s", OUTPUT_FILE, exc)
         return {}
 
 
@@ -80,7 +61,12 @@ def fetch_athlete_summary_runs(
     url = f"https://www.parkrun.org.uk/parkrunner/{athlete_id}/all/"
     logger.info("Fetching profile summary for %s (%s)...", athlete_name, athlete_id)
 
-    response = session.get(url, timeout=15)
+    try:
+        response = session.get(url, timeout=20)
+    except Exception as e:
+        logger.error("Network error requesting profile for %s: %s", athlete_name, e)
+        return []
+
     if response.status_code != 200:
         logger.error("Failed to load profile for %s (HTTP %s)", athlete_name, response.status_code)
         return []
@@ -162,7 +148,7 @@ def enrich_event_result(
         return None
 
     try:
-        response = session.get(url, timeout=15)
+        response = session.get(url, timeout=20)
         if response.status_code != 200:
             logger.warning("HTTP %s on %s", response.status_code, url)
             return None
@@ -242,20 +228,17 @@ def sync_all_athletes(batch_enrich_limit: Optional[int] = None, delay: float = D
     for athlete in ATHLETES:
         clean_id = re.sub(r"^[Aa]", "", str(athlete["id"]).strip())
         name = athlete["name"]
-        
+
         runs = fetch_athlete_summary_runs(session, clean_id, name)
         time.sleep(delay)
 
         for run in runs:
             key = f"{clean_id}_{run['event']}_{run['runNumber']}"
-            
-            # If already exists in master store and has enriched data, preserve it
+
             if key in master_store and master_store[key].get("enriched"):
                 continue
 
-            # Check if we reached our batch enrichment limit (useful for backlog chunks)
             if batch_enrich_limit is not None and total_enriched_this_run >= batch_enrich_limit:
-                # Save base record without enriched data for now
                 if key not in master_store:
                     master_store[key] = run
                 continue
@@ -266,17 +249,15 @@ def sync_all_athletes(batch_enrich_limit: Optional[int] = None, delay: float = D
             total_enriched_this_run += 1
             time.sleep(delay)
 
-    # Save sorted output (newest runs first)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     all_runs_list = list(master_store.values())
-    
-    # Sort by date descending where possible
+
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(all_runs_list, f, indent=2, ensure_ascii=False)
 
     unenriched_count = sum(1 for r in all_runs_list if not r.get("enriched"))
     logger.info(
-        "Sync Complete! Total stored: %d | Newly enriched: %d | Remaining backlog unenriched: %d",
+        "Sync Complete! Total stored: %d | Newly enriched: %d | Remaining unenriched: %d",
         len(all_runs_list),
         total_enriched_this_run,
         unenriched_count,
@@ -285,18 +266,8 @@ def sync_all_athletes(batch_enrich_limit: Optional[int] = None, delay: float = D
 
 def main():
     parser = argparse.ArgumentParser(description="Multi-Athlete parkrun Sync Pipeline")
-    parser.add_argument(
-        "--batch-limit",
-        type=int,
-        default=None,
-        help="Max number of event pages to enrich in this run (leave empty for all pending)",
-    )
-    parser.add_argument(
-        "--delay",
-        type=float,
-        default=DEFAULT_DELAY,
-        help="Seconds delay between web calls (default: 1.5s)",
-    )
+    parser.add_argument("--batch-limit", type=int, default=None)
+    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY)
 
     args = parser.parse_args()
     sync_all_athletes(batch_enrich_limit=args.batch_limit, delay=args.delay)
