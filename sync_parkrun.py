@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 import time
@@ -17,10 +18,7 @@ ATHLETES = [
     {"name": "Katie Manley", "id": "350599"},
 ]
 
-# Set this to your deployed worker URL:
-PROXY_WORKER_URL = "https://parkrun-proxy.garymanley.workers.dev"
-
-DEFAULT_DELAY = 1.5
+DEFAULT_DELAY = 1.0
 DATA_DIR = Path("./data")
 OUTPUT_FILE = DATA_DIR / "parkrun_data.json"
 # -----------------------------
@@ -33,14 +31,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def fetch_via_proxy(session: requests.Session, target_url: str) -> Optional[requests.Response]:
-    """Wraps requests to route through the Cloudflare proxy."""
-    encoded_url = urllib.parse.quote(target_url, safe="")
-    proxy_url = f"{PROXY_WORKER_URL}?url={encoded_url}"
+def fetch_url(session: requests.Session, target_url: str) -> Optional[requests.Response]:
+    """Fetches via ScraperAPI when running in CI, or directly if run locally."""
+    api_key = os.environ.get("SCRAPER_API_KEY")
+
+    if api_key:
+        encoded_url = urllib.parse.quote(target_url, safe="")
+        url = f"https://api.scraperapi.com?api_key={api_key}&url={encoded_url}&country_code=uk"
+        headers = {}
+    else:
+        url = target_url
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Accept-Language": "en-GB,en;q=0.9",
+        }
+
     try:
-        return session.get(proxy_url, timeout=25)
+        response = session.get(url, headers=headers, timeout=45)
+        return response
     except Exception as exc:
-        logger.error("Request error connecting to proxy: %s", exc)
+        logger.error("Request error on %s: %s", target_url, exc)
         return None
 
 
@@ -62,18 +72,18 @@ def fetch_athlete_summary_runs(
     url = f"https://www.parkrun.org.uk/parkrunner/{athlete_id}/all/"
     logger.info("Fetching profile summary for %s (%s)...", athlete_name, athlete_id)
 
-    response = fetch_via_proxy(session, url)
+    response = fetch_url(session, url)
 
     if response is None:
-        logger.error("Failed to load profile for %s (No connection to proxy)", athlete_name)
+        logger.error("Failed to load profile for %s (No connection)", athlete_name)
         return []
 
     if response.status_code != 200:
         logger.error(
-            "Failed to load profile for %s (HTTP %s): %s...",
+            "Failed to load profile for %s (HTTP %s): %s",
             athlete_name,
             response.status_code,
-            response.text[:150].replace("\n", " ")
+            response.text[:120].replace("\n", " "),
         )
         return []
 
@@ -154,14 +164,14 @@ def enrich_event_result(
         return None
 
     try:
-        response = fetch_via_proxy(session, url)
+        response = fetch_url(session, url)
 
         if response is None or response.status_code != 200:
             logger.warning(
                 "HTTP %s on %s. Response: %s",
                 response.status_code if response is not None else "No connection",
                 url,
-                response.text[:100].replace("\n", " ") if response is not None else ""
+                response.text[:100].replace("\n", " ") if response is not None else "",
             )
             return None
 

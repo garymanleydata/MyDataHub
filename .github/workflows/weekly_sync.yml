@@ -27,6 +27,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Delta Sync
+        env:
+          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
         run: |
           python sync_parkrun.py
 
