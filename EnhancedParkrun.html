@@ -9,6 +9,9 @@
   <!-- Chart.js + Date Adapter CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <!-- Chart.js Zoom Plugin CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
   <!-- SQL.js (WASM In-Memory Relational Engine) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 </head>
@@ -21,9 +24,9 @@
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">parkrun Performance Studio</h1>
-          <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono px-2 py-0.5 rounded border border-emerald-500/30 font-bold uppercase">SQL WASM Engine</span>
+          <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono px-2 py-0.5 rounded border border-emerald-500/30 font-bold uppercase">SQL WASM & Interactive Zoom</span>
         </div>
-        <p class="text-slate-400 text-xs sm:text-sm mt-1">Personal Telemetry, Dynamic BI Explorer, and Self-Relative Progressions</p>
+        <p class="text-slate-400 text-xs sm:text-sm mt-1">Interactive Field Attendance Placements, Dynamic Slicing, and Telemetry Engine</p>
       </div>
 
       <!-- Athlete & Global Scope Filters -->
@@ -54,10 +57,26 @@
     <!-- Notification Banner -->
     <div id="statusNotice" class="hidden p-4 rounded-xl text-xs font-mono"></div>
 
+    <!-- Active Crossfilter Slicing Chip -->
+    <div id="crossfilterBar" class="hidden bg-emerald-950/40 border border-emerald-500/40 p-3 rounded-xl flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+          <span>🔍</span> Active Crossfilter Filter:
+        </span>
+        <span id="crossfilterLabel" class="font-mono text-slate-200 font-bold bg-slate-900 px-2 py-0.5 rounded border border-emerald-500/30">None</span>
+      </div>
+      <button id="clearCrossfilterBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1 rounded-lg text-xs transition border border-slate-700">
+        Clear Crossfilter ✕
+      </button>
+    </div>
+
     <!-- Main Tab Navigation -->
     <nav class="flex border-b border-slate-800 space-x-2 overflow-x-auto pb-1">
       <button id="tabBtnTimeline" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-400 text-emerald-400 transition whitespace-nowrap">
         Performance Distribution
+      </button>
+      <button id="tabBtnFieldDepth" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap flex items-center gap-1.5">
+        <span>📊</span> Attendance & Placement Depth
       </button>
       <button id="tabBtnRollingForm" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap">
         Peak-of-the-Month Rolling Form
@@ -105,9 +124,12 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h2 class="text-base font-bold text-slate-100">Performance Distribution Timeline</h2>
-            <p class="text-xs text-slate-400">All recorded parkruns plotted across time.</p>
+            <p class="text-xs text-slate-400">All recorded parkruns plotted across time. Click any point to crossfilter by venue.</p>
           </div>
           <div class="flex items-center gap-2">
+            <button id="resetZoomTimelineBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-700 transition">
+              Reset Zoom 🔍
+            </button>
             <label for="chartMetricSelect" class="text-xs font-bold text-slate-400">Metric:</label>
             <select id="chartMetricSelect" class="bg-slate-950 border border-slate-700 text-xs text-emerald-400 font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
               <option value="time">Finish Time (MM:SS)</option>
@@ -127,9 +149,14 @@
 
       <!-- Comparative Dual Scatter Plot -->
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
-        <div class="border-b border-slate-800 pb-3">
-          <h2 class="text-base font-bold text-slate-100">Overall Field Position vs Category Position</h2>
-          <p class="text-xs text-slate-400">Dual-scatter comparison of overall placement against your direct age category bracket.</p>
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-100">Overall Field Position vs Category Position</h2>
+            <p class="text-xs text-slate-400">Dual-scatter comparison of overall placement against your direct age category bracket.</p>
+          </div>
+          <button id="resetZoomCompBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-700 transition">
+            Reset Zoom 🔍
+          </button>
         </div>
 
         <div class="h-80 w-full">
@@ -168,7 +195,59 @@
       </div>
     </section>
 
-    <!-- TAB 2: Peak-of-the-Month Rolling Form -->
+    <!-- TAB 2: Attendance & Placement Depth -->
+    <section id="tabFieldDepth" class="hidden space-y-6">
+      
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950/30 to-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-indigo-400">Total Field Attendance & Placement Depth</h2>
+          <p class="text-xs text-slate-300 mt-1">
+            Visualise the total attendance of the events you attended alongside your relative placement. Use your mouse wheel or drag to zoom along the timeline.
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="resetZoomDepthOverallBtn" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 transition whitespace-nowrap">
+            Reset Overall Zoom 🔍
+          </button>
+          <button id="resetZoomDepthCatBtn" class="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 transition whitespace-nowrap">
+            Reset Category Zoom 🔍
+          </button>
+        </div>
+      </div>
+
+      <!-- Chart 1: Overall Field Attendance & Placement -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-200">Overall Event Attendance vs Your Finish Position</h3>
+            <p class="text-xs text-slate-400">Dark columns represent total event attendance; bright purple dots show exactly where you finished in the field.</p>
+          </div>
+          <span class="text-xs font-mono text-indigo-300 bg-indigo-950/60 border border-indigo-500/30 px-2.5 py-1 rounded-lg">Overall Field Depth</span>
+        </div>
+
+        <div class="h-80 w-full">
+          <canvas id="overallAttendanceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Age Category Field Size & Placement -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-200">Age Category Attendance vs Your Category Position</h3>
+            <p class="text-xs text-slate-400">Dark columns represent total runners in your age bracket; vibrant amber dots indicate where you placed within that category.</p>
+          </div>
+          <span class="text-xs font-mono text-amber-300 bg-amber-950/60 border border-amber-500/30 px-2.5 py-1 rounded-lg">Category Cohort Depth</span>
+        </div>
+
+        <div class="h-80 w-full">
+          <canvas id="categoryAttendanceChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 3: Peak-of-the-Month Rolling Form -->
     <section id="tabRollingForm" class="hidden space-y-6">
       
       <div class="bg-gradient-to-r from-slate-900 via-emerald-950/20 to-slate-900 border border-slate-800 rounded-xl p-5 space-y-2">
@@ -185,6 +264,9 @@
             <p class="text-xs text-slate-400">Fastest time & peak age grade per active calendar month.</p>
           </div>
           <div class="flex items-center gap-2">
+            <button id="resetZoomRollingBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-700 transition">
+              Reset Zoom 🔍
+            </button>
             <label for="rollingMetricSelect" class="text-xs font-bold text-slate-400">View Mode:</label>
             <select id="rollingMetricSelect" class="bg-slate-950 border border-slate-700 text-xs text-emerald-400 font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
               <option value="time">Fastest Monthly Time (MM:SS)</option>
@@ -221,13 +303,13 @@
 
     </section>
 
-    <!-- TAB 3: Age Category Shift & Baselines -->
+    <!-- TAB 4: Age Category Shift & Baselines -->
     <section id="tabCategories" class="hidden space-y-6">
       
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-2">
         <h2 class="text-lg font-bold text-sky-400">Age Category Shift & Personal Baselines</h2>
         <p class="text-xs text-slate-300">
-          Track how personal baselines, fastest times, and age grading percentages evolved as you stepped into each age category chapter.
+          Track how personal baselines, fastest times, and age grading percentages evolved as you stepped into each age category chapter. Click any category card to crossfilter.
         </p>
       </div>
 
@@ -267,13 +349,13 @@
 
     </section>
 
-    <!-- TAB 4: Course PB & SB Matrix -->
+    <!-- TAB 5: Course PB & SB Matrix -->
     <section id="tabCourseMatrix" class="hidden space-y-6">
       
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-2">
         <h2 class="text-lg font-bold text-amber-400">Course PB & Season Best (SB) Matrix</h2>
         <p class="text-xs text-slate-300">
-          Personal bests and season-by-season bests achieved across every distinct course you have visited.
+          Personal bests and season-by-season bests achieved across every distinct course you have visited. Click any course to crossfilter.
         </p>
       </div>
 
@@ -305,7 +387,7 @@
 
     </section>
 
-    <!-- TAB 5: Interactive BI Query Studio (In-Browser SQL Engine) -->
+    <!-- TAB 6: Interactive BI Query Studio (In-Browser SQL Engine) -->
     <section id="tabBiExplorer" class="hidden space-y-6">
       
       <div class="bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-sky-500/30 rounded-xl p-5 space-y-3">
@@ -335,7 +417,7 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <label for="biSqlInput" class="text-xs font-bold uppercase text-slate-300 tracking-wider">SQL Query Console</label>
-            <span class="text-[11px] text-slate-500 font-mono">Schema: date_str, event, time_seconds, age_grade, position, gender_pos, category_pos, age_category, total_finishers, finish_percentile, year</span>
+            <span class="text-[11px] text-slate-500 font-mono">Schema: date_str, raw_date_str, event, time_seconds, age_grade, position, gender_pos, category_pos, age_category, total_finishers, finish_percentile, year</span>
           </div>
           <textarea id="biSqlInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-sky-300 focus:outline-none focus:border-sky-500 transition resize-y">SELECT year, count(*) as total_runs, min(time_seconds) as fastest_seconds, round(avg(time_seconds), 1) as avg_seconds, round(max(age_grade), 2) as peak_age_grade FROM runs GROUP BY year ORDER BY year DESC</textarea>
         </div>
@@ -387,14 +469,38 @@
     let sqlDb = null;
     let sqlEngineReady = false;
 
+    // Crossfilter Active Filter Object
+    let activeCrossfilter = {
+      type: null, // 'venue' | 'category'
+      value: null
+    };
+
     let timelineChartInstance = null;
     let comparisonChartInstance = null;
+    let overallAttendanceChartInstance = null;
+    let categoryAttendanceChartInstance = null;
     let monthlyPeakChartInstance = null;
     let categoryChartInstance = null;
     let biDynamicChartInstance = null;
 
     let courseSortCol = 'visits';
     let courseSortAsc = false;
+
+    // Zoom Plugin Config Factory
+    function getZoomOptions() {
+      return {
+        pan: {
+          enabled: true,
+          mode: 'x',
+          modifierKey: null
+        },
+        zoom: {
+          wheel: { enabled: true },
+          pinch: { enabled: true },
+          mode: 'x'
+        }
+      };
+    }
 
     // Helpers
     function parseUkDate(str) {
@@ -509,6 +615,7 @@
     function initTabs() {
       const tabs = {
         timeline: { btn: document.getElementById('tabBtnTimeline'), section: document.getElementById('tabTimeline') },
+        fieldDepth: { btn: document.getElementById('tabBtnFieldDepth'), section: document.getElementById('tabFieldDepth') },
         rollingForm: { btn: document.getElementById('tabBtnRollingForm'), section: document.getElementById('tabRollingForm') },
         categories: { btn: document.getElementById('tabBtnCategories'), section: document.getElementById('tabCategories') },
         courseMatrix: { btn: document.getElementById('tabBtnCourseMatrix'), section: document.getElementById('tabCourseMatrix') },
@@ -525,6 +632,7 @@
               : 'tab-btn px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition whitespace-nowrap';
           });
 
+          if (tabKey === 'fieldDepth') renderFieldDepthCharts();
           if (tabKey === 'rollingForm') renderRollingFormView();
           if (tabKey === 'categories') renderCategoriesView();
           if (tabKey === 'courseMatrix') renderCourseMatrixView();
@@ -535,8 +643,27 @@
       document.getElementById('chartMetricSelect').addEventListener('change', renderTimelineChart);
       document.getElementById('rollingMetricSelect').addEventListener('change', () => renderRollingFormChart());
       document.getElementById('athleteSelect').addEventListener('change', onAthleteChanged);
-      document.getElementById('filterVenue').addEventListener('change', updateFilteredViews);
-      document.getElementById('filterYear').addEventListener('change', updateFilteredViews);
+      document.getElementById('filterVenue').addEventListener('change', () => { activeCrossfilter.type = null; updateFilteredViews(); });
+      document.getElementById('filterYear').addEventListener('change', () => { activeCrossfilter.type = null; updateFilteredViews(); });
+      document.getElementById('clearCrossfilterBtn').addEventListener('click', clearCrossfilter);
+
+      // Zoom Reset Handlers
+      document.getElementById('resetZoomTimelineBtn').addEventListener('click', () => {
+        if (timelineChartInstance) timelineChartInstance.resetZoom();
+      });
+      document.getElementById('resetZoomCompBtn').addEventListener('click', () => {
+        if (comparisonChartInstance) comparisonChartInstance.resetZoom();
+      });
+      document.getElementById('resetZoomDepthOverallBtn').addEventListener('click', () => {
+        if (overallAttendanceChartInstance) overallAttendanceChartInstance.resetZoom();
+      });
+      document.getElementById('resetZoomDepthCatBtn').addEventListener('click', () => {
+        if (categoryAttendanceChartInstance) categoryAttendanceChartInstance.resetZoom();
+      });
+      document.getElementById('resetZoomRollingBtn').addEventListener('click', () => {
+        if (monthlyPeakChartInstance) monthlyPeakChartInstance.resetZoom();
+      });
+
       document.getElementById('biRunSqlBtn').addEventListener('click', executeBiQuery);
       document.getElementById('biChartType').addEventListener('change', executeBiQuery);
 
@@ -559,6 +686,30 @@
           renderCourseMatrixView();
         });
       });
+    }
+
+    function setCrossfilter(type, value) {
+      activeCrossfilter.type = type;
+      activeCrossfilter.value = value;
+      updateFilteredViews();
+    }
+
+    function clearCrossfilter() {
+      activeCrossfilter.type = null;
+      activeCrossfilter.value = null;
+      updateFilteredViews();
+    }
+
+    function updateCrossfilterUI() {
+      const bar = document.getElementById('crossfilterBar');
+      const label = document.getElementById('crossfilterLabel');
+
+      if (activeCrossfilter.type && activeCrossfilter.value) {
+        bar.classList.remove('hidden');
+        label.innerText = `${activeCrossfilter.type.toUpperCase()}: ${activeCrossfilter.value}`;
+      } else {
+        bar.classList.add('hidden');
+      }
     }
 
     function showNotice(msg, isError = false) {
@@ -639,6 +790,9 @@
       athleteRuns = rawDataset.filter(r => r.athleteId === athleteId);
       athleteRuns.sort((a, b) => a.date - b.date);
 
+      activeCrossfilter.type = null;
+      activeCrossfilter.value = null;
+
       rebuildSqlDatabase();
       populateContextFilters();
       updateFilteredViews();
@@ -662,16 +816,26 @@
       return athleteRuns.filter(r => {
         const matchVenue = (venue === 'ALL' || r.event === venue);
         const matchYear = (year === 'ALL' || r.year.toString() === year);
-        return matchVenue && matchYear;
+        
+        let matchCrossfilter = true;
+        if (activeCrossfilter.type === 'venue') {
+          matchCrossfilter = (r.event === activeCrossfilter.value);
+        } else if (activeCrossfilter.type === 'category') {
+          matchCrossfilter = (r.ageCategory === activeCrossfilter.value);
+        }
+
+        return matchVenue && matchYear && matchCrossfilter;
       });
     }
 
     function updateFilteredViews() {
+      updateCrossfilterUI();
       const filtered = getFilteredRuns();
       renderHeadlineTiles(filtered);
       renderTimelineChart();
       renderPositionComparisonChart();
       renderRunsTable(filtered);
+      renderFieldDepthCharts();
       renderRollingFormView();
       renderCategoriesView();
       renderCourseMatrixView();
@@ -764,6 +928,13 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (evt, elements) => {
+            if (elements.length > 0) {
+              const elIndex = elements[0].index;
+              const run = chartData[elIndex].runRef;
+              if (run && run.event) setCrossfilter('venue', run.event);
+            }
+          },
           scales: {
             x: {
               type: 'time',
@@ -785,8 +956,13 @@
           },
           plugins: {
             legend: { display: false },
+            zoom: getZoomOptions(),
             tooltip: {
               callbacks: {
+                title: function(ctx) {
+                  if (!ctx.length) return '';
+                  return ctx[0].raw.runRef.rawDateStr;
+                },
                 label: function(ctx) {
                   const r = ctx.raw.runRef;
                   return `${r.event} (${r.rawDateStr}): ${r.timeStr} | Grade: ${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'} | Pos: #${r.position || '-'}`;
@@ -864,14 +1040,197 @@
             }
           },
           plugins: {
-            legend: { position: 'top', labels: { color: '#cbd5e1', font: { size: 11 } } },
+            legend: { position: 'top', labels: { color: '#cbd5e1' } },
+            zoom: getZoomOptions(),
             tooltip: {
               callbacks: {
+                title: function(ctx) {
+                  if (!ctx.length) return '';
+                  return ctx[0].raw.runRef.rawDateStr;
+                },
                 label: function(ctx) {
                   const r = ctx.raw.runRef;
                   return ctx.datasetIndex === 0 
                     ? `${r.event} (${r.rawDateStr}) — Overall Pos: #${r.position || '-'}/${r.totalFinishers || '-'}`
                     : `${r.event} (${r.rawDateStr}) — Category Pos: #${r.categoryPosition || '-'}/${r.categoryTotal || '-'} (${r.ageCategory})`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // FIELD ATTENDANCE & PLACEMENT CHARTS (HIGH-CONTRAST + ZOOM + FORMATTED TOOLTIPS)
+    function renderFieldDepthCharts() {
+      const runs = getFilteredRuns();
+      if (!runs.length) return;
+
+      // 1. Overall Attendance vs Finish Position Chart
+      const ctxOverall = document.getElementById('overallAttendanceChart').getContext('2d');
+      if (overallAttendanceChartInstance) overallAttendanceChartInstance.destroy();
+
+      const overallAttendanceBars = runs.map(r => ({
+        x: r.date,
+        y: r.totalFinishers || 0,
+        runRef: r
+      }));
+
+      const overallPlacementPoints = runs.map(r => ({
+        x: r.date,
+        y: r.position || 0,
+        runRef: r
+      })).filter(p => p.y > 0);
+
+      overallAttendanceChartInstance = new Chart(ctxOverall, {
+        type: 'bar',
+        data: {
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Total Field Attendance',
+              data: overallAttendanceBars,
+              backgroundColor: '#334155',
+              borderColor: '#475569',
+              borderWidth: 1,
+              barThickness: 6,
+              maxBarThickness: 10,
+              yAxisID: 'y',
+              order: 2
+            },
+            {
+              type: 'scatter',
+              label: 'Your Overall Finish Position',
+              data: overallPlacementPoints,
+              backgroundColor: '#d8b4fe',
+              borderColor: '#6b21a8',
+              borderWidth: 2,
+              pointRadius: 6,
+              pointHoverRadius: 9,
+              pointHoverBackgroundColor: '#ffffff',
+              yAxisID: 'y',
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'month' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              title: { display: true, text: 'Runners / Finish Position (#)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { color: '#cbd5e1' } },
+            zoom: getZoomOptions(),
+            tooltip: {
+              callbacks: {
+                title: function(ctx) {
+                  if (!ctx.length) return '';
+                  return ctx[0].raw.runRef.rawDateStr;
+                },
+                label: function(ctx) {
+                  const r = ctx.raw.runRef;
+                  if (ctx.dataset.type === 'bar') {
+                    return `${r.event}: Total Field of ${r.totalFinishers || '-'} runners`;
+                  } else {
+                    return `Placed #${r.position || '-'} of ${r.totalFinishers || '-'} (Top ${r.finishPercentile ? r.finishPercentile.toFixed(1) + '%' : '-'})`;
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // 2. Category Attendance vs Category Position Chart
+      const ctxCat = document.getElementById('categoryAttendanceChart').getContext('2d');
+      if (categoryAttendanceChartInstance) categoryAttendanceChartInstance.destroy();
+
+      const catAttendanceBars = runs.map(r => ({
+        x: r.date,
+        y: r.categoryTotal || 0,
+        runRef: r
+      }));
+
+      const catPlacementPoints = runs.map(r => ({
+        x: r.date,
+        y: r.categoryPosition || 0,
+        runRef: r
+      })).filter(p => p.y > 0);
+
+      categoryAttendanceChartInstance = new Chart(ctxCat, {
+        type: 'bar',
+        data: {
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Total Runners in Age Category',
+              data: catAttendanceBars,
+              backgroundColor: '#1e293b',
+              borderColor: '#334155',
+              borderWidth: 1,
+              barThickness: 6,
+              maxBarThickness: 10,
+              yAxisID: 'y',
+              order: 2
+            },
+            {
+              type: 'scatter',
+              label: 'Your Category Position',
+              data: catPlacementPoints,
+              backgroundColor: '#fbbf24',
+              borderColor: '#78350f',
+              borderWidth: 2,
+              pointRadius: 6,
+              pointHoverRadius: 9,
+              pointHoverBackgroundColor: '#ffffff',
+              yAxisID: 'y',
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'month' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              title: { display: true, text: 'Category Runners / Placement (#)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { color: '#cbd5e1' } },
+            zoom: getZoomOptions(),
+            tooltip: {
+              callbacks: {
+                title: function(ctx) {
+                  if (!ctx.length) return '';
+                  return ctx[0].raw.runRef.rawDateStr;
+                },
+                label: function(ctx) {
+                  const r = ctx.raw.runRef;
+                  if (ctx.dataset.type === 'bar') {
+                    return `${r.event}: ${r.categoryTotal || '-'} runners in ${r.ageCategory}`;
+                  } else {
+                    return `Placed #${r.categoryPosition || '-'} of ${r.categoryTotal || '-'} in ${r.ageCategory}`;
+                  }
                 }
               }
             }
@@ -922,10 +1281,13 @@
         else if (seasonPbDates.has(dateTime)) badges.push('<span class="bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-bold text-[10px]">SB</span>');
 
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.className = 'hover:bg-slate-800/40 transition cursor-pointer';
+        tr.title = "Click to filter by this course";
+        tr.addEventListener('click', () => setCrossfilter('venue', r.event));
+
         tr.innerHTML = `
           <td class="py-2.5 px-3 text-slate-300 font-sans">${r.rawDateStr}</td>
-          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100">${r.event}</td>
+          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100 hover:text-emerald-400">${r.event}</td>
           <td class="py-2.5 px-3 text-right font-bold text-amber-400">${r.timeStr}</td>
           <td class="py-2.5 px-3 text-right font-bold text-sky-400">${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'}</td>
           <td class="py-2.5 px-3">${badges.join(' ') || '<span class="text-slate-600">-</span>'}</td>
@@ -1049,11 +1411,16 @@
           },
           plugins: {
             legend: { display: false },
+            zoom: getZoomOptions(),
             tooltip: {
               callbacks: {
+                title: function(ctx) {
+                  if (!ctx.length) return '';
+                  return ctx[0].raw.runRef.rawDateStr;
+                },
                 label: function(ctx) {
                   const r = ctx.raw.runRef;
-                  return `${r.event} (${r.rawDateStr}): ${r.timeStr} | Age Grade: ${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'}`;
+                  return `${r.event} (${r.rawDateStr}): ${r.timeStr} | Age Grade: ${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'} `;
                 }
               }
             }
@@ -1126,6 +1493,13 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (evt, elements) => {
+            if (elements.length > 0) {
+              const catIndex = elements[0].index;
+              const catName = catMetrics[catIndex].category;
+              setCrossfilter('category', catName);
+            }
+          },
           scales: {
             x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
             yGrade: {
@@ -1145,7 +1519,10 @@
 
       catMetrics.forEach(c => {
         const card = document.createElement('div');
-        card.className = 'bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3';
+        card.className = 'bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3 cursor-pointer hover:border-sky-500/50 transition';
+        card.title = 'Click to crossfilter runs by this age category';
+        card.addEventListener('click', () => setCrossfilter('category', c.category));
+
         card.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-800 pb-2">
             <span class="text-sm font-black text-sky-400">${c.category}</span>
@@ -1179,9 +1556,11 @@
 
       catMetrics.forEach(c => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.className = 'hover:bg-slate-800/40 transition cursor-pointer';
+        tr.addEventListener('click', () => setCrossfilter('category', c.category));
+
         tr.innerHTML = `
-          <td class="py-2.5 px-3 font-sans font-bold text-slate-100">${c.category}</td>
+          <td class="py-2.5 px-3 font-sans font-bold text-slate-100 hover:text-sky-400">${c.category}</td>
           <td class="py-2.5 px-3 text-right font-bold text-slate-200">${c.totalRuns}</td>
           <td class="py-2.5 px-3 text-right font-bold text-amber-400">${formatSecondsToTime(c.bestTime)}</td>
           <td class="py-2.5 px-3 text-right font-bold text-sky-400">${c.bestGrade ? c.bestGrade.toFixed(2) + '%' : '-'}</td>
@@ -1243,9 +1622,12 @@
 
       matrixData.forEach(row => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.className = 'hover:bg-slate-800/40 transition cursor-pointer';
+        tr.title = 'Click to crossfilter by this venue';
+        tr.addEventListener('click', () => setCrossfilter('venue', row.event));
+
         tr.innerHTML = `
-          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100">${row.event}</td>
+          <td class="py-2.5 px-3 font-sans font-semibold text-slate-100 hover:text-emerald-400">${row.event}</td>
           <td class="py-2.5 px-3 text-right font-bold text-slate-200">${row.visits}</td>
           <td class="py-2.5 px-3 text-right text-amber-400 font-bold">${formatSecondsToTime(row.coursePbTime)}</td>
           <td class="py-2.5 px-3 text-right text-sky-400 font-bold">${row.coursePbGrade ? row.coursePbGrade.toFixed(2) + '%' : '-'}</td>
@@ -1304,7 +1686,6 @@
             ${row.map(val => {
               let displayVal = val;
               if (typeof val === 'number' && val > 300 && val < 6000 && !Number.isInteger(val * 10)) {
-                // If it looks like a time_seconds field
                 displayVal = formatSecondsToTime(val);
               }
               return `<td class="py-2 px-3">${displayVal !== null ? displayVal : '-'}</td>`;
