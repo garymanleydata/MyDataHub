@@ -19,7 +19,7 @@ ATHLETES = [
 
 # Update this with your Cloudflare worker subdomain name:
 # (e.g. https://parkrun-proxy.<your-subdomain>.workers.dev)
-PROXY_WORKER_URL = "https://parkrun-proxy.<your-account-subdomain>.workers.dev"
+PROXY_WORKER_URL = "https://parkrun-proxy.garymanley.workers.dev"
 
 DEFAULT_DELAY = 1.5
 DATA_DIR = Path("./data")
