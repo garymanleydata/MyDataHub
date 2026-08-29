@@ -213,6 +213,18 @@
       width: 100%;
     }
 
+    footer a {
+      color: var(--accent-blue);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
+
+    footer a:hover {
+      color: var(--text-main);
+      text-decoration: underline;
+    }
+
     @media (max-width: 640px) {
       h1 { font-size: 1.85rem; }
       body { padding: 1.5rem 0.75rem; }
@@ -279,6 +291,21 @@
           <a href="parkrunBreakdown.html" class="btn">Launch Workbench &rarr;</a>
         </article>
 
+        <!-- parkrun Telemetry & Athlete Tracker (EnhancedParkrun.html) -->
+        <article class="card">
+          <div>
+            <span class="card-tag tag-event">Automated Pipeline & Telemetry</span>
+            <h2>parkrun Telemetry & Athlete Tracker</h2>
+            <p>Automated multi-athlete telemetry dashboard syncing historical and weekly runs with enriched percentile rankings and field context.</p>
+            <ul class="feature-list">
+              <li>Automated Saturday delta sync via GitHub Actions</li>
+              <li>Enriched field percentiles, age & gender rankings</li>
+              <li>Multi-athlete filtering and progression curves</li>
+            </ul>
+          </div>
+          <a href="EnhancedParkrun.html" class="btn">Launch Athlete Tracker &rarr;</a>
+        </article>
+
         <!-- Event History Analyser (EventAnalysis.html) -->
         <article class="card">
           <div>
@@ -315,7 +342,7 @@
       <h2 class="category-title">🎬 Media & Other Utilities</h2>
       <div class="grid">
         
-        <!-- Movies Catalogue (Movies.html) -->
+        <!-- Movies Catalogue (Movies.HTML) -->
         <article class="card">
           <div>
             <span class="card-tag tag-media">Media & Tracking</span>
@@ -327,7 +354,7 @@
               <li>Metadata inspection & tier lists</li>
             </ul>
           </div>
-          <a href="Movies.html" class="btn">Launch Movies Catalogue &rarr;</a>
+          <a href="Movies.HTML" class="btn">Launch Movies Catalogue &rarr;</a>
         </article>
 
         <!-- Taskmaster Scoring Analytics (TaskmasterSite) -->
@@ -355,7 +382,7 @@
     </section>
 
     <footer>
-      <p>Personal Analytics Suite • Custom Open-Source Utilities</p>
+      <p>Personal Analytics Suite • Source available on <a href="https://github.com/garymanleydata/MyDataHub" target="_blank" rel="noopener">GitHub</a></p>
     </footer>
   </div>
 
