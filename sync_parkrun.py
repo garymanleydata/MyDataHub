@@ -17,13 +17,13 @@ ATHLETES = [
     {"name": "Katie Manley", "id": "350599"},
 ]
 
-# Update this with your Cloudflare worker subdomain name:
-# (e.g. https://parkrun-proxy.<your-subdomain>.workers.dev)
+# Set this to your deployed worker URL:
 PROXY_WORKER_URL = "https://parkrun-proxy.garymanley.workers.dev"
 
 DEFAULT_DELAY = 1.5
 DATA_DIR = Path("./data")
 OUTPUT_FILE = DATA_DIR / "parkrun_data.json"
+# -----------------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,7 +60,11 @@ def fetch_athlete_summary_runs(
 
     response = fetch_via_proxy(session, url)
     if not response or response.status_code != 200:
-        logger.error("Failed to load profile for %s (HTTP %s)", athlete_name, response.status_code if response else "No Response")
+        logger.error(
+            "Failed to load profile for %s (HTTP %s)",
+            athlete_name,
+            response.status_code if response else "No Response",
+        )
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -142,61 +146,105 @@ def enrich_event_result(
     try:
         response = fetch_via_proxy(session, url)
         if not response or response.status_code != 200:
-            logger.warning("HTTP %s on %s", response.status_code if response else "No Response", url)
+            logger.warning(
+                "HTTP %s on %s",
+                response.status_code if response else "No Response",
+                url,
+            )
             return None
 
         soup = BeautifulSoup(response.text, "html.parser")
         result_rows = [
-            r for r in soup.select(".Results-table-row, tr[data-name], tbody tr")
+            r
+            for r in soup.select(".Results-table-row, tr[data-name], tbody tr")
             if r.find("a", href=re.compile(r"/parkrunner/"))
         ]
 
         total_finishers = len(result_rows)
         user_row = next(
-            (r for r in result_rows if r.find("a", href=re.compile(rf"/parkrunner/{athlete_id}(?:/|$)"))),
+            (
+                r
+                for r in result_rows
+                if r.find(
+                    "a", href=re.compile(rf"/parkrunner/{athlete_id}(?:/|$)")
+                )
+            ),
             None,
         )
 
         if not user_row:
             return {"totalFinishers": total_finishers}
 
+        # 1. Age group extraction
         age_group = user_row.get("data-agegroup") or ""
-        gender = user_row.get("data-gender") or ""
-
         if not age_group:
-            ag_cell = user_row.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)")
-            age_group = ag_cell.get_text(strip=True) if ag_cell else ""
+            age_cell = user_row.select_one(
+                ".Results-table-td--ageGroup, td:nth-of-type(4)"
+            )
+            age_group = age_cell.get_text(strip=True) if age_cell else ""
 
+        # 2. Gender extraction
+        gender = user_row.get("data-gender") or ""
         if not gender:
-            g_cell = user_row.select_one(".Results-table-td--gender, td:nth-of-type(3)")
-            gender = g_cell.get_text(strip=True) if g_cell else ""
-
-        cat_rows = [
-            r for r in result_rows
-            if (r.get("data-agegroup") == age_group)
-            or (
-                r.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)")
-                and r.select_one(".Results-table-td--ageGroup, td:nth-of-type(4)").get_text(strip=True) == age_group
+            gender_cell = user_row.select_one(
+                ".Results-table-td--gender, td:nth-of-type(3)"
             )
-        ] if age_group else []
+            gender = gender_cell.get_text(strip=True) if gender_cell else ""
 
-        cat_pos = cat_rows.index(user_row) + 1 if user_row in cat_rows else None
+        # 3. Category ranking calculation
+        cat_rows = (
+            [
+                r
+                for r in result_rows
+                if (r.get("data-agegroup") == age_group)
+                or (
+                    r.select_one(
+                        ".Results-table-td--ageGroup, td:nth-of-type(4)"
+                    )
+                    and r.select_one(
+                        ".Results-table-td--ageGroup, td:nth-of-type(4)"
+                    ).get_text(strip=True)
+                    == age_group
+                )
+            ]
+            if age_group
+            else []
+        )
+        cat_pos = (
+            cat_rows.index(user_row) + 1 if user_row in cat_rows else None
+        )
 
-        gen_rows = [
-            r for r in result_rows
-            if (r.get("data-gender") == gender)
-            or (
-                r.select_one(".Results-table-td--gender, td:nth-of-type(3)")
-                and r.select_one(".Results-table-td--gender, td:nth-of-type(3)").get_text(strip=True) == gender
-            )
-        ] if gender else []
+        # 4. Gender ranking calculation
+        gen_rows = (
+            [
+                r
+                for r in result_rows
+                if (r.get("data-gender") == gender)
+                or (
+                    r.select_one(".Results-table-td--gender, td:nth-of-type(3)")
+                    and r.select_one(
+                        ".Results-table-td--gender, td:nth-of-type(3)"
+                    ).get_text(strip=True)
+                    == gender
+                )
+            ]
+            if gender
+            else []
+        )
+        gen_pos = (
+            gen_rows.index(user_row) + 1 if user_row in gen_rows else None
+        )
 
-        gen_pos = gen_rows.index(user_row) + 1 if user_row in gen_rows else None
         position = run.get("position", 0)
+        finish_pct = (
+            round((1 - (position / total_finishers)) * 100, 1)
+            if total_finishers > 0
+            else None
+        )
 
         return {
             "totalFinishers": total_finishers,
-            "finishPercentile": round((1 - (position / total_finishers)) * 100, 1) if total_finishers > 0 else None,
+            "finishPercentile": finish_pct,
             "ageCategory": age_group,
             "categoryPosition": cat_pos,
             "categoryTotal": len(cat_rows),
