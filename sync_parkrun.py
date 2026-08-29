@@ -4,10 +4,11 @@ import logging
 import re
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+import requests
 
 # --- ATHLETE CONFIGURATION ---
 ATHLETES = [
@@ -15,6 +16,10 @@ ATHLETES = [
     {"name": "Alf Oseni", "id": "995019"},
     {"name": "Katie Manley", "id": "350599"},
 ]
+
+# Update this with your Cloudflare worker subdomain name:
+# (e.g. https://parkrun-proxy.<your-subdomain>.workers.dev)
+PROXY_WORKER_URL = "https://parkrun-proxy.<your-account-subdomain>.workers.dev"
 
 DEFAULT_DELAY = 1.5
 DATA_DIR = Path("./data")
@@ -26,6 +31,13 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
+
+
+def fetch_via_proxy(session: requests.Session, target_url: str) -> Optional[requests.Response]:
+    """Wraps requests to route through the Cloudflare proxy."""
+    encoded_url = urllib.parse.quote(target_url, safe="")
+    proxy_url = f"{PROXY_WORKER_URL}?url={encoded_url}"
+    return session.get(proxy_url, timeout=20)
 
 
 def load_existing_dataset() -> Dict[str, Dict[str, Any]]:
@@ -40,19 +52,18 @@ def load_existing_dataset() -> Dict[str, Dict[str, Any]]:
         return {}
 
 
-def fetch_athlete_summary_runs(page, athlete_id: str, athlete_name: str) -> List[Dict[str, Any]]:
+def fetch_athlete_summary_runs(
+    session: requests.Session, athlete_id: str, athlete_name: str
+) -> List[Dict[str, Any]]:
     url = f"https://www.parkrun.org.uk/parkrunner/{athlete_id}/all/"
-    logger.info("Navigating to profile for %s (%s)...", athlete_name, athlete_id)
+    logger.info("Fetching profile summary for %s (%s)...", athlete_name, athlete_id)
 
-    response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
-    if response and response.status != 200:
-        logger.error("Failed to load profile for %s (HTTP %s)", athlete_name, response.status)
+    response = fetch_via_proxy(session, url)
+    if not response or response.status_code != 200:
+        logger.error("Failed to load profile for %s (HTTP %s)", athlete_name, response.status_code if response else "No Response")
         return []
 
-    # Give page a short moment to settle
-    time.sleep(1.0)
-    html_content = page.content()
-    soup = BeautifulSoup(html_content, "html.parser")
+    soup = BeautifulSoup(response.text, "html.parser")
 
     target_table = None
     for tbl in soup.find_all("table"):
@@ -121,19 +132,20 @@ def fetch_athlete_summary_runs(page, athlete_id: str, athlete_name: str) -> List
     return runs
 
 
-def enrich_event_result(page, run: Dict[str, Any], athlete_id: str) -> Optional[Dict[str, Any]]:
+def enrich_event_result(
+    session: requests.Session, run: Dict[str, Any], athlete_id: str
+) -> Optional[Dict[str, Any]]:
     url = run.get("eventUrl")
     if not url:
         return None
 
     try:
-        response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        if response and response.status != 200:
-            logger.warning("HTTP %s on %s", response.status, url)
+        response = fetch_via_proxy(session, url)
+        if not response or response.status_code != 200:
+            logger.warning("HTTP %s on %s", response.status_code if response else "No Response", url)
             return None
 
-        time.sleep(0.5)
-        soup = BeautifulSoup(page.content(), "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
         result_rows = [
             r for r in soup.select(".Results-table-row, tr[data-name], tbody tr")
             if r.find("a", href=re.compile(r"/parkrunner/"))
@@ -199,43 +211,35 @@ def enrich_event_result(page, run: Dict[str, Any], athlete_id: str) -> Optional[
 
 
 def sync_all_athletes(batch_enrich_limit: Optional[int] = None, delay: float = DEFAULT_DELAY) -> None:
+    session = requests.Session()
     master_store = load_existing_dataset()
     logger.info("Loaded %d existing run records from store.", len(master_store))
+
     total_enriched_this_run = 0
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            locale="en-GB",
-        )
-        page = context.new_page()
+    for athlete in ATHLETES:
+        clean_id = re.sub(r"^[Aa]", "", str(athlete["id"]).strip())
+        name = athlete["name"]
 
-        for athlete in ATHLETES:
-            clean_id = re.sub(r"^[Aa]", "", str(athlete["id"]).strip())
-            name = athlete["name"]
+        runs = fetch_athlete_summary_runs(session, clean_id, name)
+        time.sleep(delay)
 
-            runs = fetch_athlete_summary_runs(page, clean_id, name)
+        for run in runs:
+            key = f"{clean_id}_{run['event']}_{run['runNumber']}"
+
+            if key in master_store and master_store[key].get("enriched"):
+                continue
+
+            if batch_enrich_limit is not None and total_enriched_this_run >= batch_enrich_limit:
+                if key not in master_store:
+                    master_store[key] = run
+                continue
+
+            logger.info("Enriching [%s] %s #%s...", name, run["event"], run["runNumber"])
+            run["enriched"] = enrich_event_result(session, run, clean_id)
+            master_store[key] = run
+            total_enriched_this_run += 1
             time.sleep(delay)
-
-            for run in runs:
-                key = f"{clean_id}_{run['event']}_{run['runNumber']}"
-
-                if key in master_store and master_store[key].get("enriched"):
-                    continue
-
-                if batch_enrich_limit is not None and total_enriched_this_run >= batch_enrich_limit:
-                    if key not in master_store:
-                        master_store[key] = run
-                    continue
-
-                logger.info("Enriching [%s] %s #%s...", name, run["event"], run["runNumber"])
-                run["enriched"] = enrich_event_result(page, run, clean_id)
-                master_store[key] = run
-                total_enriched_this_run += 1
-                time.sleep(delay)
-
-        browser.close()
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     all_runs_list = list(master_store.values())
