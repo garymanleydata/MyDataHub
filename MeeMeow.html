@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aphmau MeeMeows Collection Tracker</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -26,6 +27,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
+    <!-- Header -->
     <header class="border-b border-fuchsia-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shadow-sm">
         <div class="flex items-center space-x-3">
             <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-pink-500 flex items-center justify-center font-bold text-xl text-white shadow-md shadow-fuchsia-500/20">🐱</div>
@@ -49,6 +51,7 @@
 
     <main class="flex-1 p-6 max-w-[1400px] w-full mx-auto space-y-6">
 
+        <!-- Progress Overview Banner -->
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <div>
@@ -65,6 +68,7 @@
             </div>
         </section>
 
+        <!-- Controls: Multi-Tier Filters & Search -->
         <section class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
             <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
                 <select id="filter-type" onchange="onCategoryChange()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
@@ -84,6 +88,7 @@
             </div>
         </section>
 
+        <!-- Dynamic Collection Grid Container -->
         <section id="collection-root" class="space-y-8">
             <div class="p-12 text-center text-slate-400 font-medium">Loading collection data...</div>
         </section>
@@ -95,6 +100,101 @@
         const JSONBIN_BIN_ID = "PASTE_YOUR_BIN_ID_HERE";
         const JSONBIN_ACCESS_KEY = "PASTE_YOUR_ACCESS_KEY_HERE";
         // =================================================
+
+        // Canonical MeeMeows Series Lookup Table
+        const SERIES_MAP = {
+            // Litter 1 (Food)
+            "cheeseburger": "Litter 1 — Food Cats",
+            "donut": "Litter 1 — Food Cats",
+            "taco": "Litter 1 — Food Cats",
+            "soda": "Litter 1 — Food Cats",
+            "french_fry": "Litter 1 — Food Cats",
+            "fry": "Litter 1 — Food Cats",
+            "ice_cream": "Litter 1 — Food Cats",
+            "pizza": "Litter 1 — Food Cats",
+            "strawberry": "Litter 1 — Food Cats",
+
+            // Litter 2 (Celestial)
+            "sun": "Litter 2 — Celestial",
+            "moon": "Litter 2 — Celestial",
+            "galaxy": "Litter 2 — Celestial",
+            "star": "Litter 2 — Celestial",
+            "ruby": "Litter 2 — Celestial",
+            "diamond": "Litter 2 — Celestial",
+            "emerald": "Litter 2 — Celestial",
+            "rainbow": "Litter 2 — Celestial",
+
+            // Litter 3 (Sweet Treats)
+            "pancake": "Litter 3 — Sweet Treats",
+            "macaron": "Litter 3 — Sweet Treats",
+            "cotton_candy": "Litter 3 — Sweet Treats",
+            "cinnamon_roll": "Litter 3 — Sweet Treats",
+            "marshmallow": "Litter 3 — Sweet Treats",
+            "sugar_skull": "Litter 3 — Sweet Treats",
+            "s'mores": "Litter 3 — Sweet Treats",
+            "smores": "Litter 3 — Sweet Treats",
+            "chocolate": "Litter 3 — Sweet Treats",
+            "boba": "Litter 3 — Sweet Treats",
+
+            // Litter 4 (Safari / Wild)
+            "lion": "Litter 4 — Safari / Wild",
+            "elephant": "Litter 4 — Safari / Wild",
+            "giraffe": "Litter 4 — Safari / Wild",
+            "zebra": "Litter 4 — Safari / Wild",
+            "cheetah": "Litter 4 — Safari / Wild",
+            "panda": "Litter 4 — Safari / Wild",
+            "monkey": "Litter 4 — Safari / Wild",
+            "red_panda": "Litter 4 — Safari / Wild",
+            "lemur": "Litter 4 — Safari / Wild",
+
+            // Litter 5 (Under the Sea)
+            "dolphin": "Litter 5 — Under the Sea",
+            "shark": "Litter 5 — Under the Sea",
+            "turtle": "Litter 5 — Under the Sea",
+            "clownfish": "Litter 5 — Under the Sea",
+            "octopus": "Litter 5 — Under the Sea",
+            "seahorse": "Litter 5 — Under the Sea",
+            "whale": "Litter 5 — Under the Sea",
+            "stingray": "Litter 5 — Under the Sea",
+            "axolotl": "Litter 5 — Under the Sea",
+
+            // Litter 6 (Fairy Tale)
+            "dragon": "Litter 6 — Fairy Tale",
+            "unicorn": "Litter 6 — Fairy Tale",
+            "mermaid": "Litter 6 — Fairy Tale",
+            "pegasus": "Litter 6 — Fairy Tale",
+            "griffin": "Litter 6 — Fairy Tale",
+            "phoenix": "Litter 6 — Fairy Tale",
+            "fairy": "Litter 6 — Fairy Tale",
+            "cerberus": "Litter 6 — Fairy Tale",
+            "hydra": "Litter 6 — Fairy Tale",
+
+            // Litter 7 (Elemental)
+            "fire": "Litter 7 — Elemental",
+            "water": "Litter 7 — Elemental",
+            "earth": "Litter 7 — Elemental",
+            "air": "Litter 7 — Elemental",
+            "lightning": "Litter 7 — Elemental",
+            "ice": "Litter 7 — Elemental",
+            "nature": "Litter 7 — Elemental",
+            "magma": "Litter 7 — Elemental",
+
+            // Seasonal / Special
+            "pumpkin": "Seasonal — Halloween",
+            "ghost": "Seasonal — Halloween",
+            "skeleton": "Seasonal — Halloween",
+            "bat": "Seasonal — Halloween",
+            "witch": "Seasonal — Halloween",
+            "vampire": "Seasonal — Halloween",
+            "candy_corn": "Seasonal — Halloween",
+            "reindeer": "Seasonal — Holiday",
+            "santa": "Seasonal — Holiday",
+            "snowman": "Seasonal — Holiday",
+            "gingerbread": "Seasonal — Holiday",
+            "candy_cane": "Seasonal — Holiday",
+            "cupid": "Seasonal — Valentine's",
+            "heart": "Seasonal — Valentine's"
+        };
 
         let masterItems = [];
         let ownedIds = new Set();
@@ -221,7 +321,7 @@
                 if (!p.imageinfo || p.imageinfo.length === 0) return;
                 const info = p.imageinfo[0];
 
-                // 1. Precise Category & Size Classification
+                // 1. Determine Category & Size
                 let category = "6\" Plushies";
                 if (lower.includes('11') || lower.includes('11"') || lower.includes('giant') || lower.includes('large')) {
                     category = "11\" Plushies";
@@ -235,27 +335,22 @@
                     category = "Clips & Keychains";
                 }
 
-                // 2. Precise Series / Litter Classification
-                let series = "Litter 1 (2021)";
-                if (lower.includes('litter_2') || lower.includes('series_2') || lower.includes('celestial')) {
-                    series = "Litter 2 (2022) — Celestial";
-                } else if (lower.includes('litter_3') || lower.includes('series_3') || lower.includes('sweet') || lower.includes('dessert') || lower.includes('treat')) {
-                    series = "Litter 3 (2022) — Sweet Treats";
-                } else if (lower.includes('litter_4') || lower.includes('series_4') || lower.includes('safari') || lower.includes('wild')) {
-                    series = "Litter 4 (2023) — Safari / Wild";
-                } else if (lower.includes('litter_5') || lower.includes('series_5') || lower.includes('underwater') || lower.includes('ocean') || lower.includes('sea')) {
-                    series = "Litter 5 (2023) — Under the Sea";
-                } else if (lower.includes('litter_6') || lower.includes('series_6') || lower.includes('fairy')) {
-                    series = "Litter 6 (2023) — Fairy Tale";
-                } else if (lower.includes('halloween') || lower.includes('spooky') || lower.includes('pumpkin')) {
-                    series = "Seasonal — Halloween";
-                } else if (lower.includes('christmas') || lower.includes('holiday') || lower.includes('santa')) {
-                    series = "Seasonal — Holiday";
-                } else if (lower.includes('valentines') || lower.includes('valentine')) {
-                    series = "Seasonal — Valentine's";
-                } else if (lower.includes('litter_1') || lower.includes('series_1') || lower.includes('food')) {
-                    series = "Litter 1 (2021) — Food Cats";
+                // 2. Determine Series/Litter using lookup table
+                let series = "Special Edition / Core";
+                for (const [key, val] of Object.entries(SERIES_MAP)) {
+                    if (lower.includes(key)) {
+                        series = val;
+                        break;
+                    }
                 }
+
+                // Explicit series override if explicitly tagged in filename
+                if (lower.includes('litter_2') || lower.includes('series_2')) series = "Litter 2 — Celestial";
+                else if (lower.includes('litter_3') || lower.includes('series_3')) series = "Litter 3 — Sweet Treats";
+                else if (lower.includes('litter_4') || lower.includes('series_4')) series = "Litter 4 — Safari / Wild";
+                else if (lower.includes('litter_5') || lower.includes('series_5')) series = "Litter 5 — Under the Sea";
+                else if (lower.includes('litter_6') || lower.includes('series_6')) series = "Litter 6 — Fairy Tale";
+                else if (lower.includes('litter_7') || lower.includes('series_7')) series = "Litter 7 — Elemental";
 
                 // Clean display name
                 let cleanName = title.replace(/_/g, ' ')
