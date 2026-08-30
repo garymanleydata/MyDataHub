@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aphmau MeeMeows Collection Tracker</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -27,13 +26,12 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
-    <!-- Header -->
     <header class="border-b border-fuchsia-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shadow-sm">
         <div class="flex items-center space-x-3">
             <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-pink-500 flex items-center justify-center font-bold text-xl text-white shadow-md shadow-fuchsia-500/20">🐱</div>
             <div>
                 <h1 class="text-xl font-bold tracking-tight text-slate-900">Aphmau MeeMeows Tracker</h1>
-                <p class="text-xs text-slate-500">Live Shared Cloud Sync</p>
+                <p class="text-xs text-slate-500">Live Size & Series Classification</p>
             </div>
         </div>
         <div class="flex items-center gap-3">
@@ -51,7 +49,6 @@
 
     <main class="flex-1 p-6 max-w-[1400px] w-full mx-auto space-y-6">
 
-        <!-- Progress Overview Banner -->
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <div>
@@ -68,11 +65,13 @@
             </div>
         </section>
 
-        <!-- Controls: Filters & Search -->
         <section class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
             <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <select id="filter-type" onchange="renderCollection()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
-                    <option value="ALL">All Categories</option>
+                <select id="filter-type" onchange="onCategoryChange()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
+                    <option value="ALL">All Categories / Sizes</option>
+                </select>
+                <select id="filter-series" onchange="renderCollection()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
+                    <option value="ALL">All Litters / Series</option>
                 </select>
                 <select id="filter-status" onchange="renderCollection()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
                     <option value="ALL">All Statuses</option>
@@ -81,11 +80,10 @@
                 </select>
             </div>
             <div class="w-full md:w-72">
-                <input type="text" id="search-input" oninput="renderCollection()" placeholder="Search MeeMeow name..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-fuchsia-500 placeholder-slate-400" />
+                <input type="text" id="search-input" oninput="renderCollection()" placeholder="Search cat name..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-fuchsia-500 placeholder-slate-400" />
             </div>
         </section>
 
-        <!-- Dynamic Collection Grid Container -->
         <section id="collection-root" class="space-y-8">
             <div class="p-12 text-center text-slate-400 font-medium">Loading collection data...</div>
         </section>
@@ -94,8 +92,8 @@
 
     <script>
         // ================= CONFIGURATION =================
-        const JSONBIN_BIN_ID = "6a943f5df5f4af5e2954b8ac";
-        const JSONBIN_ACCESS_KEY = "$2a$10$.s8Xwp4JFJpqMSTm87oXa.us5FtKI89jQawWCy0riJZ.oCTfqE/la";
+        const JSONBIN_BIN_ID = "PASTE_YOUR_BIN_ID_HERE";
+        const JSONBIN_ACCESS_KEY = "PASTE_YOUR_ACCESS_KEY_HERE";
         // =================================================
 
         let masterItems = [];
@@ -112,12 +110,11 @@
             fetchWikiImages();
         }
 
-        // 1. Fetch current owned state from JSONBin using Access Key
+        // 1. JSONBin Sync Logic
         async function fetchCloudState() {
             const syncInd = document.getElementById('sync-indicator');
 
             if (JSONBIN_BIN_ID === "PASTE_YOUR_BIN_ID_HERE" || JSONBIN_ACCESS_KEY === "PASTE_YOUR_ACCESS_KEY_HERE") {
-                console.warn("JSONBin credentials not set; falling back to local storage.");
                 ownedIds = new Set(JSON.parse(localStorage.getItem("meemeow_owned_fallback") || "[]"));
                 return;
             }
@@ -146,7 +143,6 @@
             }
         }
 
-        // 2. Debounced Cloud Save to prevent rapid API rate limits
         function triggerCloudSave() {
             const syncInd = document.getElementById('sync-indicator');
             localStorage.setItem("meemeow_owned_fallback", JSON.stringify([...ownedIds]));
@@ -180,7 +176,7 @@
             }, 600);
         }
 
-        // 3. Fandom API Scraper via JSONP
+        // 2. Fetch images directly via MediaWiki Generator
         function fetchWikiImages() {
             const status = document.getElementById('status-indicator');
             status.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200";
@@ -216,6 +212,8 @@
             pages.forEach(p => {
                 const title = p.title.replace(/^File:/i, '').replace(/\.(png|jpg|jpeg|webp)$/i, '');
                 const lower = title.toLowerCase();
+                
+                // Exclude system images and UI assets
                 if (lower.includes('logo') || lower.includes('banner') || lower.includes('wiki') || lower.includes('icon') || lower.includes('box_art')) {
                     return;
                 }
@@ -223,24 +221,45 @@
                 if (!p.imageinfo || p.imageinfo.length === 0) return;
                 const info = p.imageinfo[0];
 
-                let type = "Plushies";
-                if (lower.includes('figure') || lower.includes('fig')) type = "Figures";
-                else if (lower.includes('squish')) type = "Squishies";
-                else if (lower.includes('clip') || lower.includes('keychain')) type = "Clips & Keychains";
+                // 1. Precise Category & Size Classification
+                let category = "6\" Plushies";
+                if (lower.includes('11') || lower.includes('11"') || lower.includes('giant') || lower.includes('large')) {
+                    category = "11\" Plushies";
+                } else if (lower.includes('sparkle')) {
+                    category = "6\" Sparkle Collection";
+                } else if (lower.includes('figure') || lower.includes('fig') || lower.includes('mini')) {
+                    category = "Figures";
+                } else if (lower.includes('squishy') || lower.includes('squish')) {
+                    category = "Squishies";
+                } else if (lower.includes('clip') || lower.includes('keychain')) {
+                    category = "Clips & Keychains";
+                }
 
-                let series = "General Collection";
-                if (lower.includes('series_1') || lower.includes('litter_1') || lower.includes('food')) series = "Series 1 (Food)";
-                else if (lower.includes('series_2') || lower.includes('litter_2') || lower.includes('celestial')) series = "Series 2 (Celestial)";
-                else if (lower.includes('series_3') || lower.includes('litter_3') || lower.includes('dessert') || lower.includes('sweet')) series = "Series 3 (Sweet Treats)";
-                else if (lower.includes('series_4') || lower.includes('litter_4') || lower.includes('safari') || lower.includes('wild')) series = "Series 4 (Wild/Safari)";
-                else if (lower.includes('series_5') || lower.includes('litter_5') || lower.includes('underwater') || lower.includes('ocean')) series = "Series 5 (Under the Sea)";
-                else if (lower.includes('series_6') || lower.includes('litter_6') || lower.includes('fairy')) series = "Series 6 (Fairy Tale)";
-                else if (lower.includes('halloween') || lower.includes('spooky') || lower.includes('pumpkin')) series = "Halloween Edition";
-                else if (lower.includes('christmas') || lower.includes('holiday') || lower.includes('santa')) series = "Holiday Edition";
-                else if (lower.includes('valentines')) series = "Valentine's Edition";
+                // 2. Precise Series / Litter Classification
+                let series = "Litter 1 (2021)";
+                if (lower.includes('litter_2') || lower.includes('series_2') || lower.includes('celestial')) {
+                    series = "Litter 2 (2022) — Celestial";
+                } else if (lower.includes('litter_3') || lower.includes('series_3') || lower.includes('sweet') || lower.includes('dessert') || lower.includes('treat')) {
+                    series = "Litter 3 (2022) — Sweet Treats";
+                } else if (lower.includes('litter_4') || lower.includes('series_4') || lower.includes('safari') || lower.includes('wild')) {
+                    series = "Litter 4 (2023) — Safari / Wild";
+                } else if (lower.includes('litter_5') || lower.includes('series_5') || lower.includes('underwater') || lower.includes('ocean') || lower.includes('sea')) {
+                    series = "Litter 5 (2023) — Under the Sea";
+                } else if (lower.includes('litter_6') || lower.includes('series_6') || lower.includes('fairy')) {
+                    series = "Litter 6 (2023) — Fairy Tale";
+                } else if (lower.includes('halloween') || lower.includes('spooky') || lower.includes('pumpkin')) {
+                    series = "Seasonal — Halloween";
+                } else if (lower.includes('christmas') || lower.includes('holiday') || lower.includes('santa')) {
+                    series = "Seasonal — Holiday";
+                } else if (lower.includes('valentines') || lower.includes('valentine')) {
+                    series = "Seasonal — Valentine's";
+                } else if (lower.includes('litter_1') || lower.includes('series_1') || lower.includes('food')) {
+                    series = "Litter 1 (2021) — Food Cats";
+                }
 
+                // Clean display name
                 let cleanName = title.replace(/_/g, ' ')
-                                     .replace(/\b(plush|figure|squishy|clip|cat)\b/gi, '')
+                                     .replace(/\b(plush|plushie|figure|squishy|clip|cat|6"|11"|series\s*\d+|litter\s*\d+)\b/gi, '')
                                      .replace(/\s+/g, ' ')
                                      .trim();
                 
@@ -248,7 +267,8 @@
                     cleanName += ' Cat';
                 }
 
-                const id = `${type}_${series}_${cleanName}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                // Unique ID factoring in Category (Size) + Series + Name
+                const id = `${category}_${series}_${cleanName}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
                 let imgUrl = info.url;
                 if (imgUrl.includes('/revision/latest')) {
@@ -258,28 +278,48 @@
                 masterItems.push({
                     id: id,
                     name: cleanName,
-                    type: type,
+                    category: category,
                     series: series,
                     image: imgUrl
                 });
             });
 
-            masterItems.sort((a, b) => a.series.localeCompare(b.series) || a.name.localeCompare(b.name));
+            // Sort logically by Category, then Series, then Name
+            masterItems.sort((a, b) => a.category.localeCompare(b.category) || a.series.localeCompare(b.series) || a.name.localeCompare(b.name));
 
             status.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
             status.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Synced (${masterItems.length} Items)`;
 
-            populateTypeFilter();
+            populateFilters();
             renderCollection();
         };
 
-        function populateTypeFilter() {
-            const types = [...new Set(masterItems.map(i => i.type))];
-            const select = document.getElementById('filter-type');
-            select.innerHTML = '<option value="ALL">All Categories</option>';
-            types.forEach(t => {
-                select.innerHTML += `<option value="${t}">${t}</option>`;
+        function populateFilters() {
+            const categories = [...new Set(masterItems.map(i => i.category))];
+            const selectType = document.getElementById('filter-type');
+            selectType.innerHTML = '<option value="ALL">All Categories / Sizes</option>';
+            categories.forEach(c => {
+                selectType.innerHTML += `<option value="${c}">${c}</option>`;
             });
+
+            onCategoryChange();
+        }
+
+        function onCategoryChange() {
+            const selectedType = document.getElementById('filter-type').value;
+            const selectSeries = document.getElementById('filter-series');
+            
+            const relevantItems = selectedType === 'ALL' 
+                ? masterItems 
+                : masterItems.filter(i => i.category === selectedType);
+
+            const seriesList = [...new Set(relevantItems.map(i => i.series))];
+            selectSeries.innerHTML = '<option value="ALL">All Litters / Series</option>';
+            seriesList.forEach(s => {
+                selectSeries.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+
+            renderCollection();
         }
 
         function toggleItem(id) {
@@ -294,6 +334,7 @@
 
         function renderCollection() {
             const filterType = document.getElementById('filter-type').value;
+            const filterSeries = document.getElementById('filter-series').value;
             const filterStatus = document.getElementById('filter-status').value;
             const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
 
@@ -301,11 +342,12 @@
             container.innerHTML = '';
 
             const filtered = masterItems.filter(item => {
-                const matchType = filterType === 'ALL' || item.type === filterType;
+                const matchType = filterType === 'ALL' || item.category === filterType;
+                const matchSeries = filterSeries === 'ALL' || item.series === filterSeries;
                 const isOwned = ownedIds.has(item.id);
                 const matchStatus = filterStatus === 'ALL' || (filterStatus === 'OWNED' && isOwned) || (filterStatus === 'MISSING' && !isOwned);
-                const matchSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm) || item.series.toLowerCase().includes(searchTerm);
-                return matchType && matchStatus && matchSearch;
+                const matchSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm) || item.series.toLowerCase().includes(searchTerm) || item.category.toLowerCase().includes(searchTerm);
+                return matchType && matchSeries && matchStatus && matchSearch;
             });
 
             // Update Progress Metrics
@@ -325,7 +367,7 @@
             // Group by Category -> Series
             const grouped = {};
             filtered.forEach(item => {
-                const groupKey = `${item.type} — ${item.series}`;
+                const groupKey = `${item.category} — ${item.series}`;
                 if (!grouped[groupKey]) grouped[groupKey] = [];
                 grouped[groupKey].push(item);
             });
@@ -339,7 +381,9 @@
                 
                 const groupOwned = groupItems.filter(i => ownedIds.has(i.id)).length;
                 groupHeader.innerHTML = `
-                    <h3 class="text-base font-bold text-slate-800">${groupTitle}</h3>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-bold text-slate-800">${groupTitle}</h3>
+                    </div>
                     <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${groupOwned === groupItems.length ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
                         ${groupOwned} / ${groupItems.length}
                     </span>
@@ -365,8 +409,12 @@
 
                     card.innerHTML = `
                         <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 truncate max-w-[120px]">${item.category}</span>
+                            </div>
                             ${imgTag}
                             <p class="text-xs font-bold text-slate-800 text-center line-clamp-2 leading-tight">${item.name}</p>
+                            <p class="text-[10px] text-slate-400 text-center mt-0.5 truncate">${item.series}</p>
                         </div>
                         <div class="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold ${isOwned ? 'text-fuchsia-700' : 'text-slate-400'}">
                             <input type="checkbox" ${isOwned ? 'checked' : ''} class="rounded border-slate-300 text-fuchsia-600 focus:ring-fuchsia-500 pointer-events-none" />
