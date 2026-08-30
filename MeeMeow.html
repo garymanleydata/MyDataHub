@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aphmau MeeMeows Collection Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fuchsia: {
+                            50: '#fdf4ff',
+                            100: '#fae8ff',
+                            500: '#d946ef',
+                            600: '#c026d3',
+                            700: '#a21caf',
+                            900: '#701a75'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Header -->
+    <header class="border-b border-fuchsia-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-pink-500 flex items-center justify-center font-bold text-xl text-white shadow-md shadow-fuchsia-500/20">🐱</div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-900">Aphmau MeeMeows Tracker</h1>
+                <p class="text-xs text-slate-500">Live Shared Cloud Sync</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="sync-indicator" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                <span class="h-2 w-2 rounded-full bg-slate-400"></span> Cloud Idle
+            </span>
+            <button onclick="refreshAll()" class="px-3 py-1.5 bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 text-xs font-semibold rounded-lg border border-fuchsia-200 transition flex items-center gap-1.5">
+                🔄 Re-sync
+            </button>
+            <span id="status-indicator" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Connecting...
+            </span>
+        </div>
+    </header>
+
+    <main class="flex-1 p-6 max-w-[1400px] w-full mx-auto space-y-6">
+
+        <!-- Progress Overview Banner -->
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Collection Progress</h2>
+                    <p class="text-sm text-slate-500">Shared family collection state across all devices</p>
+                </div>
+                <div class="text-right">
+                    <span id="stat-count" class="text-2xl font-black text-fuchsia-600">0 / 0</span>
+                    <span id="stat-percent" class="text-sm font-semibold text-slate-500 block">0% Complete</span>
+                </div>
+            </div>
+            <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden p-0.5 border border-slate-200/80">
+                <div id="progress-fill" class="bg-gradient-to-r from-fuchsia-500 to-pink-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <!-- Controls: Filters & Search -->
+        <section class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <select id="filter-type" onchange="renderCollection()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
+                    <option value="ALL">All Categories</option>
+                </select>
+                <select id="filter-status" onchange="renderCollection()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-fuchsia-500">
+                    <option value="ALL">All Statuses</option>
+                    <option value="OWNED">Owned Only</option>
+                    <option value="MISSING">Missing Only</option>
+                </select>
+            </div>
+            <div class="w-full md:w-72">
+                <input type="text" id="search-input" oninput="renderCollection()" placeholder="Search MeeMeow name..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-fuchsia-500 placeholder-slate-400" />
+            </div>
+        </section>
+
+        <!-- Dynamic Collection Grid Container -->
+        <section id="collection-root" class="space-y-8">
+            <div class="p-12 text-center text-slate-400 font-medium">Loading collection data...</div>
+        </section>
+
+    </main>
+
+    <script>
+        // ================= CONFIGURATION =================
+        const JSONBIN_BIN_ID = "6a943f5df5f4af5e2954b8ac";
+        const JSONBIN_ACCESS_KEY = "$2a$10$.s8Xwp4JFJpqMSTm87oXa.us5FtKI89jQawWCy0riJZ.oCTfqE/la";
+        // =================================================
+
+        let masterItems = [];
+        let ownedIds = new Set();
+        let saveTimeout = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchCloudState();
+            fetchWikiImages();
+        });
+
+        async function refreshAll() {
+            await fetchCloudState();
+            fetchWikiImages();
+        }
+
+        // 1. Fetch current owned state from JSONBin using Access Key
+        async function fetchCloudState() {
+            const syncInd = document.getElementById('sync-indicator');
+
+            if (JSONBIN_BIN_ID === "PASTE_YOUR_BIN_ID_HERE" || JSONBIN_ACCESS_KEY === "PASTE_YOUR_ACCESS_KEY_HERE") {
+                console.warn("JSONBin credentials not set; falling back to local storage.");
+                ownedIds = new Set(JSON.parse(localStorage.getItem("meemeow_owned_fallback") || "[]"));
+                return;
+            }
+
+            try {
+                syncInd.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200";
+                syncInd.innerHTML = `<span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Cloud Pulling...`;
+
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY }
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                const cloudList = data.record && Array.isArray(data.record.owned) ? data.record.owned : [];
+                ownedIds = new Set(cloudList);
+
+                syncInd.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
+                syncInd.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Cloud In Sync`;
+                renderCollection();
+            } catch (err) {
+                console.error("Cloud fetch error:", err);
+                syncInd.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200";
+                syncInd.innerHTML = `<span class="h-2 w-2 rounded-full bg-red-500"></span> Cloud Offline`;
+            }
+        }
+
+        // 2. Debounced Cloud Save to prevent rapid API rate limits
+        function triggerCloudSave() {
+            const syncInd = document.getElementById('sync-indicator');
+            localStorage.setItem("meemeow_owned_fallback", JSON.stringify([...ownedIds]));
+
+            if (JSONBIN_BIN_ID === "PASTE_YOUR_BIN_ID_HERE" || JSONBIN_ACCESS_KEY === "PASTE_YOUR_ACCESS_KEY_HERE") return;
+
+            syncInd.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200";
+            syncInd.innerHTML = `<span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Saving...`;
+
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Access-Key': JSONBIN_ACCESS_KEY
+                        },
+                        body: JSON.stringify({ owned: [...ownedIds] })
+                    });
+
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                    syncInd.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    syncInd.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Cloud Saved`;
+                } catch (err) {
+                    console.error("Cloud save failed:", err);
+                    syncInd.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200";
+                    syncInd.innerHTML = `<span class="h-2 w-2 rounded-full bg-red-500"></span> Save Failed`;
+                }
+            }, 600);
+        }
+
+        // 3. Fandom API Scraper via JSONP
+        function fetchWikiImages() {
+            const status = document.getElementById('status-indicator');
+            status.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200";
+            status.innerHTML = `<span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Loading Wiki...`;
+
+            const script = document.createElement('script');
+            script.src = `https://aphmau.fandom.com/api.php?action=query&generator=images&titles=MeeMeows&gimlimit=500&prop=imageinfo&iiprop=url|size&format=json&callback=handleImageResponse`;
+            
+            const old = document.getElementById('fandom-query-script');
+            if (old) old.remove();
+            script.id = 'fandom-query-script';
+
+            script.onerror = () => {
+                status.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200";
+                status.innerHTML = `<span class="h-2 w-2 rounded-full bg-red-500"></span> Wiki Blocked`;
+            };
+
+            document.body.appendChild(script);
+        }
+
+        window.handleImageResponse = function(data) {
+            const status = document.getElementById('status-indicator');
+
+            if (!data || !data.query || !data.query.pages) {
+                status.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200";
+                status.innerHTML = `<span class="h-2 w-2 rounded-full bg-red-500"></span> 0 Items`;
+                return;
+            }
+
+            const pages = Object.values(data.query.pages);
+            masterItems = [];
+
+            pages.forEach(p => {
+                const title = p.title.replace(/^File:/i, '').replace(/\.(png|jpg|jpeg|webp)$/i, '');
+                const lower = title.toLowerCase();
+                if (lower.includes('logo') || lower.includes('banner') || lower.includes('wiki') || lower.includes('icon') || lower.includes('box_art')) {
+                    return;
+                }
+
+                if (!p.imageinfo || p.imageinfo.length === 0) return;
+                const info = p.imageinfo[0];
+
+                let type = "Plushies";
+                if (lower.includes('figure') || lower.includes('fig')) type = "Figures";
+                else if (lower.includes('squish')) type = "Squishies";
+                else if (lower.includes('clip') || lower.includes('keychain')) type = "Clips & Keychains";
+
+                let series = "General Collection";
+                if (lower.includes('series_1') || lower.includes('litter_1') || lower.includes('food')) series = "Series 1 (Food)";
+                else if (lower.includes('series_2') || lower.includes('litter_2') || lower.includes('celestial')) series = "Series 2 (Celestial)";
+                else if (lower.includes('series_3') || lower.includes('litter_3') || lower.includes('dessert') || lower.includes('sweet')) series = "Series 3 (Sweet Treats)";
+                else if (lower.includes('series_4') || lower.includes('litter_4') || lower.includes('safari') || lower.includes('wild')) series = "Series 4 (Wild/Safari)";
+                else if (lower.includes('series_5') || lower.includes('litter_5') || lower.includes('underwater') || lower.includes('ocean')) series = "Series 5 (Under the Sea)";
+                else if (lower.includes('series_6') || lower.includes('litter_6') || lower.includes('fairy')) series = "Series 6 (Fairy Tale)";
+                else if (lower.includes('halloween') || lower.includes('spooky') || lower.includes('pumpkin')) series = "Halloween Edition";
+                else if (lower.includes('christmas') || lower.includes('holiday') || lower.includes('santa')) series = "Holiday Edition";
+                else if (lower.includes('valentines')) series = "Valentine's Edition";
+
+                let cleanName = title.replace(/_/g, ' ')
+                                     .replace(/\b(plush|figure|squishy|clip|cat)\b/gi, '')
+                                     .replace(/\s+/g, ' ')
+                                     .trim();
+                
+                if (!cleanName.toLowerCase().endsWith('cat')) {
+                    cleanName += ' Cat';
+                }
+
+                const id = `${type}_${series}_${cleanName}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+                let imgUrl = info.url;
+                if (imgUrl.includes('/revision/latest')) {
+                    imgUrl = imgUrl.split('/revision/latest')[0] + '/revision/latest/scale-to-width-down/300';
+                }
+
+                masterItems.push({
+                    id: id,
+                    name: cleanName,
+                    type: type,
+                    series: series,
+                    image: imgUrl
+                });
+            });
+
+            masterItems.sort((a, b) => a.series.localeCompare(b.series) || a.name.localeCompare(b.name));
+
+            status.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
+            status.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Synced (${masterItems.length} Items)`;
+
+            populateTypeFilter();
+            renderCollection();
+        };
+
+        function populateTypeFilter() {
+            const types = [...new Set(masterItems.map(i => i.type))];
+            const select = document.getElementById('filter-type');
+            select.innerHTML = '<option value="ALL">All Categories</option>';
+            types.forEach(t => {
+                select.innerHTML += `<option value="${t}">${t}</option>`;
+            });
+        }
+
+        function toggleItem(id) {
+            if (ownedIds.has(id)) {
+                ownedIds.delete(id);
+            } else {
+                ownedIds.add(id);
+            }
+            triggerCloudSave();
+            renderCollection();
+        }
+
+        function renderCollection() {
+            const filterType = document.getElementById('filter-type').value;
+            const filterStatus = document.getElementById('filter-status').value;
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+
+            const container = document.getElementById('collection-root');
+            container.innerHTML = '';
+
+            const filtered = masterItems.filter(item => {
+                const matchType = filterType === 'ALL' || item.type === filterType;
+                const isOwned = ownedIds.has(item.id);
+                const matchStatus = filterStatus === 'ALL' || (filterStatus === 'OWNED' && isOwned) || (filterStatus === 'MISSING' && !isOwned);
+                const matchSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm) || item.series.toLowerCase().includes(searchTerm);
+                return matchType && matchStatus && matchSearch;
+            });
+
+            // Update Progress Metrics
+            const total = masterItems.length;
+            const owned = masterItems.filter(i => ownedIds.has(i.id)).length;
+            const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+
+            document.getElementById('stat-count').textContent = `${owned} / ${total}`;
+            document.getElementById('stat-percent').textContent = `${pct}% Complete`;
+            document.getElementById('progress-fill').style.width = `${pct}%`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-12 text-center text-slate-400">No MeeMeows match your search criteria.</div>`;
+                return;
+            }
+
+            // Group by Category -> Series
+            const grouped = {};
+            filtered.forEach(item => {
+                const groupKey = `${item.type} — ${item.series}`;
+                if (!grouped[groupKey]) grouped[groupKey] = [];
+                grouped[groupKey].push(item);
+            });
+
+            for (const [groupTitle, groupItems] of Object.entries(grouped)) {
+                const groupSection = document.createElement('div');
+                groupSection.className = 'space-y-4';
+
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'flex items-center justify-between border-b border-slate-200 pb-2';
+                
+                const groupOwned = groupItems.filter(i => ownedIds.has(i.id)).length;
+                groupHeader.innerHTML = `
+                    <h3 class="text-base font-bold text-slate-800">${groupTitle}</h3>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${groupOwned === groupItems.length ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
+                        ${groupOwned} / ${groupItems.length}
+                    </span>
+                `;
+                groupSection.appendChild(groupHeader);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4';
+
+                groupItems.forEach(item => {
+                    const isOwned = ownedIds.has(item.id);
+                    const card = document.createElement('div');
+                    card.className = `cursor-pointer rounded-xl p-3 border-2 transition-all flex flex-col justify-between ${
+                        isOwned 
+                            ? 'bg-fuchsia-50/70 border-fuchsia-400 shadow-sm shadow-fuchsia-100' 
+                            : 'bg-white border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
+                    }`;
+                    card.onclick = () => toggleItem(item.id);
+
+                    const imgTag = item.image 
+                        ? `<img src="${item.image}" alt="${item.name}" loading="lazy" class="w-full h-32 object-contain rounded-lg mb-2 bg-white/70" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-full h-32 flex items-center justify-center bg-slate-100 rounded-lg mb-2 text-2xl\\'>🐱</div>';" />`
+                        : `<div class="w-full h-32 flex items-center justify-center bg-slate-100 rounded-lg mb-2 text-2xl">🐱</div>`;
+
+                    card.innerHTML = `
+                        <div>
+                            ${imgTag}
+                            <p class="text-xs font-bold text-slate-800 text-center line-clamp-2 leading-tight">${item.name}</p>
+                        </div>
+                        <div class="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold ${isOwned ? 'text-fuchsia-700' : 'text-slate-400'}">
+                            <input type="checkbox" ${isOwned ? 'checked' : ''} class="rounded border-slate-300 text-fuchsia-600 focus:ring-fuchsia-500 pointer-events-none" />
+                            <span>${isOwned ? 'Collected' : 'Need'}</span>
+                        </div>
+                    `;
+
+                    grid.appendChild(card);
+                });
+
+                groupSection.appendChild(grid);
+                container.appendChild(groupSection);
+            }
+        }
+    </script>
+</body>
+</html>
