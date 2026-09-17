@@ -14,28 +14,50 @@
   <style>
     [x-cloak] { display: none !important; }
     body { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900 min-h-screen pb-24 font-sans antialiased" x-data="shoppingApp" x-init="initFirebase()">
+<body class="bg-slate-100 text-slate-900 min-h-screen pb-28 font-sans antialiased" x-data="shoppingApp" x-init="initFirebase()">
 
   <!-- Sticky Top Header -->
-  <header class="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 shadow-xs">
-    <div class="flex items-center justify-between max-w-md mx-auto">
-      <div>
-        <h1 class="text-xl font-bold tracking-tight text-slate-800">Trolley Sync</h1>
-        <p class="text-xs text-slate-500 font-medium" x-text="statusText"></p>
+  <header class="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 pt-3 pb-2 shadow-xs">
+    <div class="max-w-md mx-auto space-y-2.5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-800">Trolley Sync</h1>
+          <p class="text-xs text-slate-500 font-medium" x-text="statusText"></p>
+        </div>
+        
+        <!-- Mode Switcher -->
+        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+          <button 
+            @click="setMode('shop')"
+            :class="viewMode === 'shop' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'"
+            class="px-3 py-1.5 rounded-md transition-all">Shop</button>
+          <button 
+            @click="setMode('plan')"
+            :class="viewMode === 'plan' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'"
+            class="px-3 py-1.5 rounded-md transition-all">Plan</button>
+        </div>
       </div>
-      
-      <!-- Mode Toggle -->
-      <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+
+      <!-- Store Filter Chips (Shop Mode) -->
+      <div x-show="viewMode === 'shop'" class="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs font-medium">
         <button 
-          @click="viewMode = 'shop'"
-          :class="viewMode === 'shop' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'"
-          class="px-3 py-1.5 rounded-md transition-all">Shop</button>
-        <button 
-          @click="viewMode = 'plan'"
-          :class="viewMode === 'plan' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'"
-          class="px-3 py-1.5 rounded-md transition-all">Plan</button>
+          @click="selectedStoreFilter = 'All'"
+          :class="selectedStoreFilter === 'All' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'"
+          class="px-3 py-1.5 rounded-full whitespace-nowrap transition-colors">
+          All Stores
+        </button>
+        <template x-for="store in availableStores" :key="store">
+          <button 
+            @click="selectedStoreFilter = store"
+            :class="selectedStoreFilter === store ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'"
+            class="px-3 py-1.5 rounded-full whitespace-nowrap transition-colors"
+            x-text="store">
+          </button>
+        </template>
       </div>
     </div>
   </header>
@@ -45,13 +67,13 @@
     <!-- ================= SHOPPING MODE ================= -->
     <div x-show="viewMode === 'shop'" class="space-y-4">
 
-      <!-- Quick Add Input -->
+      <!-- Quick Add Item -->
       <div class="flex gap-2">
         <input 
           type="text" 
           x-model="quickItemName" 
           @keydown.enter="quickAddItem()"
-          placeholder="Add one-off item to list..." 
+          placeholder="Quick add ad-hoc item..." 
           class="flex-1 bg-white border border-slate-300 text-slate-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs"
         />
         <button 
@@ -61,7 +83,7 @@
         </button>
       </div>
 
-      <!-- Needed Items List -->
+      <!-- To Find Section -->
       <div>
         <div class="flex justify-between items-center mb-2 px-1">
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -78,29 +100,43 @@
 
         <div class="space-y-2">
           <template x-for="item in neededItems" :key="item.id">
-            <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-xs transition">
-              <!-- Touch Target -->
+            <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-xs transition gap-2">
+              
+              <!-- Checkbox (Touch Target) -->
               <button 
                 @click="toggleBasket(item)"
-                class="min-h-12 min-w-12 -ml-2 flex items-center justify-center text-slate-300 hover:text-indigo-600 focus:outline-none">
+                class="min-h-11 min-w-11 -ml-1 flex items-center justify-center text-slate-300 hover:text-indigo-600 focus:outline-none shrink-0">
                 <div class="w-6 h-6 rounded-md border-2 border-slate-300 flex items-center justify-center"></div>
               </button>
 
-              <!-- Item Details -->
-              <div class="flex-1 px-1 cursor-pointer" @click="openEditModal(item)">
-                <div class="flex items-baseline gap-2">
-                  <span class="font-semibold text-slate-800 text-base" x-text="item.name"></span>
-                  <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full" x-text="'x' + item.quantity"></span>
+              <!-- Description -->
+              <div class="flex-1 min-w-0 cursor-pointer" @click="openEditModal(item)">
+                <div class="font-semibold text-slate-800 text-base leading-snug truncate" x-text="item.name"></div>
+                <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mt-1">
+                  <span x-show="item.store" class="font-medium bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.5 rounded text-[11px]" x-text="item.store"></span>
+                  <span class="font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[11px]" x-text="item.aisle || 'No Aisle'"></span>
+                  <span x-show="item.notes" class="text-slate-400 truncate max-w-[120px]" x-text="item.notes"></span>
                 </div>
-                <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                  <span class="font-medium bg-slate-100 px-1.5 py-0.5 rounded text-slate-600" x-text="item.aisle || 'No Aisle'"></span>
-                  <span x-show="item.notes" class="truncate max-w-[150px]" x-text="item.notes"></span>
-                </div>
+              </div>
+
+              <!-- In-Row Stepper -->
+              <div class="flex items-center bg-slate-100 border border-slate-200 rounded-lg p-0.5 shrink-0" @click.stop>
+                <button 
+                  @click="adjustQuantity(item, -1)" 
+                  class="w-7 h-7 flex items-center justify-center font-bold text-slate-600 active:bg-slate-200 rounded text-sm select-none">
+                  −
+                </button>
+                <span class="px-1.5 font-bold text-indigo-700 text-xs min-w-[20px] text-center" x-text="item.quantity"></span>
+                <button 
+                  @click="adjustQuantity(item, 1)" 
+                  class="w-7 h-7 flex items-center justify-center font-bold text-slate-600 active:bg-slate-200 rounded text-sm select-none">
+                  +
+                </button>
               </div>
 
               <!-- Product Link -->
               <template x-if="item.url">
-                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="p-2 text-slate-400 hover:text-slate-600">
+                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="p-2 text-slate-400 hover:text-slate-600 shrink-0">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                 </a>
               </template>
@@ -117,21 +153,21 @@
           </h2>
         </div>
 
-        <div class="space-y-2 opacity-60">
+        <div class="space-y-2 opacity-65">
           <template x-for="item in basketItems" :key="item.id">
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2">
               <button 
                 @click="toggleBasket(item)"
-                class="min-h-12 min-w-12 -ml-2 flex items-center justify-center text-emerald-600 focus:outline-none">
+                class="min-h-11 min-w-11 -ml-1 flex items-center justify-center text-emerald-600 focus:outline-none shrink-0">
                 <div class="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">✓</div>
               </button>
 
-              <div class="flex-1 px-1 line-through text-slate-500 text-sm">
-                <span x-text="item.name"></span>
-                <span class="text-xs font-normal" x-text="'(x' + item.quantity + ')'"></span>
+              <div class="flex-1 min-w-0 line-through text-slate-500 text-sm">
+                <span class="font-medium truncate" x-text="item.name"></span>
+                <span class="text-xs" x-text="'(x' + item.quantity + ')'"></span>
               </div>
 
-              <button @click="removeFromActiveList(item)" class="text-xs text-rose-500 font-medium px-2 py-1">
+              <button @click="removeFromActiveList(item)" class="text-xs text-rose-500 font-medium px-2 py-1 shrink-0">
                 Remove
               </button>
             </div>
@@ -142,45 +178,118 @@
     </div>
 
     <!-- ================= PLANNER / MASTER MODE ================= -->
-    <div x-show="viewMode === 'plan'" class="space-y-4" x-cloak>
+    <div x-show="viewMode === 'plan'" class="space-y-5" x-cloak>
       
-      <!-- Reset Weekly Shopping -->
+      <!-- Weekly Shop Reset -->
+      <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-xs flex justify-between items-center">
+        <div>
+          <h2 class="font-bold text-slate-800 text-sm">Start New Week</h2>
+          <p class="text-xs text-slate-500">Clears trolley and pulls in all staple catalogue items.</p>
+        </div>
+        <button 
+          @click="populateWeekFromMaster()" 
+          class="bg-indigo-600 active:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-lg shadow-xs transition">
+          Reset Week
+        </button>
+      </div>
+
+      <!-- Meal Recipes Section -->
       <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-xs space-y-3">
         <div class="flex justify-between items-center">
-          <div>
-            <h2 class="font-bold text-slate-800 text-sm">Start New Week</h2>
-            <p class="text-xs text-slate-500">Clears trolley and pulls in all master staples.</p>
-          </div>
+          <h2 class="font-bold text-slate-800 text-sm">Recipes & Meal Bundles</h2>
           <button 
-            @click="populateWeekFromMaster()" 
-            class="bg-indigo-600 active:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs">
-            Reset Week
+            @click="isCreatingRecipe = !isCreatingRecipe" 
+            class="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+            x-text="isCreatingRecipe ? 'Cancel' : '+ New Recipe'"></button>
+        </div>
+
+        <!-- Recipe Creator Drawer -->
+        <div x-show="isCreatingRecipe" class="space-y-3 pt-2 border-t border-slate-100" x-cloak>
+          <input 
+            type="text" 
+            x-model="newRecipe.title" 
+            placeholder="Recipe name (e.g. Slow Roast Pork Belly)" 
+            class="w-full border border-slate-300 rounded-lg p-2 text-sm">
+
+          <div class="space-y-2">
+            <label class="block text-[11px] font-bold uppercase text-slate-500">Ingredients</label>
+            <template x-for="(ing, idx) in newRecipe.ingredients" :key="idx">
+              <div class="flex gap-2 items-center">
+                <input type="text" x-model="ing.name" placeholder="Item name" class="flex-1 border border-slate-300 rounded-lg p-1.5 text-xs">
+                <input type="number" min="1" x-model.number="ing.default_qty" class="w-14 border border-slate-300 rounded-lg p-1.5 text-xs text-center">
+                <input type="text" x-model="ing.aisle" placeholder="Aisle" class="w-16 border border-slate-300 rounded-lg p-1.5 text-xs">
+                <button @click="newRecipe.ingredients.splice(idx, 1)" class="text-rose-500 text-xs px-1 font-bold">×</button>
+              </div>
+            </template>
+            <button 
+              @click="newRecipe.ingredients.push({ name: '', default_qty: 1, aisle: '', store: '' })" 
+              class="text-xs text-indigo-600 font-semibold">
+              + Add Ingredient Row
+            </button>
+          </div>
+
+          <button 
+            @click="saveNewRecipe()" 
+            class="w-full bg-slate-800 active:bg-slate-900 text-white font-semibold py-2 rounded-lg text-xs transition">
+            Save Recipe
           </button>
+        </div>
+
+        <!-- Existing Recipes List -->
+        <div class="space-y-2 pt-1">
+          <template x-if="recipes.length === 0">
+            <p class="text-xs text-slate-400">No recipes configured yet.</p>
+          </template>
+          <template x-for="rec in recipes" :key="rec.id">
+            <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+              <div>
+                <div class="font-semibold text-slate-800 text-xs" x-text="rec.title"></div>
+                <div class="text-[11px] text-slate-400" x-text="rec.ingredients.length + ' ingredients'"></div>
+              </div>
+              <div class="flex gap-2">
+                <button 
+                  @click="openPantryCheck(rec)" 
+                  class="bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-md active:bg-indigo-100">
+                  + Add to Shop
+                </button>
+                <button 
+                  @click="deleteRecipe(rec.id)" 
+                  class="text-slate-400 hover:text-rose-600 text-xs px-1 font-bold">
+                  ×
+                </button>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
-      <!-- Add New Master Item -->
+      <!-- Add New Master Staple Form -->
       <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-xs space-y-3">
         <h2 class="font-bold text-slate-800 text-sm">Add New Staple Item</h2>
         <div class="space-y-2">
           <input 
             type="text" 
             x-model="newMaster.name" 
-            placeholder="Item name (e.g. Eggs 12pk)" 
+            placeholder="Item name (e.g. Free Range Eggs 12pk)" 
             class="w-full border border-slate-300 rounded-lg p-2 text-sm">
           
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-3 gap-2">
+            <input 
+              type="text" 
+              x-model="newMaster.store" 
+              placeholder="Store (e.g. Tesco)" 
+              class="border border-slate-300 rounded-lg p-2 text-xs">
             <input 
               type="text" 
               x-model="newMaster.aisle" 
-              placeholder="Aisle (e.g. Aisle 2)" 
-              class="border border-slate-300 rounded-lg p-2 text-sm">
+              placeholder="Aisle (e.g. 2)" 
+              class="border border-slate-300 rounded-lg p-2 text-xs">
             <input 
               type="number" 
               min="1" 
               x-model.number="newMaster.default_quantity" 
-              placeholder="Default Qty" 
-              class="border border-slate-300 rounded-lg p-2 text-sm">
+              placeholder="Qty" 
+              class="border border-slate-300 rounded-lg p-2 text-xs">
           </div>
 
           <button 
@@ -188,6 +297,35 @@
             class="w-full bg-slate-800 active:bg-slate-900 text-white font-semibold py-2 rounded-lg text-xs transition">
             Save to Master Catalogue
           </button>
+        </div>
+      </div>
+
+      <!-- Recent Impulse Items ("Impulse to Master") -->
+      <div x-show="recentImpulseItems.length > 0">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">
+          Recently Bought (One-off Items)
+        </h3>
+        <div class="space-y-2">
+          <template x-for="item in recentImpulseItems" :key="item.id">
+            <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-xs">
+              <div>
+                <div class="font-semibold text-slate-800 text-sm" x-text="item.name"></div>
+                <div class="text-xs text-slate-400" x-text="(item.store || 'Any') + ' • ' + (item.aisle || 'No Aisle')"></div>
+              </div>
+              <div class="flex gap-2">
+                <button 
+                  @click="makeItemMaster(item)" 
+                  class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200">
+                  Make Master
+                </button>
+                <button 
+                  @click="reAddRecentToWeek(item)" 
+                  class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-2.5 py-1.5 rounded-lg border border-indigo-200">
+                  + This Week
+                </button>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -202,7 +340,7 @@
             <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-xs">
               <div class="flex-1 cursor-pointer" @click="openEditModal(item)">
                 <div class="font-semibold text-slate-800 text-sm" x-text="item.name"></div>
-                <div class="text-xs text-slate-400" x-text="(item.aisle || 'No Aisle') + ' • Default: ' + item.default_quantity"></div>
+                <div class="text-xs text-slate-400" x-text="(item.store ? item.store + ' • ' : '') + (item.aisle || 'No Aisle') + ' • Default: ' + item.default_quantity"></div>
               </div>
               <div class="flex items-center gap-2">
                 <button 
@@ -219,6 +357,49 @@
     </div>
 
   </main>
+
+  <!-- ================= PANTRY CHECK MODAL ================= -->
+  <div 
+    x-show="pantryModal.open" 
+    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+    x-cloak>
+    
+    <div 
+      @click.away="pantryModal.open = false"
+      class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 shadow-xl border border-slate-200 max-h-[85vh] overflow-y-auto">
+      
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <div>
+          <h3 class="font-bold text-slate-800 text-lg leading-tight" x-text="pantryModal.recipeTitle"></h3>
+          <p class="text-xs text-slate-500">Untick items you already have in your cupboard.</p>
+        </div>
+        <button @click="pantryModal.open = false" class="text-slate-400 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-2">
+        <template x-for="(ing, idx) in pantryModal.ingredients" :key="idx">
+          <label class="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer">
+            <input 
+              type="checkbox" 
+              x-model="ing.selected" 
+              class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+            <div class="flex-1 text-sm font-medium text-slate-800">
+              <span x-text="ing.name"></span>
+              <span class="text-xs font-bold text-indigo-600 ml-1" x-text="'x' + ing.default_qty"></span>
+            </div>
+          </label>
+        </template>
+      </div>
+
+      <div class="pt-2 flex gap-3">
+        <button 
+          @click="commitPantryItems()" 
+          class="w-full bg-indigo-600 active:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow-xs transition">
+          Add Selected to Shopping List
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ================= ITEM EDIT MODAL ================= -->
   <div 
@@ -242,14 +423,18 @@
             <input type="text" x-model="editingItem.name" class="w-full border border-slate-300 rounded-lg p-2.5">
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-3 gap-2">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Quantity</label>
               <input type="number" min="1" x-model.number="editingItem.quantity" class="w-full border border-slate-300 rounded-lg p-2.5">
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Aisle / Location</label>
-              <input type="text" placeholder="e.g. Aisle 3" x-model="editingItem.aisle" class="w-full border border-slate-300 rounded-lg p-2.5">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Store</label>
+              <input type="text" placeholder="e.g. Tesco" x-model="editingItem.store" class="w-full border border-slate-300 rounded-lg p-2.5">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Aisle</label>
+              <input type="text" placeholder="e.g. 3" x-model="editingItem.aisle" class="w-full border border-slate-300 rounded-lg p-2.5">
             </div>
           </div>
 
@@ -292,6 +477,32 @@
     </div>
   </div>
 
+  <!-- ================= FLOATING UNDO TOAST ================= -->
+  <div 
+    x-show="undoState.visible" 
+    x-transition:enter="transition ease-out duration-300 transform"
+    x-transition:enter-start="translate-y-12 opacity-0"
+    x-transition:enter-end="translate-y-0 opacity-100"
+    x-transition:leave="transition ease-in duration-200 transform"
+    x-transition:leave-start="translate-y-0 opacity-100"
+    x-transition:leave-end="translate-y-12 opacity-0"
+    class="fixed bottom-6 inset-x-0 mx-auto max-w-sm px-4 z-40"
+    x-cloak>
+    
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center justify-between">
+      <div class="flex items-center gap-2 text-xs truncate mr-2">
+        <span>Moved</span>
+        <span class="font-bold truncate max-w-[140px]" x-text="undoState.item?.name"></span>
+        <span>to trolley</span>
+      </div>
+      <button 
+        @click="revertUndo()" 
+        class="bg-indigo-500 active:bg-indigo-600 text-white px-3 py-1 rounded-md text-xs font-bold transition shrink-0">
+        Undo
+      </button>
+    </div>
+  </div>
+
   <!-- Application Logic & Modules -->
   <script type="module">
     import Alpine from "https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/module.esm.js";
@@ -312,49 +523,139 @@
     Alpine.data('shoppingApp', () => ({
       db: null,
       items: [],
+      recipes: [],
       viewMode: 'shop',
+      selectedStoreFilter: 'All',
       quickItemName: '',
-      newMaster: { name: '', aisle: '', default_quantity: 1 },
       statusText: 'Connecting...',
       editingItem: null,
+      wakeLock: null,
+
+      // New master model
+      newMaster: { name: '', store: '', aisle: '', default_quantity: 1 },
+
+      // Recipe creation model
+      isCreatingRecipe: false,
+      newRecipe: {
+        title: '',
+        ingredients: [{ name: '', default_qty: 1, aisle: '', store: '' }]
+      },
+
+      // Pantry modal state
+      pantryModal: {
+        open: false,
+        recipeTitle: '',
+        ingredients: []
+      },
+
+      // Undo state
+      undoState: {
+        visible: false,
+        item: null,
+        timeout: null
+      },
 
       initFirebase() {
         try {
           const app = initializeApp(firebaseConfig);
           this.db = getFirestore(app);
 
+          // Real-time listener for groceries
           onSnapshot(collection(this.db, "groceries"), (snapshot) => {
-            this.items = snapshot.docs.map(docSnap => ({
-              id: docSnap.id,
-              ...docSnap.data()
-            }));
+            this.items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             this.statusText = 'Synced with cloud';
           }, (error) => {
             console.error(error);
             this.statusText = 'Offline / Sync failed';
           });
+
+          // Real-time listener for recipes
+          onSnapshot(collection(this.db, "recipes"), (snapshot) => {
+            this.recipes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          }, (error) => {
+            console.error("Recipes listener error:", error);
+          });
+
+          // Request screen wake lock if starting in shop mode
+          if (this.viewMode === 'shop') this.manageWakeLock(true);
+
         } catch (err) {
           console.error(err);
           this.statusText = 'Configuration required';
         }
       },
 
+      // Switch mode with wake lock management
+      setMode(mode) {
+        this.viewMode = mode;
+        this.manageWakeLock(mode === 'shop');
+      },
+
+      async manageWakeLock(enable) {
+        try {
+          if ('wakeLock' in navigator) {
+            if (enable && !this.wakeLock) {
+              this.wakeLock = await navigator.wakeLock.request('screen');
+            } else if (!enable && this.wakeLock) {
+              await this.wakeLock.release();
+              this.wakeLock = null;
+            }
+          }
+        } catch (e) {
+          // Wake lock can fail if battery saver is engaged or tab is in background
+        }
+      },
+
+      triggerHaptic() {
+        if ('vibrate' in navigator) {
+          navigator.vibrate(40);
+        }
+      },
+
+      // Computed Store List
+      get availableStores() {
+        const storeSet = new Set();
+        this.items.forEach(i => {
+          if (i.store && i.store.trim()) storeSet.add(i.store.trim());
+        });
+        return Array.from(storeSet).sort();
+      },
+
+      // Filtered Shop List
       get neededItems() {
         return this.items
-          .filter(i => i.in_active_list && !i.in_basket)
+          .filter(i => {
+            const matchesActive = i.in_active_list && !i.in_basket;
+            const matchesStore = this.selectedStoreFilter === 'All' || (i.store || '').toLowerCase() === this.selectedStoreFilter.toLowerCase();
+            return matchesActive && matchesStore;
+          })
           .sort((a, b) => (a.aisle || '').localeCompare(b.aisle || '', undefined, { numeric: true }));
       },
 
       get basketItems() {
-        return this.items.filter(i => i.in_active_list && i.in_basket);
+        return this.items
+          .filter(i => {
+            const matchesActive = i.in_active_list && i.in_basket;
+            const matchesStore = this.selectedStoreFilter === 'All' || (i.store || '').toLowerCase() === this.selectedStoreFilter.toLowerCase();
+            return matchesActive && matchesStore;
+          });
       },
 
       get masterCatalogue() {
         return this.items
           .filter(i => i.is_master)
-          .sort((a, b) => (a.aisle || '').localeCompare(b.aisle || '', undefined, { numeric: true }));
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       },
 
+      // Recent items bought in last 30 days that are not master staples
+      get recentImpulseItems() {
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        return this.items
+          .filter(i => !i.is_master && i.last_purchased_at && i.last_purchased_at > thirtyDaysAgo && !i.in_active_list)
+          .sort((a, b) => (b.last_purchased_at || 0) - (a.last_purchased_at || 0));
+      },
+
+      // Quick add unlisted item
       async quickAddItem() {
         const val = this.quickItemName.trim();
         if (!val) return;
@@ -363,6 +664,7 @@
           name: val,
           quantity: 1,
           default_quantity: 1,
+          store: this.selectedStoreFilter === 'All' ? '' : this.selectedStoreFilter,
           aisle: '',
           notes: '',
           url: '',
@@ -375,32 +677,45 @@
         this.quickItemName = '';
       },
 
-      async createMasterItem() {
-        if (!this.newMaster.name.trim()) return;
-
-        await addDoc(collection(this.db, "groceries"), {
-          name: this.newMaster.name.trim(),
-          aisle: this.newMaster.aisle.trim(),
-          default_quantity: Number(this.newMaster.default_quantity) || 1,
-          quantity: Number(this.newMaster.default_quantity) || 1,
-          notes: '',
-          url: '',
-          is_master: true,
-          in_active_list: true,
-          in_basket: false,
-          created_at: Date.now()
-        });
-
-        this.newMaster = { name: '', aisle: '', default_quantity: 1 };
-      },
-
-      async toggleBasket(item) {
+      // In-row quantity stepper
+      async adjustQuantity(item, delta) {
+        const newQty = Math.max(1, (Number(item.quantity) || 1) + delta);
         const ref = doc(this.db, "groceries", item.id);
-        await updateDoc(ref, {
-          in_basket: !item.in_basket
-        });
+        await updateDoc(ref, { quantity: newQty });
       },
 
+      // Toggle trolley basket with haptic & undo toast
+      async toggleBasket(item) {
+        this.triggerHaptic();
+        const nextState = !item.in_basket;
+        const ref = doc(this.db, "groceries", item.id);
+
+        const payload = { in_basket: nextState };
+        if (nextState) {
+          payload.last_purchased_at = Date.now();
+        }
+
+        await updateDoc(ref, payload);
+
+        // Show undo toast when moving into trolley
+        if (nextState) {
+          clearTimeout(this.undoState.timeout);
+          this.undoState.item = item;
+          this.undoState.visible = true;
+          this.undoState.timeout = setTimeout(() => {
+            this.undoState.visible = false;
+          }, 4000);
+        }
+      },
+
+      async revertUndo() {
+        if (!this.undoState.item) return;
+        const ref = doc(this.db, "groceries", this.undoState.item.id);
+        await updateDoc(ref, { in_basket: false });
+        this.undoState.visible = false;
+      },
+
+      // Reset week from master inventory
       async populateWeekFromMaster() {
         const batch = writeBatch(this.db);
         this.items.forEach(item => {
@@ -416,7 +731,7 @@
           }
         });
         await batch.commit();
-        this.viewMode = 'shop';
+        this.setMode('shop');
       },
 
       async toggleMasterInclusion(item) {
@@ -427,11 +742,144 @@
         });
       },
 
+      async makeItemMaster(item) {
+        const ref = doc(this.db, "groceries", item.id);
+        await updateDoc(ref, {
+          is_master: true,
+          default_quantity: Number(item.quantity) || 1
+        });
+      },
+
+      async reAddRecentToWeek(item) {
+        const ref = doc(this.db, "groceries", item.id);
+        await updateDoc(ref, {
+          in_active_list: true,
+          in_basket: false,
+          quantity: item.default_quantity || 1
+        });
+      },
+
       async removeFromActiveList(item) {
         const ref = doc(this.db, "groceries", item.id);
         await updateDoc(ref, { in_active_list: false });
       },
 
+      async createMasterItem() {
+        if (!this.newMaster.name.trim()) return;
+
+        await addDoc(collection(this.db, "groceries"), {
+          name: this.newMaster.name.trim(),
+          store: this.newMaster.store.trim(),
+          aisle: this.newMaster.aisle.trim(),
+          default_quantity: Number(this.newMaster.default_quantity) || 1,
+          quantity: Number(this.newMaster.default_quantity) || 1,
+          notes: '',
+          url: '',
+          is_master: true,
+          in_active_list: true,
+          in_basket: false,
+          created_at: Date.now()
+        });
+
+        this.newMaster = { name: '', store: '', aisle: '', default_quantity: 1 };
+      },
+
+      // Recipes CRUD
+      async saveNewRecipe() {
+        const cleanTitle = this.newRecipe.title.trim();
+        if (!cleanTitle) return;
+
+        const validIngredients = this.newRecipe.ingredients
+          .filter(i => i.name.trim())
+          .map(i => ({
+            name: i.name.trim(),
+            default_qty: Number(i.default_qty) || 1,
+            aisle: i.aisle ? i.aisle.trim() : '',
+            store: i.store ? i.store.trim() : ''
+          }));
+
+        if (validIngredients.length === 0) return;
+
+        await addDoc(collection(this.db, "recipes"), {
+          title: cleanTitle,
+          ingredients: validIngredients,
+          created_at: Date.now()
+        });
+
+        this.newRecipe = { title: '', ingredients: [{ name: '', default_qty: 1, aisle: '', store: '' }] };
+        this.isCreatingRecipe = false;
+      },
+
+      async deleteRecipe(id) {
+        await deleteDoc(doc(this.db, "recipes", id));
+      },
+
+      // Pantry check modal flow
+      openPantryCheck(recipe) {
+        this.pantryModal.recipeTitle = recipe.title;
+        this.pantryModal.ingredients = recipe.ingredients.map(ing => ({
+          ...ing,
+          selected: true
+        }));
+        this.pantryModal.open = true;
+      },
+
+      async commitPantryItems() {
+        const toAdd = this.pantryModal.ingredients.filter(i => i.selected);
+        const batch = writeBatch(this.db);
+
+        for (const ing of toAdd) {
+          // Check if item exists in active list (fuzzy name match)
+          const existing = this.items.find(i => 
+            i.in_active_list && i.name.toLowerCase().trim() === ing.name.toLowerCase().trim()
+          );
+
+          if (existing) {
+            // Increment existing item quantity
+            const ref = doc(this.db, "groceries", existing.id);
+            batch.update(ref, {
+              quantity: (Number(existing.quantity) || 1) + Number(ing.default_qty || 1),
+              in_basket: false // Pull back to find if it was ticked
+            });
+          } else {
+            // Check if it exists in master catalogue
+            const masterMatch = this.items.find(i => 
+              i.is_master && i.name.toLowerCase().trim() === ing.name.toLowerCase().trim()
+            );
+
+            if (masterMatch) {
+              const ref = doc(this.db, "groceries", masterMatch.id);
+              batch.update(ref, {
+                in_active_list: true,
+                in_basket: false,
+                quantity: Number(ing.default_qty || masterMatch.default_quantity || 1)
+              });
+            } else {
+              // Create new one-off active item
+              const newDocRef = doc(collection(this.db, "groceries"));
+              batch.set(newDocRef, {
+                name: ing.name,
+                quantity: Number(ing.default_qty) || 1,
+                default_quantity: Number(ing.default_qty) || 1,
+                store: ing.store || '',
+                aisle: ing.aisle || '',
+                notes: `From ${this.pantryModal.recipeTitle}`,
+                url: '',
+                is_master: false,
+                in_active_list: true,
+                in_basket: false,
+                created_at: Date.now()
+              });
+            }
+          }
+        }
+
+        await batch.commit();
+        this.pantryModal.open = false;
+        this.setMode('shop');
+      },
+
+      // Edit Modal
       openEditModal(item) {
         this.editingItem = JSON.parse(JSON.stringify(item));
       },
@@ -442,6 +890,7 @@
         await updateDoc(ref, {
           name: this.editingItem.name,
           quantity: Number(this.editingItem.quantity) || 1,
+          store: this.editingItem.store || '',
           aisle: this.editingItem.aisle || '',
           notes: this.editingItem.notes || '',
           url: this.editingItem.url || '',
