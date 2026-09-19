@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>parkrun Mobile Performance Studio</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js + Date Adapter CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <!-- Chart.js Zoom Plugin CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <!-- SQL.js (WASM Relational Engine) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <style>
+    -webkit-tap-highlight-color: transparent;
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .touch-pan { touch-action: pan-y; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-24 font-sans touch-pan antialiased selection:bg-emerald-500/30">
+
+  <!-- Sticky Mobile Top Bar -->
+  <header class="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between gap-2">
+      <div>
+        <h1 class="text-base sm:text-lg font-black tracking-tight text-emerald-400">parkrun Studio</h1>
+        <p id="headerSubtext" class="text-[10px] text-slate-400 font-mono">Loading data...</p>
+      </div>
+
+      <!-- Quick Context Filter Drawer Button -->
+      <button id="toggleFilterDrawerBtn" class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 active:scale-95 transition">
+        <span>⚡ Filters</span>
+        <span id="activeFilterBadge" class="hidden w-2 h-2 rounded-full bg-emerald-400"></span>
+      </button>
+    </div>
+
+    <!-- Collapsible Filter Panel -->
+    <div id="filterDrawer" class="hidden pt-3 border-t border-slate-800/60 mt-2 space-y-2 max-w-4xl mx-auto text-xs">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <label for="athleteSelect" class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Athlete</label>
+          <select id="athleteSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+            <!-- Dynamic -->
+          </select>
+        </div>
+        <div>
+          <label for="filterVenue" class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Venue Filter</label>
+          <select id="filterVenue" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="ALL">All Venues</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterYear" class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Year Filter</label>
+          <select id="filterYear" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="ALL">All Years</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Error / Offline Notice -->
+  <div id="statusNotice" class="hidden mx-4 mt-3 max-w-4xl sm:mx-auto p-3 rounded-xl text-xs font-mono border"></div>
+
+  <!-- Primary Content Container -->
+  <main class="max-w-4xl mx-auto px-4 pt-4 space-y-5">
+
+    <!-- TAB 1: STORY & MILESTONES -->
+    <section id="tabStory" class="space-y-4">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3">
+          <span class="text-[10px] uppercase font-bold text-slate-400">Total Runs</span>
+          <p id="statTotalRuns" class="text-xl font-black text-white mt-0.5">-</p>
+          <p id="statTotalDist" class="text-[10px] text-emerald-400 font-mono mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3">
+          <span class="text-[10px] uppercase font-bold text-slate-400">Lifetime Speed PB</span>
+          <p id="statSpeedPb" class="text-xl font-black text-amber-400 mt-0.5">-</p>
+          <p id="statSpeedPbSub" class="text-[10px] text-slate-400 truncate mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3">
+          <span class="text-[10px] uppercase font-bold text-slate-400">Lifetime Grade PB</span>
+          <p id="statGradePb" class="text-xl font-black text-sky-400 mt-0.5">-</p>
+          <p id="statGradePbSub" class="text-[10px] text-slate-400 truncate mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3">
+          <span class="text-[10px] uppercase font-bold text-slate-400">Current Season SB</span>
+          <p id="statSeasonBest" class="text-xl font-black text-teal-300 mt-0.5">-</p>
+          <p id="statSeasonBestSub" class="text-[10px] text-slate-400 truncate mt-0.5">-</p>
+        </div>
+      </div>
+
+      <!-- Streaks & Milestone Progress Card -->
+      <div class="bg-gradient-to-br from-slate-900 via-emerald-950/20 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="space-y-0.5">
+            <span class="text-[9px] font-extrabold uppercase tracking-widest bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">Official 5k Club Roadmap</span>
+            <h2 id="nextMilestoneTitle" class="text-base font-black text-white mt-1">Countdown to Club -</h2>
+          </div>
+          <div class="text-right">
+            <span id="nextMilestoneRemaining" class="text-xl font-black text-amber-400 leading-none">-</span>
+            <p class="text-[10px] text-slate-400">runs needed</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="w-full bg-slate-950 rounded-full h-2.5 border border-slate-800 overflow-hidden">
+            <div id="nextMilestoneProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+            <span id="nextMilestoneStart">0</span>
+            <span id="nextMilestoneProgressPct" class="text-emerald-400 font-bold">0%</span>
+            <span id="nextMilestoneTarget">100</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
+          <div class="bg-slate-950/60 p-2 rounded-lg text-center">
+            <span class="text-[9px] text-slate-400 uppercase font-bold block">Active Streak</span>
+            <span id="statActiveStreak" class="text-sm font-black text-emerald-400">0 wks</span>
+          </div>
+          <div class="bg-slate-950/60 p-2 rounded-lg text-center">
+            <span class="text-[9px] text-slate-400 uppercase font-bold block">Longest Career Streak</span>
+            <span id="statLongestStreak" class="text-sm font-black text-amber-400">0 wks</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fun Challenges -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-2.5">
+          <p class="text-[9px] uppercase font-bold text-slate-400">p-Index</p>
+          <p id="statPIndex" class="text-xl font-black text-emerald-400 mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-2.5">
+          <p class="text-[9px] uppercase font-bold text-slate-400">Groundhog Days</p>
+          <p id="statGroundhog" class="text-xl font-black text-amber-400 mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-2.5">
+          <p class="text-[9px] uppercase font-bold text-slate-400">Palindrome Times</p>
+          <p id="statPalindrome" class="text-xl font-black text-sky-400 mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-2.5">
+          <p class="text-[9px] uppercase font-bold text-slate-400">Second Bingo Score</p>
+          <p id="statBingoScore" class="text-xl font-black text-purple-400 mt-0.5">0 / 60</p>
+        </div>
+      </div>
+
+      <!-- Scatter Chart -->
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Timeline Distribution</h3>
+            <p class="text-[10px] text-slate-400">Pinch or drag to zoom along dates</p>
+          </div>
+          <select id="chartMetricSelect" class="bg-slate-950 border border-slate-700 text-[11px] text-emerald-400 font-bold rounded-lg px-2 py-1">
+            <option value="time">Time (MM:SS)</option>
+            <option value="ageGrade">Age Grade (%)</option>
+            <option value="position">Overall Pos (#)</option>
+            <option value="categoryPosition">Category Pos (#)</option>
+          </select>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: LATEST RUN & COURSE HANDICAP -->
+    <section id="tabLatest" class="hidden space-y-4">
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <span class="text-[9px] font-extrabold uppercase tracking-widest bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">Latest Result</span>
+            <h2 id="latestVenueName" class="text-xl font-black text-white mt-1">-</h2>
+            <p id="latestRunDate" class="text-xs text-slate-400">-</p>
+          </div>
+          <div id="latestBadgesContainer" class="flex flex-col items-end gap-1"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center pt-1">
+          <div class="bg-slate-950/70 border border-slate-800 p-2 rounded-xl">
+            <span class="text-[9px] uppercase font-bold text-slate-400 block">Finish Time</span>
+            <span id="latestFinishTime" class="text-lg font-black text-amber-400 mt-0.5 block">-</span>
+          </div>
+          <div class="bg-slate-950/70 border border-slate-800 p-2 rounded-xl">
+            <span class="text-[9px] uppercase font-bold text-slate-400 block">Age Grade</span>
+            <span id="latestAgeGrade" class="text-lg font-black text-sky-400 mt-0.5 block">-</span>
+          </div>
+          <div class="bg-slate-950/70 border border-slate-800 p-2 rounded-xl">
+            <span class="text-[9px] uppercase font-bold text-slate-400 block">Finish Position</span>
+            <span id="latestFinishPosition" class="text-lg font-black text-purple-300 mt-0.5 block">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Course Handicap Engine -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Course Handicap Normaliser</h3>
+            <p class="text-[10px] text-slate-400">Adjusts for course terrain against a flat profile</p>
+          </div>
+          <button id="resetHandicapsBtn" class="bg-slate-800 text-[10px] font-bold px-2 py-1 rounded border border-slate-700 text-slate-300 active:scale-95">Reset</button>
+        </div>
+
+        <div class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] text-indigo-300 uppercase font-bold block">Flat Equivalent Time</span>
+            <span id="handicapNormalizedTime" class="text-2xl font-black text-indigo-200">-</span>
+          </div>
+          <div class="text-right">
+            <span id="handicapNormalizedRank" class="text-xs font-black text-emerald-400 block">-</span>
+            <span class="text-[10px] text-slate-400">Flat-Adjusted Rank</span>
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-1">
+          <label class="text-[10px] font-bold uppercase text-slate-400">Handicap for Current Course (Seconds):</label>
+          <div class="flex items-center gap-2">
+            <input type="number" id="currentCourseHandicapInput" class="w-24 bg-slate-950 border border-slate-700 text-center rounded-lg px-2 py-1.5 text-xs font-mono font-bold text-indigo-300" placeholder="+0">
+            <div class="flex gap-1 flex-1">
+              <button data-val="0" class="preset-handicap-btn bg-slate-800 text-[10px] py-1.5 rounded flex-1 border border-slate-700 font-bold text-slate-300">Flat (0s)</button>
+              <button data-val="20" class="preset-handicap-btn bg-slate-800 text-[10px] py-1.5 rounded flex-1 border border-slate-700 font-bold text-slate-300">Mild (+20s)</button>
+              <button data-val="45" class="preset-handicap-btn bg-slate-800 text-[10px] py-1.5 rounded flex-1 border border-slate-700 font-bold text-slate-300">Hilly (+45s)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: BREAKTHROUGHS & SATURDAY HEATMAP -->
+    <section id="tabBreakthroughs" class="hidden space-y-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Saturday Consistency Heatmap</h3>
+            <p class="text-[10px] text-slate-400">52 weekends per calendar year</p>
+          </div>
+          <select id="heatmapYearSelect" class="bg-slate-950 border border-slate-700 text-xs font-bold text-emerald-400 rounded-lg px-2 py-1"></select>
+        </div>
+
+        <div id="saturdayHeatmapGrid" class="grid grid-cols-7 sm:grid-cols-13 gap-1.5 p-2 bg-slate-950/70 border border-slate-800/80 rounded-xl overflow-x-auto"></div>
+
+        <div class="flex items-center justify-between text-[10px] text-slate-400 px-1 pt-1 border-t border-slate-800/60">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-900 border border-slate-800 inline-block"></span> Missed</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-500/40 border border-emerald-500 inline-block"></span> Run</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-500 border border-amber-300 inline-block"></span> PB 🌟</span>
+        </div>
+      </div>
+
+      <!-- Second Bingo -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400">Second Bingo Clock (00–59)</h3>
+            <p class="text-[10px] text-slate-400">Tap any active second mark to inspect finishes</p>
+          </div>
+          <span id="bingoGridScore" class="text-xs font-mono font-black text-purple-300 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-500/30">0/60</span>
+        </div>
+        <div id="secondBingoGrid" class="grid grid-cols-6 sm:grid-cols-10 gap-1 text-center font-mono text-[10px]"></div>
+      </div>
+
+      <!-- Speed PB Longevity -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">Speed PB Breakthrough Evolution</h3>
+        <div class="space-y-2 overflow-y-auto max-h-72" id="speedPbMobileList"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: PERFORMANCE & POSITION ANALYSIS -->
+    <section id="tabPositions" class="hidden space-y-4">
+      
+      <!-- Target Quality Summary Cards -->
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-slate-900/80 border border-amber-500/30 rounded-xl p-3 text-center">
+          <span class="text-[9px] uppercase font-bold text-amber-400 block">P1 Finishes</span>
+          <p id="posCountP1" class="text-xl font-black text-amber-400 mt-0.5">-</p>
+          <p id="posPctP1" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3 text-center">
+          <span class="text-[9px] uppercase font-bold text-emerald-400 block">Top 3 Finishes</span>
+          <p id="posCountTop3" class="text-xl font-black text-emerald-400 mt-0.5">-</p>
+          <p id="posPctTop3" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-sky-500/30 rounded-xl p-3 text-center">
+          <span class="text-[9px] uppercase font-bold text-sky-400 block">Top 10 Finishes</span>
+          <p id="posCountTop10" class="text-xl font-black text-sky-400 mt-0.5">-</p>
+          <p id="posPctTop10" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
+        </div>
+      </div>
+
+      <!-- Frequency Grid by Specific Finishing Rank -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Position Frequency Breakdown</h3>
+            <p class="text-[10px] text-slate-400">Tap any position card to see event details</p>
+          </div>
+          <span id="posUniqueCount" class="text-[10px] font-mono text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0 Unique</span>
+        </div>
+        <div id="positionFrequencyGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1 font-mono">
+          <!-- Position pills injected via JS -->
+        </div>
+      </div>
+
+      <!-- Annual Position Progression Matrix -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Position Progression by Year</h3>
+          <span class="text-[10px] text-slate-400">Includes Median to ignore tail-walks</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300 font-mono">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+              <tr>
+                <th class="py-2 px-2.5 font-sans">Year</th>
+                <th class="py-2 px-2 text-right">Runs</th>
+                <th class="py-2 px-2 text-right text-amber-400">#1</th>
+                <th class="py-2 px-2 text-right text-emerald-400">Top 3</th>
+                <th class="py-2 px-2 text-right text-sky-400">Top 10</th>
+                <th class="py-2 px-2 text-right text-purple-300">Best</th>
+                <th class="py-2 px-2.5 text-right text-indigo-300">Median</th>
+              </tr>
+            </thead>
+            <tbody id="annualPositionTableBody" class="divide-y divide-slate-800/60 text-[11px]">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Position Breakdown by Course -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Course-by-Course Placements</h3>
+        <div id="coursePositionList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+          <!-- Course breakdown accordion/cards injected via JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 5: COURSES & DEPTH -->
+    <section id="tabCourses" class="hidden space-y-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Field Attendance vs Placement</h3>
+          <p class="text-[10px] text-slate-400">Dark columns = total runners; purple dots = your finish placement</p>
+        </div>
+        <div class="h-60 w-full">
+          <canvas id="depthAttendanceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Course Matrix Cards -->
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Course PB & Season Best Matrix</h3>
+          <span id="courseCountLabel" class="text-[10px] font-mono text-slate-500">0 courses</span>
+        </div>
+        <div id="courseCardsContainer" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- TAB 6: IN-BROWSER SQL BI STUDIO -->
+    <section id="tabSql" class="hidden space-y-4">
+      <div class="bg-gradient-to-br from-slate-900 via-sky-950/30 to-slate-900 border border-sky-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400">Relational SQL Studio</h3>
+          <span class="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">Table: <code class="text-sky-300 font-bold">runs</code></span>
+        </div>
+
+        <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[10px]">
+          <button class="sql-preset-btn whitespace-nowrap bg-slate-800 border border-slate-700 text-slate-200 px-2.5 py-1 rounded-lg" data-query="SELECT year, count(*) as total_runs, min(time_seconds) as pb_secs, round(avg(time_seconds), 1) as avg_secs FROM runs GROUP BY year ORDER BY year DESC">Yearly Summary</button>
+          <button class="sql-preset-btn whitespace-nowrap bg-slate-800 border border-slate-700 text-slate-200 px-2.5 py-1 rounded-lg" data-query="SELECT event, count(*) as visits, min(time_seconds) as course_pb, round(avg(age_grade), 2) as avg_grade FROM runs GROUP BY event ORDER BY visits DESC">Course Counts</button>
+          <button class="sql-preset-btn whitespace-nowrap bg-slate-800 border border-slate-700 text-slate-200 px-2.5 py-1 rounded-lg" data-query="SELECT age_category, count(*) as runs, min(time_seconds) as cat_pb FROM runs GROUP BY age_category ORDER BY runs DESC">Category Shift</button>
+        </div>
+
+        <div class="space-y-2">
+          <textarea id="mobileSqlInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-[11px] font-mono text-sky-300 focus:outline-none focus:border-sky-500 resize-none">SELECT year, count(*) as total_runs, min(time_seconds) as pb_secs, round(avg(time_seconds), 1) as avg_secs FROM runs GROUP BY year ORDER BY year DESC</textarea>
+          <div class="flex items-center justify-between">
+            <button id="runSqlMobileBtn" class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition active:scale-95">▶ Run Query</button>
+            <span id="mobileSqlStatus" class="text-[10px] font-mono text-slate-400">Ready</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto border-t border-slate-800/80 pt-2">
+          <table class="w-full text-left text-[11px] font-mono text-slate-300">
+            <thead id="sqlMobileThead" class="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-800 bg-slate-950/60"></thead>
+            <tbody id="sqlMobileTbody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Persistent 6-Tab Mobile Dock -->
+  <nav class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 py-1">
+    <div class="max-w-md mx-auto grid grid-cols-6 gap-0.5 text-center">
+      <button data-tab="tabStory" class="nav-dock-btn flex flex-col items-center py-1 text-emerald-400 font-bold transition">
+        <span class="text-sm sm:text-base">🏃</span>
+        <span class="text-[8px] sm:text-[9px] tracking-tight">Overview</span>
+      </button>
+      <button data-tab="tabPositions" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
+        <span class="text-sm sm:text-base">🎯</span>
+        <span class="text-[8px] sm:text-[9px] tracking-tight">Positions</span>
+      </button>
+      <button data-tab="tabLatest" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
+        <span class="text-sm sm:text-base">⚡</span>
+        <span class="text-[8px] sm:text-[9px] tracking-tight">Latest</span>
+      </button>
+      <button data-tab="tabBreakthroughs" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
+        <span class="text-sm sm:text-base">🌟</span>
+        <span class="text-[8px] sm:text-[9px] tracking-tight">PBs & Cal</span>
+      </button>
+      <button data-tab="tabCourses" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
+        <span class="text-sm sm:text-base">⛰️</span>
+        <span class="text-[8px] sm:text-[9px] tracking-tight">Courses</span>
+      </button>
+      <button data-tab="tabSql" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
+        <span class="text-sm sm:text-base">📊</span>
+        <span class="text-[8px] sm:text-[9px] tracking-tight">SQL BI</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Drilldown Modal for Positions & Bingo Marks -->
+  <div id="drilldownModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[75vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom">
+      <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div>
+          <h3 id="drilldownModalTitle" class="text-xs font-bold text-slate-200">Results Ledger</h3>
+          <p id="drilldownModalSub" class="text-[10px] text-slate-400"></p>
+        </div>
+        <button id="closeDrilldownModalBtn" class="text-slate-400 hover:text-white px-2 py-1 text-xs">✕</button>
+      </div>
+      <div id="drilldownModalContent" class="p-3 overflow-y-auto space-y-2 text-xs divide-y divide-slate-800/60"></div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let rawDataset = [];
+    let athleteRuns = [];
+    let sqlDb = null;
+    let sqlEngineReady = false;
+    let courseHandicaps = {};
+
+    const STORAGE_KEY_COURSE_HANDICAPS = 'parkrun_mobile_course_handicaps';
+    const PARKRUN_MILESTONES = [25, 50, 100, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
+
+    // Chart instances
+    let timelineChartInstance = null;
+    let depthAttendanceChartInstance = null;
+
+    // Helpers
+    function parseUkDate(str) {
+      if (!str) return null;
+      const parts = str.split(/[/|-]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return new Date(parts[0], parts[1] - 1, parts[2]);
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function parseTimeToSeconds(timeStr) {
+      if (!timeStr) return null;
+      const parts = timeStr.trim().split(':').map(Number);
+      if (parts.some(isNaN)) return null;
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return null;
+    }
+
+    function formatSecondsToTime(seconds) {
+      if (!seconds || isNaN(seconds) || seconds >= 999999) return '-';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function parseAgeGrade(val) {
+      if (!val) return null;
+      const clean = val.toString().replace('%', '').trim();
+      const num = parseFloat(clean);
+      return isNaN(num) ? null : num;
+    }
+
+    function calculateMedian(numbers) {
+      if (!numbers || !numbers.length) return '-';
+      const sorted = [...numbers].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+    }
+
+    function isPalindromeTime(timeStr) {
+      if (!timeStr) return false;
+      const digits = timeStr.replace(/[^0-9]/g, '');
+      return digits.length >= 3 && digits === digits.split('').reverse().join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initNavigation();
+      loadCourseHandicaps();
+      initSqlEngine();
+      fetchJsonData();
+
+      document.getElementById('toggleFilterDrawerBtn').addEventListener('click', () => {
+        document.getElementById('filterDrawer').classList.toggle('hidden');
+      });
+
+      document.getElementById('chartMetricSelect').addEventListener('change', renderTimelineChart);
+      document.getElementById('heatmapYearSelect').addEventListener('change', renderSaturdayHeatmap);
+      document.getElementById('filterVenue').addEventListener('change', updateFilteredViews);
+      document.getElementById('filterYear').addEventListener('change', updateFilteredViews);
+      document.getElementById('athleteSelect').addEventListener('change', onAthleteChanged);
+
+      document.getElementById('runSqlMobileBtn').addEventListener('click', executeMobileSql);
+      document.querySelectorAll('.sql-preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.getElementById('mobileSqlInput').value = e.target.getAttribute('data-query');
+          executeMobileSql();
+        });
+      });
+
+      document.getElementById('closeDrilldownModalBtn').addEventListener('click', () => {
+        document.getElementById('drilldownModal').classList.add('hidden');
+      });
+
+      document.getElementById('resetHandicapsBtn').addEventListener('click', () => {
+        courseHandicaps = {};
+        localStorage.removeItem(STORAGE_KEY_COURSE_HANDICAPS);
+        updateFilteredViews();
+      });
+    });
+
+    function initNavigation() {
+      const buttons = document.querySelectorAll('.nav-dock-btn');
+      const tabs = {
+        tabStory: document.getElementById('tabStory'),
+        tabPositions: document.getElementById('tabPositions'),
+        tabLatest: document.getElementById('tabLatest'),
+        tabBreakthroughs: document.getElementById('tabBreakthroughs'),
+        tabCourses: document.getElementById('tabCourses'),
+        tabSql: document.getElementById('tabSql')
+      };
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.getAttribute('data-tab');
+          Object.keys(tabs).forEach(id => {
+            tabs[id].classList.toggle('hidden', id !== targetId);
+          });
+
+          buttons.forEach(b => {
+            const isMatch = b.getAttribute('data-tab') === targetId;
+            b.className = isMatch 
+              ? 'nav-dock-btn flex flex-col items-center py-1 text-emerald-400 font-bold transition'
+              : 'nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition';
+          });
+
+          if (targetId === 'tabCourses') renderDepthChart();
+          if (targetId === 'tabPositions') renderPositionAnalysisTab();
+          if (targetId === 'tabSql') executeMobileSql();
+        });
+      });
+    }
+
+    function loadCourseHandicaps() {
+      const saved = localStorage.getItem(STORAGE_KEY_COURSE_HANDICAPS);
+      if (saved) {
+        try { courseHandicaps = JSON.parse(saved) || {}; } catch(e) { courseHandicaps = {}; }
+      }
+    }
+
+    function saveCourseHandicaps() {
+      localStorage.setItem(STORAGE_KEY_COURSE_HANDICAPS, JSON.stringify(courseHandicaps));
+      renderLatestRunCard();
+    }
+
+    async function initSqlEngine() {
+      try {
+        const SQL = await initSqlJs({
+          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+        });
+        sqlDb = new SQL.Database();
+        sqlEngineReady = true;
+        rebuildSqlDatabase();
+      } catch (e) {
+        console.error('SQL.js WASM failed to initialise:', e);
+      }
+    }
+
+    function rebuildSqlDatabase() {
+      if (!sqlEngineReady || !sqlDb || !athleteRuns.length) return;
+      try {
+        sqlDb.run("DROP TABLE IF EXISTS runs;");
+        sqlDb.run(`
+          CREATE TABLE runs (
+            date_str TEXT,
+            event TEXT,
+            time_seconds INTEGER,
+            age_grade REAL,
+            position INTEGER,
+            category_pos INTEGER,
+            age_category TEXT,
+            total_finishers INTEGER,
+            finish_percentile REAL,
+            year INTEGER
+          );
+        `);
+        const stmt = sqlDb.prepare(`INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`);
+        athleteRuns.forEach(r => {
+          stmt.run([
+            r.date.toISOString(),
+            r.event,
+            r.timeSeconds,
+            r.ageGrade,
+            r.position,
+            r.categoryPosition,
+            r.ageCategory,
+            r.totalFinishers,
+            r.finishPercentile,
+            r.year
+          ]);
+        });
+        stmt.free();
+      } catch (err) {
+        console.error('Error rebuilding SQL in-memory schema:', err);
+      }
+    }
+
+    async function fetchJsonData() {
+      try {
+        const response = await fetch('data/parkrun_data.json');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const json = await response.json();
+        const rawArray = Array.isArray(json) ? json : (json.results || []);
+
+        rawDataset = rawArray.map(item => {
+          const parsedDate = parseUkDate(item.date);
+          const enriched = item.enriched || {};
+          return {
+            athleteId: item.athleteId ? item.athleteId.toString() : 'Unknown',
+            athleteName: item.athleteName || 'Unknown Runner',
+            event: item.event || 'Unknown Venue',
+            date: parsedDate,
+            rawDateStr: item.date || '',
+            year: parsedDate ? parsedDate.getFullYear() : null,
+            month: parsedDate ? parsedDate.getMonth() : null,
+            position: parseInt(item.position, 10) || null,
+            timeStr: item.time || '',
+            timeSeconds: parseTimeToSeconds(item.time),
+            ageGrade: parseAgeGrade(item.ageGrade),
+            totalFinishers: enriched.totalFinishers || null,
+            finishPercentile: enriched.finishPercentile !== undefined ? parseFloat(enriched.finishPercentile) : null,
+            ageCategory: enriched.ageCategory || 'Unassigned',
+            categoryPosition: enriched.categoryPosition || null,
+            categoryTotal: enriched.categoryTotal || null
+          };
+        }).filter(r => r.date && r.timeSeconds);
+
+        populateAthleteFilter();
+      } catch (err) {
+        const notice = document.getElementById('statusNotice');
+        notice.innerText = `Unable to load data/parkrun_data.json: ${err.message}.`;
+        notice.className = 'mx-4 mt-3 max-w-4xl sm:mx-auto p-3 rounded-xl text-xs font-mono border bg-rose-950/40 border-rose-800 text-rose-300';
+        notice.classList.remove('hidden');
+      }
+    }
+
+    function populateAthleteFilter() {
+      const athleteSelect = document.getElementById('athleteSelect');
+      const unique = [];
+      const map = new Map();
+
+      rawDataset.forEach(r => {
+        if (!map.has(r.athleteId)) {
+          map.set(r.athleteId, r.athleteName);
+          unique.push({ id: r.athleteId, name: r.athleteName });
+        }
+      });
+
+      athleteSelect.innerHTML = unique.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+      onAthleteChanged();
+    }
+
+    function onAthleteChanged() {
+      const id = document.getElementById('athleteSelect').value;
+      athleteRuns = rawDataset.filter(r => r.athleteId === id);
+      athleteRuns.sort((a, b) => a.date - b.date);
+
+      document.getElementById('headerSubtext').innerText = `${athleteRuns.length} runs recorded`;
+
+      populateContextFilters();
+      rebuildSqlDatabase();
+      updateFilteredViews();
+    }
+
+    function populateContextFilters() {
+      const venueSelect = document.getElementById('filterVenue');
+      const yearSelect = document.getElementById('filterYear');
+      const hmYearSelect = document.getElementById('heatmapYearSelect');
+
+      const venues = [...new Set(athleteRuns.map(r => r.event))].sort();
+      const years = [...new Set(athleteRuns.map(r => r.year))].sort((a, b) => b - a);
+
+      venueSelect.innerHTML = '<option value="ALL">All Venues</option>' + venues.map(v => `<option value="${v}">${v}</option>`).join('');
+      yearSelect.innerHTML = '<option value="ALL">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+      hmYearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+
+    function getFilteredRuns() {
+      const v = document.getElementById('filterVenue').value;
+      const y = document.getElementById('filterYear').value;
+      return athleteRuns.filter(r => (v === 'ALL' || r.event === v) && (y === 'ALL' || r.year.toString() === y));
+    }
+
+    function updateFilteredViews() {
+      const isFilterActive = document.getElementById('filterVenue').value !== 'ALL' || document.getElementById('filterYear').value !== 'ALL';
+      document.getElementById('activeFilterBadge').classList.toggle('hidden', !isFilterActive);
+
+      const filtered = getFilteredRuns();
+      renderStoryHeadlineKpis(filtered);
+      renderMilestonesAndStreaks();
+      renderChallenges();
+      renderTimelineChart();
+      renderLatestRunCard();
+      renderSaturdayHeatmap();
+      renderSecondBingo();
+      renderPbLongevityMobile();
+      renderPositionAnalysisTab();
+      renderDepthChart();
+      renderCourseMatrixCards();
+    }
+
+    function renderStoryHeadlineKpis(runs) {
+      if (!runs.length) {
+        ['statTotalRuns', 'statTotalDist', 'statSpeedPb', 'statSpeedPbSub', 'statGradePb', 'statGradePbSub', 'statSeasonBest', 'statSeasonBestSub'].forEach(id => {
+          document.getElementById(id).innerText = '-';
+        });
+        return;
+      }
+      document.getElementById('statTotalRuns').innerText = runs.length;
+      document.getElementById('statTotalDist').innerText = `${runs.length * 5} km total`;
+
+      const bestTimeRun = [...runs].sort((a, b) => a.timeSeconds - b.timeSeconds)[0];
+      document.getElementById('statSpeedPb').innerText = bestTimeRun.timeStr;
+      document.getElementById('statSpeedPbSub').innerText = `${bestTimeRun.event} (${bestTimeRun.rawDateStr})`;
+
+      const gradeRuns = runs.filter(r => r.ageGrade);
+      if (gradeRuns.length) {
+        const bestGradeRun = [...gradeRuns].sort((a, b) => b.ageGrade - a.ageGrade)[0];
+        document.getElementById('statGradePb').innerText = `${bestGradeRun.ageGrade.toFixed(2)}%`;
+        document.getElementById('statGradePbSub').innerText = `${bestGradeRun.event} (${bestGradeRun.rawDateStr})`;
+      }
+
+      const latestYear = Math.max(...runs.map(r => r.year));
+      const yearRuns = runs.filter(r => r.year === latestYear);
+      if (yearRuns.length) {
+        const sbRun = [...yearRuns].sort((a, b) => a.timeSeconds - b.timeSeconds)[0];
+        document.getElementById('statSeasonBest').innerText = sbRun.timeStr;
+        document.getElementById('statSeasonBestSub').innerText = `${latestYear} SB at ${sbRun.event}`;
+      }
+    }
+
+    function renderMilestonesAndStreaks() {
+      const totalRuns = athleteRuns.length;
+      if (!totalRuns) return;
+
+      let currentSeq = 0, longestStreak = 0;
+      for (let i = 0; i < athleteRuns.length; i++) {
+        if (i === 0) currentSeq = 1;
+        else {
+          const diffDays = Math.round((athleteRuns[i].date - athleteRuns[i - 1].date) / (1000 * 3600 * 24));
+          if (diffDays >= 1 && diffDays <= 13) currentSeq++;
+          else if (diffDays > 13) currentSeq = 1;
+        }
+        if (currentSeq > longestStreak) longestStreak = currentSeq;
+      }
+
+      const latestDate = athleteRuns[totalRuns - 1].date;
+      const daysSinceLatest = Math.round((new Date() - latestDate) / (1000 * 3600 * 24));
+      const activeStreak = (daysSinceLatest <= 14) ? currentSeq : 0;
+
+      document.getElementById('statActiveStreak').innerText = `${activeStreak} wks`;
+      document.getElementById('statLongestStreak').innerText = `${longestStreak} wks`;
+
+      let nextM = PARKRUN_MILESTONES.find(m => m > totalRuns) || (Math.ceil((totalRuns + 1) / 100) * 100);
+      let prevM = 0;
+      for (let i = PARKRUN_MILESTONES.length - 1; i >= 0; i--) {
+        if (PARKRUN_MILESTONES[i] <= totalRuns) { prevM = PARKRUN_MILESTONES[i]; break; }
+      }
+
+      const needed = nextM - totalRuns;
+      const progressPct = Math.min(100, Math.max(0, ((totalRuns - prevM) / (nextM - prevM)) * 100));
+
+      document.getElementById('nextMilestoneTitle').innerText = `Countdown to Club ${nextM}`;
+      document.getElementById('nextMilestoneRemaining').innerText = needed;
+      document.getElementById('nextMilestoneProgressBar').style.width = `${progressPct}%`;
+      document.getElementById('nextMilestoneStart').innerText = `Club ${prevM}`;
+      document.getElementById('nextMilestoneProgressPct').innerText = `${progressPct.toFixed(0)}%`;
+      document.getElementById('nextMilestoneTarget').innerText = `Club ${nextM}`;
+    }
+
+    function renderChallenges() {
+      const runs = getFilteredRuns();
+      let groundhog = 0, palindrome = 0;
+      const venueHistory = {};
+      const venueCounts = {};
+
+      runs.forEach(r => {
+        venueCounts[r.event] = (venueCounts[r.event] || 0) + 1;
+        if (isPalindromeTime(r.timeStr)) palindrome++;
+
+        if (!venueHistory[r.event]) venueHistory[r.event] = [];
+        else {
+          const last = venueHistory[r.event][venueHistory[r.event].length - 1];
+          if (last.timeSeconds === r.timeSeconds) groundhog++;
+        }
+        venueHistory[r.event].push(r);
+      });
+
+      const countsDesc = Object.values(venueCounts).sort((a, b) => b - a);
+      let pIndex = 0;
+      for (let i = 0; i < countsDesc.length; i++) {
+        if (countsDesc[i] >= i + 1) pIndex = i + 1; else break;
+      }
+
+      document.getElementById('statPIndex').innerText = pIndex;
+      document.getElementById('statGroundhog').innerText = groundhog;
+      document.getElementById('statPalindrome').innerText = palindrome;
+    }
+
+    function renderTimelineChart() {
+      const runs = getFilteredRuns();
+      const metric = document.getElementById('chartMetricSelect').value;
+      const ctx = document.getElementById('timelineChart').getContext('2d');
+
+      if (timelineChartInstance) timelineChartInstance.destroy();
+
+      const dataPoints = runs.map(r => {
+        let y = null;
+        if (metric === 'time') y = r.timeSeconds / 60;
+        else if (metric === 'ageGrade') y = r.ageGrade;
+        else if (metric === 'position') y = r.position;
+        else if (metric === 'categoryPosition') y = r.categoryPosition;
+        return { x: r.date, y: y, runRef: r };
+      }).filter(p => p.y !== null && !isNaN(p.y));
+
+      timelineChartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            data: dataPoints,
+            backgroundColor: '#10b981',
+            borderColor: '#059669',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            zoom: {
+              pan: { enabled: true, mode: 'x' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+            },
+            tooltip: {
+              callbacks: {
+                title: ctx => ctx[0].raw.runRef.rawDateStr,
+                label: ctx => {
+                  const r = ctx.raw.runRef;
+                  return `${r.event}: ${r.timeStr} | Pos #${r.position || '-'}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'month',
+                displayFormats: { month: 'MMM yyyy', day: 'dd/MM/yyyy' }
+              },
+              grid: { color: 'rgba(51, 65, 85, 0.2)' },
+              ticks: { color: '#94a3b8', font: { size: 9 } }
+            },
+            y: {
+              reverse: (metric === 'time' || metric === 'position' || metric === 'categoryPosition'),
+              grid: { color: 'rgba(51, 65, 85, 0.2)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { size: 9 },
+                callback: v => metric === 'time' ? formatSecondsToTime(v * 60) : v
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderLatestRunCard() {
+      if (!athleteRuns.length) return;
+      const latest = athleteRuns[athleteRuns.length - 1];
+
+      document.getElementById('latestVenueName').innerText = latest.event;
+      document.getElementById('latestRunDate').innerText = `${latest.rawDateStr} (Run #${athleteRuns.length})`;
+      document.getElementById('latestFinishTime').innerText = latest.timeStr;
+      document.getElementById('latestAgeGrade').innerText = latest.ageGrade ? `${latest.ageGrade.toFixed(2)}%` : '-';
+      document.getElementById('latestFinishPosition').innerText = latest.position ? `#${latest.position}` : '-';
+
+      const badges = document.getElementById('latestBadgesContainer');
+      badges.innerHTML = '';
+      const allPBs = Math.min(...athleteRuns.map(r => r.timeSeconds));
+      if (latest.timeSeconds === allPBs) {
+        badges.innerHTML += `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold px-2 py-0.5 rounded text-[10px]">Speed PB 👑</span>`;
+      }
+      if (latest.position === 1) {
+        badges.innerHTML += `<span class="bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold px-2 py-0.5 rounded text-[10px]">🥇 P1 Finish</span>`;
+      }
+
+      const handicapInput = document.getElementById('currentCourseHandicapInput');
+      const curHandicap = parseInt(courseHandicaps[latest.event], 10) || 0;
+      handicapInput.value = curHandicap;
+
+      const normSecs = Math.max(1, latest.timeSeconds - curHandicap);
+      document.getElementById('handicapNormalizedTime').innerText = formatSecondsToTime(normSecs);
+
+      const allNorm = athleteRuns.map(r => {
+        const h = parseInt(courseHandicaps[r.event], 10) || 0;
+        return { date: r.date.getTime(), norm: Math.max(1, r.timeSeconds - h) };
+      }).sort((a, b) => a.norm - b.norm);
+
+      const normRank = allNorm.findIndex(r => r.date === latest.date.getTime()) + 1;
+      document.getElementById('handicapNormalizedRank').innerText = `#${normRank} of ${athleteRuns.length}`;
+
+      handicapInput.onchange = (e) => {
+        courseHandicaps[latest.event] = parseInt(e.target.value, 10) || 0;
+        saveCourseHandicaps();
+      };
+
+      document.querySelectorAll('.preset-handicap-btn').forEach(b => {
+        b.onclick = () => {
+          courseHandicaps[latest.event] = parseInt(b.getAttribute('data-val'), 10);
+          saveCourseHandicaps();
+        };
+      });
+    }
+
+    function renderSaturdayHeatmap() {
+      if (!athleteRuns.length) return;
+      const year = parseInt(document.getElementById('heatmapYearSelect').value, 10) || athleteRuns[athleteRuns.length - 1].year;
+      const grid = document.getElementById('saturdayHeatmapGrid');
+      grid.innerHTML = '';
+
+      const saturdays = [];
+      const d = new Date(year, 0, 1);
+      while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
+      while (d.getFullYear() === year) { saturdays.push(new Date(d)); d.setDate(d.getDate() + 7); }
+
+      let runningBest = 999999;
+      const pbDates = new Set();
+      [...athleteRuns].sort((a, b) => a.date - b.date).forEach(r => {
+        if (r.timeSeconds < runningBest) {
+          if (runningBest < 999999 && r.year === year) pbDates.add(r.rawDateStr);
+          runningBest = r.timeSeconds;
+        }
+      });
+
+      const yearRuns = athleteRuns.filter(r => r.year === year);
+
+      saturdays.forEach((sat, idx) => {
+        const satTime = sat.getTime();
+        const match = yearRuns.find(r => Math.abs((r.date.getTime() - satTime) / (1000 * 3600 * 24)) < 1.5);
+        const cell = document.createElement('div');
+
+        if (match) {
+          const isPb = pbDates.has(match.rawDateStr);
+          cell.className = isPb 
+            ? 'bg-amber-500 border border-amber-300 rounded p-1 text-center font-bold text-[9px] text-slate-950'
+            : 'bg-emerald-500/40 border border-emerald-500 text-emerald-200 rounded p-1 text-center text-[9px] font-mono';
+          cell.innerText = `W${idx+1}`;
+          cell.title = `${match.event}: ${match.timeStr} (${match.rawDateStr})`;
+        } else {
+          cell.className = 'bg-slate-900/60 border border-slate-800 rounded p-1 text-center text-[9px] text-slate-600';
+          cell.innerText = `W${idx+1}`;
+        }
+        grid.appendChild(cell);
+      });
+    }
+
+    function renderSecondBingo() {
+      const runs = getFilteredRuns();
+      const secMap = {};
+      for (let i = 0; i < 60; i++) secMap[i] = [];
+      runs.forEach(r => {
+        if (r.timeSeconds !== null) secMap[r.timeSeconds % 60].push(r);
+      });
+
+      let collected = 0;
+      for (let i = 0; i < 60; i++) if (secMap[i].length) collected++;
+
+      document.getElementById('statBingoScore').innerText = `${collected} / 60`;
+      document.getElementById('bingoGridScore').innerText = `${collected} / 60`;
+
+      const grid = document.getElementById('secondBingoGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < 60; i++) {
+        const secLabel = i < 10 ? `0${i}` : `${i}`;
+        const count = secMap[i].length;
+        const cell = document.createElement('div');
+
+        if (count > 0) {
+          cell.className = 'bg-purple-950/60 border border-purple-500/40 text-purple-300 rounded p-1 font-bold cursor-pointer active:scale-90 transition';
+          cell.innerText = `:${secLabel}`;
+          cell.onclick = () => openDrilldownModal(`Second Collector :${secLabel}`, `${count} finish times ending in :${secLabel}`, secMap[i]);
+        } else {
+          cell.className = 'bg-slate-950 border border-slate-800 text-slate-700 rounded p-1 select-none';
+          cell.innerText = `:${secLabel}`;
+        }
+        grid.appendChild(cell);
+      }
+    }
+
+    function renderPbLongevityMobile() {
+      const container = document.getElementById('speedPbMobileList');
+      container.innerHTML = '';
+      if (!athleteRuns.length) return;
+
+      const pbs = [];
+      let best = 999999;
+
+      [...athleteRuns].sort((a, b) => a.date - b.date).forEach(r => {
+        if (r.timeSeconds < best) {
+          const isDebut = (best === 999999);
+          if (pbs.length) {
+            const prev = pbs[pbs.length - 1];
+            prev.days = Math.round((r.date - prev.date) / (1000 * 3600 * 24));
+          }
+          pbs.push({ ...r, isDebut, diff: isDebut ? 0 : best - r.timeSeconds, days: null });
+          best = r.timeSeconds;
+        }
+      });
+
+      if (pbs.length) {
+        const last = pbs[pbs.length - 1];
+        last.days = Math.round((athleteRuns[athleteRuns.length - 1].date - last.date) / (1000 * 3600 * 24));
+        last.active = true;
+      }
+
+      [...pbs].reverse().forEach(pb => {
+        const card = document.createElement('div');
+        card.className = `p-2.5 rounded-xl border text-xs ${pb.active ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-900 border-slate-800'}`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-200">${pb.event}</span>
+            <span class="font-black font-mono text-amber-400">${pb.timeStr}</span>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1 font-mono">
+            <span>${pb.rawDateStr}</span>
+            <span class="text-emerald-400">${pb.isDebut ? 'Debut' : `-${formatSecondsToTime(pb.diff)}`}</span>
+            <span class="text-slate-300">${pb.days} days ${pb.active ? '👑' : ''}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // NEW: PERFORMANCE & POSITION BREAKDOWN ENGINE
+    function renderPositionAnalysisTab() {
+      const runs = getFilteredRuns();
+      const totalRuns = runs.length;
+
+      // 1. Target Counters
+      let cP1 = 0, cTop3 = 0, cTop10 = 0;
+      const posGroups = {};
+      const yearMap = {};
+      const courseMap = {};
+
+      runs.forEach(r => {
+        if (r.position !== null && !isNaN(r.position)) {
+          const p = r.position;
+          if (p === 1) cP1++;
+          if (p <= 3) cTop3++;
+          if (p <= 10) cTop10++;
+
+          if (!posGroups[p]) posGroups[p] = [];
+          posGroups[p].push(r);
+        }
+
+        // Year grouping
+        if (!yearMap[r.year]) {
+          yearMap[r.year] = { runs: [], positions: [], p1: 0, top3: 0, top10: 0 };
+        }
+        yearMap[r.year].runs.push(r);
+        if (r.position !== null) {
+          yearMap[r.year].positions.push(r.position);
+          if (r.position === 1) yearMap[r.year].p1++;
+          if (r.position <= 3) yearMap[r.year].top3++;
+          if (r.position <= 10) yearMap[r.year].top10++;
+        }
+
+        // Course grouping
+        if (!courseMap[r.event]) {
+          courseMap[r.event] = { runs: [], positions: [], posCounts: {} };
+        }
+        courseMap[r.event].runs.push(r);
+        if (r.position !== null) {
+          courseMap[r.event].positions.push(r.position);
+          courseMap[r.event].posCounts[r.position] = (courseMap[r.event].posCounts[r.position] || 0) + 1;
+        }
+      });
+
+      document.getElementById('posCountP1').innerText = cP1;
+      document.getElementById('posPctP1').innerText = totalRuns ? `${((cP1 / totalRuns) * 100).toFixed(1)}%` : '0%';
+
+      document.getElementById('posCountTop3').innerText = cTop3;
+      document.getElementById('posPctTop3').innerText = totalRuns ? `${((cTop3 / totalRuns) * 100).toFixed(1)}%` : '0%';
+
+      document.getElementById('posCountTop10').innerText = cTop10;
+      document.getElementById('posPctTop10').innerText = totalRuns ? `${((cTop10 / totalRuns) * 100).toFixed(1)}%` : '0%';
+
+      // 2. Frequency Grid
+      const uniquePositions = Object.keys(posGroups).map(Number).sort((a, b) => a - b);
+      document.getElementById('posUniqueCount').innerText = `${uniquePositions.length} Unique Positions`;
+      const freqGrid = document.getElementById('positionFrequencyGrid');
+      freqGrid.innerHTML = '';
+
+      uniquePositions.forEach(p => {
+        const matches = posGroups[p];
+        const card = document.createElement('div');
+        const isPodium = p <= 3;
+        card.className = `p-2 rounded-xl border text-center cursor-pointer active:scale-90 transition ${
+          p === 1 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' :
+          isPodium ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' :
+          p <= 10 ? 'bg-sky-500/10 border-sky-500/30 text-sky-300' :
+          'bg-slate-900 border-slate-800 text-slate-300'
+        }`;
+        card.innerHTML = `
+          <span class="text-xs font-black block leading-none">#${p}</span>
+          <span class="text-[9px] text-slate-400 block mt-1">${matches.length}x (${((matches.length / totalRuns) * 100).toFixed(0)}%)</span>
+        `;
+        card.onclick = () => openDrilldownModal(`Position #${p} Finishes`, `Achieved ${matches.length} time(s)`, matches);
+        freqGrid.appendChild(card);
+      });
+
+      // 3. Annual Progression Table
+      const annualTbody = document.getElementById('annualPositionTableBody');
+      annualTbody.innerHTML = '';
+      const yearsDesc = Object.keys(yearMap).sort((a, b) => b - a);
+
+      yearsDesc.forEach(year => {
+        const d = yearMap[year];
+        const best = d.positions.length ? Math.min(...d.positions) : '-';
+        const median = d.positions.length ? calculateMedian(d.positions) : '-';
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition cursor-pointer';
+        tr.onclick = () => openDrilldownModal(`${year} Finishes`, `${d.runs.length} parkruns completed in ${year}`, d.runs);
+        tr.innerHTML = `
+          <td class="py-2 px-2.5 font-bold font-sans text-slate-200">${year}</td>
+          <td class="py-2 px-2 text-right font-bold text-slate-100">${d.runs.length}</td>
+          <td class="py-2 px-2 text-right text-amber-400 font-bold">${d.p1 || '-'}</td>
+          <td class="py-2 px-2 text-right text-emerald-400 font-bold">${d.top3 || '-'}</td>
+          <td class="py-2 px-2 text-right text-sky-400 font-bold">${d.top10 || '-'}</td>
+          <td class="py-2 px-2 text-right text-purple-300 font-bold">${best !== '-' ? '#' + best : '-'}</td>
+          <td class="py-2 px-2.5 text-right text-indigo-300 font-bold">${median !== '-' ? '#' + median : '-'}</td>
+        `;
+        annualTbody.appendChild(tr);
+      });
+
+      // 4. Course Breakdown Accordion Cards
+      const courseContainer = document.getElementById('coursePositionList');
+      courseContainer.innerHTML = '';
+      const sortedCourses = Object.entries(courseMap).sort((a, b) => b[1].runs.length - a[1].runs.length);
+
+      sortedCourses.forEach(([event, data]) => {
+        const bestPos = data.positions.length ? Math.min(...data.positions) : '-';
+        const medianPos = data.positions.length ? calculateMedian(data.positions) : '-';
+        
+        const sortedPosCounts = Object.entries(data.posCounts)
+          .sort((a, b) => parseInt(a[0], 10) - parseInt(b[0], 10))
+          .map(([pos, count]) => `<span class="bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">#${pos}: <strong>${count}x</strong></span>`)
+          .join(' ');
+
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900 border border-slate-800/80 rounded-xl p-3 space-y-2';
+        card.innerHTML = `
+          <div class="flex items-center justify-between cursor-pointer" onclick="openDrilldownModal('${event} Outings', '${data.runs.length} visits to this venue', athleteRuns.filter(r=>r.event==='${event}'))">
+            <div>
+              <span class="text-xs font-bold text-slate-100 block">${event}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${data.runs.length} visits</span>
+            </div>
+            <div class="text-right font-mono">
+              <span class="text-xs font-black text-purple-300 block">Best: ${bestPos !== '-' ? '#' + bestPos : '-'}</span>
+              <span class="text-[10px] text-indigo-300 font-bold block">Median: ${medianPos !== '-' ? '#' + medianPos : '-'}</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1 pt-1 border-t border-slate-800/60 font-mono text-slate-300">
+            ${sortedPosCounts || '<span class="text-[10px] text-slate-500">No positions recorded</span>'}
+          </div>
+        `;
+        courseContainer.appendChild(card);
+      });
+    }
+
+    // FIX: FORMATTED TIME SCALES (No Timestamps on Dates)
+    function renderDepthChart() {
+      const runs = getFilteredRuns();
+      const ctx = document.getElementById('depthAttendanceChart').getContext('2d');
+      if (depthAttendanceChartInstance) depthAttendanceChartInstance.destroy();
+
+      const bars = runs.map(r => ({ x: r.date, y: r.totalFinishers || 0, r }));
+      const dots = runs.map(r => ({ x: r.date, y: r.position || 0, r })).filter(p => p.y > 0);
+
+      depthAttendanceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Field Size',
+              data: bars,
+              backgroundColor: '#334155',
+              barThickness: 4,
+              order: 2
+            },
+            {
+              type: 'scatter',
+              label: 'Position',
+              data: dots,
+              backgroundColor: '#d8b4fe',
+              borderColor: '#9333ea',
+              borderWidth: 1.5,
+              pointRadius: 4,
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            zoom: {
+              pan: { enabled: true, mode: 'x' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  if (!items.length) return '';
+                  return items[0].raw.r.rawDateStr; // Clean string date, zero time artifacts
+                },
+                label: function(item) {
+                  const r = item.raw.r;
+                  return item.dataset.type === 'bar' 
+                    ? `${r.event}: Total Field of ${r.totalFinishers || '-'} runners`
+                    : `Finished #${r.position || '-'} of ${r.totalFinishers || '-'}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'month',
+                displayFormats: {
+                  month: 'MMM yyyy',
+                  day: 'dd/MM/yyyy'
+                }
+              },
+              grid: { color: 'rgba(51, 65, 85, 0.2)' },
+              ticks: { color: '#94a3b8', font: { size: 9 } }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.2)' },
+              ticks: { color: '#94a3b8', font: { size: 9 } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderCourseMatrixCards() {
+      const runs = getFilteredRuns();
+      const currentYear = new Date().getFullYear();
+      const groups = {};
+
+      runs.forEach(r => {
+        if (!groups[r.event]) groups[r.event] = [];
+        groups[r.event].push(r);
+      });
+
+      const list = Object.entries(groups).map(([event, vRuns]) => {
+        const sorted = vRuns.map(r => r.timeSeconds).sort((a, b) => a - b);
+        const thisYear = vRuns.filter(r => r.year === currentYear);
+        const sb = thisYear.length ? Math.min(...thisYear.map(r => r.timeSeconds)) : null;
+        return {
+          event,
+          visits: vRuns.length,
+          pb: sorted[0],
+          sb: sb,
+          last: [...vRuns].sort((a, b) => b.date - a.date)[0].rawDateStr
+        };
+      }).sort((a, b) => b.visits - a.visits);
+
+      document.getElementById('courseCountLabel').innerText = `${list.length} courses`;
+      const container = document.getElementById('courseCardsContainer');
+      container.innerHTML = '';
+
+      list.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer active:scale-95 transition';
+        card.onclick = () => openDrilldownModal(`${c.event} Records`, `${c.visits} visits`, athleteRuns.filter(r => r.event === c.event));
+        card.innerHTML = `
+          <div>
+            <span class="font-bold text-xs text-slate-100 block">${c.event}</span>
+            <span class="text-[10px] text-slate-400 font-mono">${c.visits} visits · Last: ${c.last}</span>
+          </div>
+          <div class="text-right font-mono">
+            <span class="text-xs font-black text-amber-400 block">PB: ${formatSecondsToTime(c.pb)}</span>
+            <span class="text-[10px] text-teal-300 font-bold block">SB: ${formatSecondsToTime(c.sb)}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function openDrilldownModal(title, sub, runs) {
+      document.getElementById('drilldownModalTitle').innerText = title;
+      document.getElementById('drilldownModalSub').innerText = sub;
+      const list = document.getElementById('drilldownModalContent');
+      list.innerHTML = '';
+
+      [...runs].sort((a, b) => b.date - a.date).forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'pt-2 first:pt-0 flex items-center justify-between';
+        row.innerHTML = `
+          <div>
+            <span class="font-bold text-slate-200 block">${r.event}</span>
+            <span class="text-[10px] text-slate-400 font-mono">${r.rawDateStr}</span>
+          </div>
+          <div class="text-right font-mono">
+            <span class="font-black text-amber-400 text-xs block">${r.timeStr} ${r.position ? '<span class="text-purple-300 font-normal">#'+r.position+'</span>' : ''}</span>
+            <span class="text-[10px] text-sky-400">${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'}</span>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      document.getElementById('drilldownModal').classList.remove('hidden');
+    }
+
+    function executeMobileSql() {
+      if (!sqlEngineReady || !sqlDb) {
+        document.getElementById('mobileSqlStatus').innerText = 'WASM loading...';
+        return;
+      }
+      const query = document.getElementById('mobileSqlInput').value.trim();
+      const statusEl = document.getElementById('mobileSqlStatus');
+      const thead = document.getElementById('sqlMobileThead');
+      const tbody = document.getElementById('sqlMobileTbody');
+
+      try {
+        const t0 = performance.now();
+        const res = sqlDb.exec(query);
+        const dur = (performance.now() - t0).toFixed(1);
+
+        if (!res.length) {
+          thead.innerHTML = '';
+          tbody.innerHTML = `<tr><td class="p-3 text-center text-slate-500 font-sans">0 rows returned (${dur} ms)</td></tr>`;
+          statusEl.innerText = `0 rows (${dur} ms)`;
+          return;
+        }
+
+        const cols = res[0].columns;
+        const vals = res[0].values;
+        statusEl.innerText = `${vals.length} rows (${dur} ms)`;
+
+        thead.innerHTML = `<tr>${cols.map(c => `<th class="py-1.5 px-2 font-bold">${c}</th>`).join('')}</tr>`;
+        tbody.innerHTML = vals.map(row => `
+          <tr class="hover:bg-slate-800/40">
+            ${row.map(v => `<td class="py-1.5 px-2">${(typeof v === 'number' && v > 300 && v < 4000 && !Number.isInteger(v * 10)) ? formatSecondsToTime(v) : (v !== null ? v : '-')}</td>`).join('')}
+          </tr>
+        `).join('');
+      } catch (err) {
+        statusEl.innerText = 'SQL Error';
+        thead.innerHTML = '';
+        tbody.innerHTML = `<tr><td class="p-2 text-rose-400">${err.message}</td></tr>`;
+      }
+    }
+  </script>
+</body>
+</html>
