@@ -63,7 +63,7 @@
     </div>
   </header>
 
-  <!-- Error / Offline Notice -->
+  <!-- Error Notice -->
   <div id="statusNotice" class="hidden mx-4 mt-3 max-w-4xl sm:mx-auto p-3 rounded-xl text-xs font-mono border"></div>
 
   <!-- Primary Content Container -->
@@ -170,7 +170,147 @@
       </div>
     </section>
 
-    <!-- TAB 2: LATEST RUN & COURSE HANDICAP -->
+    <!-- TAB 2: PERFORMANCE & POSITION ANALYSIS -->
+    <section id="tabPositions" class="hidden space-y-4">
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-slate-900/80 border border-amber-500/30 rounded-xl p-3 text-center">
+          <span class="text-[9px] uppercase font-bold text-amber-400 block">P1 Finishes</span>
+          <p id="posCountP1" class="text-xl font-black text-amber-400 mt-0.5">-</p>
+          <p id="posPctP1" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3 text-center">
+          <span class="text-[9px] uppercase font-bold text-emerald-400 block">Top 3 Finishes</span>
+          <p id="posCountTop3" class="text-xl font-black text-emerald-400 mt-0.5">-</p>
+          <p id="posPctTop3" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
+        </div>
+        <div class="bg-slate-900/80 border border-sky-500/30 rounded-xl p-3 text-center">
+          <span class="text-[9px] uppercase font-bold text-sky-400 block">Top 10 Finishes</span>
+          <p id="posCountTop10" class="text-xl font-black text-sky-400 mt-0.5">-</p>
+          <p id="posPctTop10" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
+        </div>
+      </div>
+
+      <!-- Frequency Grid -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Position Frequency Breakdown</h3>
+            <p class="text-[10px] text-slate-400">Tap any card to view matching events</p>
+          </div>
+          <span id="posUniqueCount" class="text-[10px] font-mono text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0 Unique</span>
+        </div>
+        <div id="positionFrequencyGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1 font-mono"></div>
+      </div>
+
+      <!-- Annual Matrix -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Position Progression by Year</h3>
+          <span class="text-[10px] text-slate-400">Median ignores tail-walks</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300 font-mono">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+              <tr>
+                <th class="py-2 px-2.5 font-sans">Year</th>
+                <th class="py-2 px-2 text-right">Runs</th>
+                <th class="py-2 px-2 text-right text-amber-400">#1</th>
+                <th class="py-2 px-2 text-right text-emerald-400">Top 3</th>
+                <th class="py-2 px-2 text-right text-sky-400">Top 10</th>
+                <th class="py-2 px-2 text-right text-purple-300">Best</th>
+                <th class="py-2 px-2.5 text-right text-indigo-300">Median</th>
+              </tr>
+            </thead>
+            <tbody id="annualPositionTableBody" class="divide-y divide-slate-800/60 text-[11px]"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Course Placement Breakdown -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Course-by-Course Placements</h3>
+        <div id="coursePositionList" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: LEADERBOARDS & MONTH-BY-MONTH BREAKDOWN -->
+    <section id="tabLeaderboards" class="hidden space-y-4">
+      
+      <!-- Calendar Month Target Hero Banner -->
+      <div class="bg-gradient-to-br from-slate-900 via-amber-950/20 to-slate-900 border border-amber-500/30 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[9px] font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/30">Target Threshold</span>
+            <h2 id="targetMonthTitle" class="text-base font-black text-white mt-1.5">- Target PB</h2>
+          </div>
+          <select id="selectMonthTarget" class="bg-slate-950 border border-slate-700 text-xs font-bold text-amber-400 rounded-lg px-2.5 py-1">
+            <option value="0">January</option>
+            <option value="1">February</option>
+            <option value="2">March</option>
+            <option value="3">April</option>
+            <option value="4">May</option>
+            <option value="5">June</option>
+            <option value="6">July</option>
+            <option value="7">August</option>
+            <option value="8">September</option>
+            <option value="9">October</option>
+            <option value="10">November</option>
+            <option value="11">December</option>
+          </select>
+        </div>
+
+        <!-- Targets Grid -->
+        <div class="grid grid-cols-2 gap-2 pt-1 font-mono">
+          <div class="bg-slate-950/70 border border-slate-800/80 p-2.5 rounded-xl">
+            <span class="text-[9px] uppercase font-bold text-slate-400 block font-sans">Month Speed PB to Beat</span>
+            <p id="targetMonthSpeedTime" class="text-xl font-black text-amber-400 mt-0.5">-</p>
+            <p id="targetMonthSpeedSub" class="text-[10px] text-slate-400 truncate mt-0.5">-</p>
+          </div>
+          <div class="bg-slate-950/70 border border-slate-800/80 p-2.5 rounded-xl">
+            <span class="text-[9px] uppercase font-bold text-slate-400 block font-sans">Month Grade PB to Beat</span>
+            <p id="targetMonthGradeVal" class="text-xl font-black text-sky-400 mt-0.5">-</p>
+            <p id="targetMonthGradeSub" class="text-[10px] text-slate-400 truncate mt-0.5">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 10 Hall of Fame Controls -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Hall of Fame (Top 10s)</h3>
+            <p class="text-[10px] text-slate-400">Filter top performances by scope</p>
+          </div>
+          <select id="leaderboardModeSelect" class="bg-slate-950 border border-slate-700 text-xs font-bold text-emerald-400 rounded-lg px-2 py-1">
+            <option value="fastest">Fastest Times Overall</option>
+            <option value="ageGrade">Peak Age Grades Overall</option>
+            <option value="positions">Highest Finish Positions</option>
+            <option value="targetMonth">Top 10 in Selected Month</option>
+          </select>
+        </div>
+
+        <!-- Mobile Top 10 List -->
+        <div id="leaderboardRowsContainer" class="space-y-1.5 pt-1">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- 12 Calendar Months Breakdown Grid -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">12-Month Calendar Matrix</h3>
+            <p class="text-[10px] text-slate-400">Historical performance by active calendar month</p>
+          </div>
+        </div>
+        <div id="monthlyBreakdownGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <!-- 12 Cards Injected via JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 4: LATEST RUN & COURSE HANDICAP -->
     <section id="tabLatest" class="hidden space-y-4">
       <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
         <div class="flex items-start justify-between gap-2">
@@ -198,7 +338,6 @@
         </div>
       </div>
 
-      <!-- Course Handicap Engine -->
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
         <div class="flex items-center justify-between">
           <div>
@@ -233,7 +372,7 @@
       </div>
     </section>
 
-    <!-- TAB 3: BREAKTHROUGHS & SATURDAY HEATMAP -->
+    <!-- TAB 5: BREAKTHROUGHS & SATURDAY HEATMAP -->
     <section id="tabBreakthroughs" class="hidden space-y-4">
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
         <div class="flex items-center justify-between">
@@ -253,110 +392,35 @@
         </div>
       </div>
 
-      <!-- Second Bingo -->
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400">Second Bingo Clock (00–59)</h3>
-            <p class="text-[10px] text-slate-400">Tap any active second mark to inspect finishes</p>
+            <p class="text-[10px] text-slate-400">Tap any active mark to inspect finishes</p>
           </div>
           <span id="bingoGridScore" class="text-xs font-mono font-black text-purple-300 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-500/30">0/60</span>
         </div>
         <div id="secondBingoGrid" class="grid grid-cols-6 sm:grid-cols-10 gap-1 text-center font-mono text-[10px]"></div>
       </div>
 
-      <!-- Speed PB Longevity -->
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
         <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">Speed PB Breakthrough Evolution</h3>
         <div class="space-y-2 overflow-y-auto max-h-72" id="speedPbMobileList"></div>
       </div>
     </section>
 
-    <!-- TAB 4: PERFORMANCE & POSITION ANALYSIS -->
-    <section id="tabPositions" class="hidden space-y-4">
-      
-      <!-- Target Quality Summary Cards -->
-      <div class="grid grid-cols-3 gap-2">
-        <div class="bg-slate-900/80 border border-amber-500/30 rounded-xl p-3 text-center">
-          <span class="text-[9px] uppercase font-bold text-amber-400 block">P1 Finishes</span>
-          <p id="posCountP1" class="text-xl font-black text-amber-400 mt-0.5">-</p>
-          <p id="posPctP1" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
-        </div>
-        <div class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3 text-center">
-          <span class="text-[9px] uppercase font-bold text-emerald-400 block">Top 3 Finishes</span>
-          <p id="posCountTop3" class="text-xl font-black text-emerald-400 mt-0.5">-</p>
-          <p id="posPctTop3" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
-        </div>
-        <div class="bg-slate-900/80 border border-sky-500/30 rounded-xl p-3 text-center">
-          <span class="text-[9px] uppercase font-bold text-sky-400 block">Top 10 Finishes</span>
-          <p id="posCountTop10" class="text-xl font-black text-sky-400 mt-0.5">-</p>
-          <p id="posPctTop10" class="text-[9px] text-slate-400 font-mono mt-0.5">-</p>
-        </div>
-      </div>
-
-      <!-- Frequency Grid by Specific Finishing Rank -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Position Frequency Breakdown</h3>
-            <p class="text-[10px] text-slate-400">Tap any position card to see event details</p>
-          </div>
-          <span id="posUniqueCount" class="text-[10px] font-mono text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0 Unique</span>
-        </div>
-        <div id="positionFrequencyGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1 font-mono">
-          <!-- Position pills injected via JS -->
-        </div>
-      </div>
-
-      <!-- Annual Position Progression Matrix -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Position Progression by Year</h3>
-          <span class="text-[10px] text-slate-400">Includes Median to ignore tail-walks</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-300 font-mono">
-            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
-              <tr>
-                <th class="py-2 px-2.5 font-sans">Year</th>
-                <th class="py-2 px-2 text-right">Runs</th>
-                <th class="py-2 px-2 text-right text-amber-400">#1</th>
-                <th class="py-2 px-2 text-right text-emerald-400">Top 3</th>
-                <th class="py-2 px-2 text-right text-sky-400">Top 10</th>
-                <th class="py-2 px-2 text-right text-purple-300">Best</th>
-                <th class="py-2 px-2.5 text-right text-indigo-300">Median</th>
-              </tr>
-            </thead>
-            <tbody id="annualPositionTableBody" class="divide-y divide-slate-800/60 text-[11px]">
-              <!-- Injected via JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Position Breakdown by Course -->
-      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Course-by-Course Placements</h3>
-        <div id="coursePositionList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
-          <!-- Course breakdown accordion/cards injected via JS -->
-        </div>
-      </div>
-
-    </section>
-
-    <!-- TAB 5: COURSES & DEPTH -->
+    <!-- TAB 6: COURSES & DEPTH -->
     <section id="tabCourses" class="hidden space-y-4">
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
         <div>
           <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Field Attendance vs Placement</h3>
-          <p class="text-[10px] text-slate-400">Dark columns = total runners; purple dots = your finish placement</p>
+          <p class="text-[10px] text-slate-400">Dark columns = total runners; purple dots = finish placement</p>
         </div>
         <div class="h-60 w-full">
           <canvas id="depthAttendanceChart"></canvas>
         </div>
       </div>
 
-      <!-- Course Matrix Cards -->
       <div class="space-y-2.5">
         <div class="flex items-center justify-between px-1">
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Course PB & Season Best Matrix</h3>
@@ -366,7 +430,7 @@
       </div>
     </section>
 
-    <!-- TAB 6: IN-BROWSER SQL BI STUDIO -->
+    <!-- TAB 7: IN-BROWSER SQL BI STUDIO -->
     <section id="tabSql" class="hidden space-y-4">
       <div class="bg-gradient-to-br from-slate-900 via-sky-950/30 to-slate-900 border border-sky-500/30 rounded-2xl p-4 space-y-3">
         <div class="flex items-center justify-between">
@@ -399,37 +463,41 @@
 
   </main>
 
-  <!-- Persistent 6-Tab Mobile Dock -->
+  <!-- Persistent 7-Tab Mobile Dock -->
   <nav class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 py-1">
-    <div class="max-w-md mx-auto grid grid-cols-6 gap-0.5 text-center">
+    <div class="max-w-md mx-auto grid grid-cols-7 gap-0.5 text-center">
       <button data-tab="tabStory" class="nav-dock-btn flex flex-col items-center py-1 text-emerald-400 font-bold transition">
-        <span class="text-sm sm:text-base">🏃</span>
-        <span class="text-[8px] sm:text-[9px] tracking-tight">Overview</span>
+        <span class="text-sm">🏃</span>
+        <span class="text-[8px] tracking-tight">Overview</span>
       </button>
       <button data-tab="tabPositions" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
-        <span class="text-sm sm:text-base">🎯</span>
-        <span class="text-[8px] sm:text-[9px] tracking-tight">Positions</span>
+        <span class="text-sm">🎯</span>
+        <span class="text-[8px] tracking-tight">Pos</span>
+      </button>
+      <button data-tab="tabLeaderboards" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
+        <span class="text-sm">🏆</span>
+        <span class="text-[8px] tracking-tight">Top 10</span>
       </button>
       <button data-tab="tabLatest" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
-        <span class="text-sm sm:text-base">⚡</span>
-        <span class="text-[8px] sm:text-[9px] tracking-tight">Latest</span>
+        <span class="text-sm">⚡</span>
+        <span class="text-[8px] tracking-tight">Latest</span>
       </button>
       <button data-tab="tabBreakthroughs" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
-        <span class="text-sm sm:text-base">🌟</span>
-        <span class="text-[8px] sm:text-[9px] tracking-tight">PBs & Cal</span>
+        <span class="text-sm">🌟</span>
+        <span class="text-[8px] tracking-tight">Cal</span>
       </button>
       <button data-tab="tabCourses" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
-        <span class="text-sm sm:text-base">⛰️</span>
-        <span class="text-[8px] sm:text-[9px] tracking-tight">Courses</span>
+        <span class="text-sm">⛰️</span>
+        <span class="text-[8px] tracking-tight">Courses</span>
       </button>
       <button data-tab="tabSql" class="nav-dock-btn flex flex-col items-center py-1 text-slate-400 font-semibold transition">
-        <span class="text-sm sm:text-base">📊</span>
-        <span class="text-[8px] sm:text-[9px] tracking-tight">SQL BI</span>
+        <span class="text-sm">📊</span>
+        <span class="text-[8px] tracking-tight">SQL</span>
       </button>
     </div>
   </nav>
 
-  <!-- Drilldown Modal for Positions & Bingo Marks -->
+  <!-- Drilldown Modal for Positions, Months & Bingo Marks -->
   <div id="drilldownModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-900 border border-slate-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[75vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom">
       <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
@@ -453,6 +521,7 @@
 
     const STORAGE_KEY_COURSE_HANDICAPS = 'parkrun_mobile_course_handicaps';
     const PARKRUN_MILESTONES = [25, 50, 100, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     // Chart instances
     let timelineChartInstance = null;
@@ -512,12 +581,18 @@
       initSqlEngine();
       fetchJsonData();
 
+      // Set initial month select to current active calendar month
+      const currentCalendarMonth = new Date().getMonth();
+      document.getElementById('selectMonthTarget').value = currentCalendarMonth;
+
       document.getElementById('toggleFilterDrawerBtn').addEventListener('click', () => {
         document.getElementById('filterDrawer').classList.toggle('hidden');
       });
 
       document.getElementById('chartMetricSelect').addEventListener('change', renderTimelineChart);
       document.getElementById('heatmapYearSelect').addEventListener('change', renderSaturdayHeatmap);
+      document.getElementById('selectMonthTarget').addEventListener('change', renderLeaderboardsTab);
+      document.getElementById('leaderboardModeSelect').addEventListener('change', renderLeaderboardRows);
       document.getElementById('filterVenue').addEventListener('change', updateFilteredViews);
       document.getElementById('filterYear').addEventListener('change', updateFilteredViews);
       document.getElementById('athleteSelect').addEventListener('change', onAthleteChanged);
@@ -546,6 +621,7 @@
       const tabs = {
         tabStory: document.getElementById('tabStory'),
         tabPositions: document.getElementById('tabPositions'),
+        tabLeaderboards: document.getElementById('tabLeaderboards'),
         tabLatest: document.getElementById('tabLatest'),
         tabBreakthroughs: document.getElementById('tabBreakthroughs'),
         tabCourses: document.getElementById('tabCourses'),
@@ -568,6 +644,7 @@
 
           if (targetId === 'tabCourses') renderDepthChart();
           if (targetId === 'tabPositions') renderPositionAnalysisTab();
+          if (targetId === 'tabLeaderboards') renderLeaderboardsTab();
           if (targetId === 'tabSql') executeMobileSql();
         });
       });
@@ -737,6 +814,7 @@
       renderSecondBingo();
       renderPbLongevityMobile();
       renderPositionAnalysisTab();
+      renderLeaderboardsTab();
       renderDepthChart();
       renderCourseMatrixCards();
     }
@@ -1077,12 +1155,10 @@
       });
     }
 
-    // NEW: PERFORMANCE & POSITION BREAKDOWN ENGINE
     function renderPositionAnalysisTab() {
       const runs = getFilteredRuns();
       const totalRuns = runs.length;
 
-      // 1. Target Counters
       let cP1 = 0, cTop3 = 0, cTop10 = 0;
       const posGroups = {};
       const yearMap = {};
@@ -1099,7 +1175,6 @@
           posGroups[p].push(r);
         }
 
-        // Year grouping
         if (!yearMap[r.year]) {
           yearMap[r.year] = { runs: [], positions: [], p1: 0, top3: 0, top10: 0 };
         }
@@ -1111,7 +1186,6 @@
           if (r.position <= 10) yearMap[r.year].top10++;
         }
 
-        // Course grouping
         if (!courseMap[r.event]) {
           courseMap[r.event] = { runs: [], positions: [], posCounts: {} };
         }
@@ -1131,7 +1205,6 @@
       document.getElementById('posCountTop10').innerText = cTop10;
       document.getElementById('posPctTop10').innerText = totalRuns ? `${((cTop10 / totalRuns) * 100).toFixed(1)}%` : '0%';
 
-      // 2. Frequency Grid
       const uniquePositions = Object.keys(posGroups).map(Number).sort((a, b) => a - b);
       document.getElementById('posUniqueCount').innerText = `${uniquePositions.length} Unique Positions`;
       const freqGrid = document.getElementById('positionFrequencyGrid');
@@ -1155,7 +1228,6 @@
         freqGrid.appendChild(card);
       });
 
-      // 3. Annual Progression Table
       const annualTbody = document.getElementById('annualPositionTableBody');
       annualTbody.innerHTML = '';
       const yearsDesc = Object.keys(yearMap).sort((a, b) => b - a);
@@ -1180,7 +1252,6 @@
         annualTbody.appendChild(tr);
       });
 
-      // 4. Course Breakdown Accordion Cards
       const courseContainer = document.getElementById('coursePositionList');
       courseContainer.innerHTML = '';
       const sortedCourses = Object.entries(courseMap).sort((a, b) => b[1].runs.length - a[1].runs.length);
@@ -1215,7 +1286,143 @@
       });
     }
 
-    // FIX: FORMATTED TIME SCALES (No Timestamps on Dates)
+    // NEW: LEADERBOARDS & MONTH-BY-MONTH ENGINE
+    function renderLeaderboardsTab() {
+      const selectedMonth = parseInt(document.getElementById('selectMonthTarget').value, 10);
+      const monthName = MONTH_NAMES[selectedMonth];
+      document.getElementById('targetMonthTitle').innerText = `${monthName} Target PB`;
+
+      const allMonthRuns = athleteRuns.filter(r => r.month === selectedMonth);
+      if (allMonthRuns.length > 0) {
+        const bestTimeRun = [...allMonthRuns].sort((a, b) => a.timeSeconds - b.timeSeconds)[0];
+        document.getElementById('targetMonthSpeedTime').innerText = bestTimeRun.timeStr;
+        document.getElementById('targetMonthSpeedSub').innerText = `${bestTimeRun.event} (${bestTimeRun.rawDateStr})`;
+
+        const gradeRuns = allMonthRuns.filter(r => r.ageGrade);
+        if (gradeRuns.length > 0) {
+          const bestGradeRun = [...gradeRuns].sort((a, b) => b.ageGrade - a.ageGrade)[0];
+          document.getElementById('targetMonthGradeVal').innerText = `${bestGradeRun.ageGrade.toFixed(2)}%`;
+          document.getElementById('targetMonthGradeSub').innerText = `${bestGradeRun.event} (${bestGradeRun.rawDateStr})`;
+        } else {
+          document.getElementById('targetMonthGradeVal').innerText = '-';
+          document.getElementById('targetMonthGradeSub').innerText = 'No grade data';
+        }
+      } else {
+        document.getElementById('targetMonthSpeedTime').innerText = 'None Logged';
+        document.getElementById('targetMonthSpeedSub').innerText = `No runs yet in ${monthName}`;
+        document.getElementById('targetMonthGradeVal').innerText = '-';
+        document.getElementById('targetMonthGradeSub').innerText = `No runs yet in ${monthName}`;
+      }
+
+      renderLeaderboardRows();
+      render12MonthBreakdownGrid();
+    }
+
+    function renderLeaderboardRows() {
+      const mode = document.getElementById('leaderboardModeSelect').value;
+      const container = document.getElementById('leaderboardRowsContainer');
+      container.innerHTML = '';
+
+      let list = [...getFilteredRuns()];
+      if (mode === 'fastest') {
+        list.sort((a, b) => a.timeSeconds - b.timeSeconds);
+      } else if (mode === 'ageGrade') {
+        list = list.filter(r => r.ageGrade);
+        list.sort((a, b) => b.ageGrade - a.ageGrade);
+      } else if (mode === 'positions') {
+        list = list.filter(r => r.position !== null);
+        list.sort((a, b) => a.position - b.position || a.timeSeconds - b.timeSeconds);
+      } else if (mode === 'targetMonth') {
+        const selectedMonth = parseInt(document.getElementById('selectMonthTarget').value, 10);
+        list = list.filter(r => r.month === selectedMonth);
+        list.sort((a, b) => a.timeSeconds - b.timeSeconds);
+      }
+
+      const top10 = list.slice(0, 10);
+
+      if (!top10.length) {
+        container.innerHTML = `<p class="text-center text-slate-500 py-3 text-xs">No runs match this leaderboard criteria.</p>`;
+        return;
+      }
+
+      top10.forEach((r, idx) => {
+        const isPodium = idx < 3;
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+        const row = document.createElement('div');
+        row.className = `p-2.5 rounded-xl border flex items-center justify-between text-xs transition ${
+          isPodium ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-900 border-slate-800'
+        }`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 text-center font-bold ${isPodium ? 'text-base' : 'text-slate-400 font-mono'}">${medal}</span>
+            <div>
+              <span class="font-bold text-slate-200 block">${r.event}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${r.rawDateStr} ${r.position ? '· Pos #' + r.position : ''}</span>
+            </div>
+          </div>
+          <div class="text-right font-mono">
+            <span class="font-black text-amber-400 text-sm block">${r.timeStr}</span>
+            <span class="text-[10px] text-sky-400">${r.ageGrade ? r.ageGrade.toFixed(2) + '%' : '-'}</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function render12MonthBreakdownGrid() {
+      const grid = document.getElementById('monthlyBreakdownGrid');
+      grid.innerHTML = '';
+      const runs = athleteRuns;
+
+      MONTH_NAMES.forEach((mName, mIdx) => {
+        const mRuns = runs.filter(r => r.month === mIdx);
+        const count = mRuns.length;
+        const card = document.createElement('div');
+
+        if (count > 0) {
+          const sorted = [...mRuns].sort((a, b) => a.timeSeconds - b.timeSeconds);
+          const pb = sorted[0];
+          const grades = mRuns.filter(r => r.ageGrade);
+          const peakGrade = grades.length ? Math.max(...grades.map(r => r.ageGrade)) : null;
+
+          card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-2.5 space-y-1.5 cursor-pointer active:scale-95 transition hover:border-amber-500/50';
+          card.onclick = () => {
+            document.getElementById('selectMonthTarget').value = mIdx;
+            document.getElementById('leaderboardModeSelect').value = 'targetMonth';
+            renderLeaderboardsTab();
+            openDrilldownModal(`${mName} parkruns`, `${count} historical efforts in ${mName}`, mRuns);
+          };
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-1">
+              <span class="font-bold text-xs text-amber-400">${mName}</span>
+              <span class="text-[9px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">${count} runs</span>
+            </div>
+            <div class="text-[10px] font-mono space-y-0.5">
+              <div class="flex justify-between">
+                <span class="text-slate-400 font-sans">Month PB:</span>
+                <span class="text-amber-300 font-bold">${pb.timeStr}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400 font-sans">Peak Grade:</span>
+                <span class="text-sky-400">${peakGrade ? peakGrade.toFixed(1) + '%' : '-'}</span>
+              </div>
+            </div>
+          `;
+        } else {
+          card.className = 'bg-slate-950/60 border border-slate-800/60 rounded-xl p-2.5 space-y-1 opacity-50 select-none';
+          card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-800/40 pb-1">
+              <span class="font-semibold text-xs text-slate-500">${mName}</span>
+              <span class="text-[9px] font-mono text-slate-600">0 runs</span>
+            </div>
+            <p class="text-[10px] text-slate-600 font-mono italic">No runs logged</p>
+          `;
+        }
+        grid.appendChild(card);
+      });
+    }
+
     function renderDepthChart() {
       const runs = getFilteredRuns();
       const ctx = document.getElementById('depthAttendanceChart').getContext('2d');
@@ -1261,7 +1468,7 @@
               callbacks: {
                 title: function(items) {
                   if (!items.length) return '';
-                  return items[0].raw.r.rawDateStr; // Clean string date, zero time artifacts
+                  return items[0].raw.r.rawDateStr;
                 },
                 label: function(item) {
                   const r = item.raw.r;
