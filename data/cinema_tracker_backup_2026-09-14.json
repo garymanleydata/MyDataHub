@@ -2095,6 +2095,22 @@
         "screeningType": "2D",
         "screen": "Your booking reference"
       }
+    },
+    {
+      "id": "film_1789911529446_5xvx",
+      "title": "Heart Of The Beast",
+      "year": 2026,
+      "tier": "unranked",
+      "metadata": {
+        "dateWatched": "27/09/2026",
+        "timeWatched": "17:30",
+        "certification": "",
+        "runningTime": "",
+        "bookingRef": "WJTDNJ9",
+        "cinema": "Eastbourne Central",
+        "screeningType": "",
+        "screen": "readers"
+      }
     }
   ],
   "upcoming": [
