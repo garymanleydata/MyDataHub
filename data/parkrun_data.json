@@ -20347,5 +20347,26 @@
       "genderPosition": 1,
       "genderTotal": 52
     }
+  },
+  {
+    "athleteId": "350599",
+    "athleteName": "Katie Manley",
+    "event": "Abbot’s Wood",
+    "eventUrl": "https://www.parkrun.org.uk/abbotswood/results/24/",
+    "date": "17/10/2026",
+    "runNumber": 24,
+    "position": 61,
+    "time": "29:45",
+    "ageGrade": "51.43%",
+    "enriched": {
+      "totalFinishers": 137,
+      "finishPercentile": 55.5,
+      "ageCategory": "VW40-44",
+      "categoryPosition": 1,
+      "categoryTotal": 4,
+      "gender": "Female",
+      "genderPosition": 13,
+      "genderTotal": 46
+    }
   }
 ]
