@@ -20368,5 +20368,26 @@
       "genderPosition": 13,
       "genderTotal": 46
     }
+  },
+  {
+    "athleteId": "500760",
+    "athleteName": "Gary Manley",
+    "event": "Abbot’s Wood",
+    "eventUrl": "https://www.parkrun.org.uk/abbotswood/results/24/",
+    "date": "17/10/2026",
+    "runNumber": 24,
+    "position": 3,
+    "time": "19:09",
+    "ageGrade": "70.76%",
+    "enriched": {
+      "totalFinishers": 137,
+      "finishPercentile": 97.8,
+      "ageCategory": "VM35-39",
+      "categoryPosition": 1,
+      "categoryTotal": 11,
+      "gender": "Male",
+      "genderPosition": 3,
+      "genderTotal": 62
+    }
   }
 ]
