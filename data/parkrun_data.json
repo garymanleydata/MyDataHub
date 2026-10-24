@@ -20389,5 +20389,68 @@
       "genderPosition": 3,
       "genderTotal": 62
     }
+  },
+  {
+    "athleteId": "500760",
+    "athleteName": "Gary Manley",
+    "event": "Abbot’s Wood",
+    "eventUrl": "https://www.parkrun.org.uk/abbotswood/results/25/",
+    "date": "24/10/2026",
+    "runNumber": 25,
+    "position": 1,
+    "time": "19:01",
+    "ageGrade": "71.25%",
+    "enriched": {
+      "totalFinishers": 136,
+      "finishPercentile": 99.3,
+      "ageCategory": "VM35-39",
+      "categoryPosition": 1,
+      "categoryTotal": 4,
+      "gender": "Male",
+      "genderPosition": 1,
+      "genderTotal": 51
+    }
+  },
+  {
+    "athleteId": "995019",
+    "athleteName": "Alf Oseni",
+    "event": "Great Lines",
+    "eventUrl": "https://www.parkrun.org.uk/greatlines/results/596/",
+    "date": "24/10/2026",
+    "runNumber": 596,
+    "position": 169,
+    "time": "31:31",
+    "ageGrade": "52.25%",
+    "enriched": {
+      "totalFinishers": 370,
+      "finishPercentile": 54.3,
+      "ageCategory": "VM60-64",
+      "categoryPosition": 10,
+      "categoryTotal": 19,
+      "gender": "Male",
+      "genderPosition": 128,
+      "genderTotal": 186
+    }
+  },
+  {
+    "athleteId": "350599",
+    "athleteName": "Katie Manley",
+    "event": "Abbot’s Wood",
+    "eventUrl": "https://www.parkrun.org.uk/abbotswood/results/25/",
+    "date": "24/10/2026",
+    "runNumber": 25,
+    "position": 59,
+    "time": "31:35",
+    "ageGrade": "48.44%",
+    "enriched": {
+      "totalFinishers": 136,
+      "finishPercentile": 56.6,
+      "ageCategory": "VW40-44",
+      "categoryPosition": 2,
+      "categoryTotal": 5,
+      "gender": "Female",
+      "genderPosition": 23,
+      "genderTotal": 57
+    }
   }
 ]
