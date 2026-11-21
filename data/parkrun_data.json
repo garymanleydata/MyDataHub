@@ -20620,5 +20620,47 @@
       "genderPosition": 154,
       "genderTotal": 211
     }
+  },
+  {
+    "athleteId": "500760",
+    "athleteName": "Gary Manley",
+    "event": "Abbot’s Wood",
+    "eventUrl": "https://www.parkrun.org.uk/abbotswood/results/29/",
+    "date": "21/11/2026",
+    "runNumber": 29,
+    "position": 1,
+    "time": "19:25",
+    "ageGrade": "69.79%",
+    "enriched": {
+      "totalFinishers": 81,
+      "finishPercentile": 98.8,
+      "ageCategory": "VM35-39",
+      "categoryPosition": 1,
+      "categoryTotal": 3,
+      "gender": "Male",
+      "genderPosition": 1,
+      "genderTotal": 30
+    }
+  },
+  {
+    "athleteId": "350599",
+    "athleteName": "Katie Manley",
+    "event": "Abbot’s Wood",
+    "eventUrl": "https://www.parkrun.org.uk/abbotswood/results/29/",
+    "date": "21/11/2026",
+    "runNumber": 29,
+    "position": 29,
+    "time": "28:35",
+    "ageGrade": "53.53%",
+    "enriched": {
+      "totalFinishers": 81,
+      "finishPercentile": 64.2,
+      "ageCategory": "VW40-44",
+      "categoryPosition": 1,
+      "categoryTotal": 5,
+      "gender": "Female",
+      "genderPosition": 8,
+      "genderTotal": 27
+    }
   }
 ]
